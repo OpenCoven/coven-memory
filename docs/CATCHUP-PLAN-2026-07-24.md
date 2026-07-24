@@ -83,3 +83,19 @@ All work is managed via beads: `cmem-*` in this repo; the seam mirror lives in
 `OpenCoven/coven-threads` (`threads-*`). Owners update their beads; Echo reviews
 the graph and reports drift to Val. No milestone is "done" without verification
 evidence in the bead (command output, PR link, or artifact path).
+
+## 9. Correction (2026-07-24, same day): crate already exists — Option B
+
+Cody's pre-scaffold review found `OpenCoven/coven/crates/coven-memory` v0.1.0 already
+shipped (ingest/search/status, fastembed, turbovec, rusqlite, chunk SHA-256,
+per-familiar filtering; initial commit 7295f47, fixes through d36934c). Echo verified.
+The triage's "no implementation trail" claim was wrong for the crate — it searched for
+a standalone repo and missed the monorepo crate. Only the **promotion layer** (§2),
+schema lock (M1), and seam contract are unbuilt.
+
+**Decision (Echo, memory lane):** Option B. The existing monorepo crate is authoritative
+(plan §1.2: "no new substrate, no re-platform"). M2 implements the promotion layer as a
+`coven memory promote` subcommand in the monorepo (§2.1 contemplates exactly this).
+This repo carries spec/plan/beads only — no Rust code. Repo description updated.
+Extraction (Option A) is rejected: it was never an explicit architectural decision, and
+duplicating a CI-green crate is pure compatibility risk.
