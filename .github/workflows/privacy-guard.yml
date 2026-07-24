@@ -1,0 +1,48 @@
+name: privacy-guard
+# Enforces Coven memory-layer privacy/secret rules on every push and PR.
+# Local hooks are advisory (contributors can skip them); THIS is the enforcement.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history — scan every commit, not just HEAD
+
+      - name: Install gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz -o /tmp/gl.tgz
+          tar -xzf /tmp/gl.tgz -C /tmp gitleaks
+          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Full-history secret & privacy scan (gitleaks + Coven rules)
+        run: gitleaks detect --config .gitleaks.toml --no-banner --redact
+
+      - name: Tracked-tree privacy pattern scan
+        run: bash scripts/guard-scan.sh
+
+      - name: PR diff privacy scan (changed files only, loud on hits)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD -- | grep -vE '\.(png|jpg|jpeg|gif|pdf|ico|woff2?)$' || true)
+          PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[a-z0-9_-]+/|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
+          FAIL=0
+          for f in $CHANGED; do
+            [ -f "$f" ] || continue
+            if grep -EnI "$PATTERNS" "$f" | grep -v "guard-scan-allow"; then
+              echo "::error file=$f::Privacy pattern found — see SECURITY.md. Nothing local/personal/session-identifying may enter this public repo."
+              FAIL=1
+            fi
+          done
+          exit $FAIL

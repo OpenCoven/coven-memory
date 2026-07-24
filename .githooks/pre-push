@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+# Coven memory-layer pre-push guard: full-tree + beads export scan
+set -e
+REPO_ROOT=$(git rev-parse --show-toplevel)
+"$REPO_ROOT/scripts/guard-scan.sh" --beads
+if [ -x "$REPO_ROOT/.beads/hooks/pre-push" ]; then
+  "$REPO_ROOT/.beads/hooks/pre-push" "$@"
+fi

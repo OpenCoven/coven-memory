@@ -1,0 +1,51 @@
+# Coven memory-layer secret & privacy guard
+# Extends gitleaks defaults with Coven-specific privacy rules.
+# Principle: this is a PUBLIC spec/PM repo for a MEMORY system —
+# nothing local, personal, or session-identifying may land here.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "coven-session-key"
+description = "OpenClaw/Coven session keys identify private conversations"
+regex = '''agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):[a-z]+:[^\s"']+'''
+
+[[rules]]
+id = "coven-chat-id"
+description = "Raw messenger chat/user IDs (telegram:<digits>, direct:<digits>)"
+regex = '''(telegram|imessage|discord|whatsapp|signal):(direct:)?\d{6,}'''
+
+[[rules]]
+id = "absolute-home-path"
+description = "Absolute user home paths leak local machine layout (use FAMILIAR_ROOT)"
+regex = '''(/Users/|/home/)[a-z0-9_-]+/'''
+[rules.allowlist]
+regexes = ['''(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|you)\b''']
+
+[[rules]]
+id = "openclaw-internal-path"
+description = "OpenClaw/Coven internal runtime paths must not be hardcoded in public specs"
+regex = '''~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)[^\s"']*'''
+
+[[rules]]
+id = "phone-number"
+description = "Phone numbers (E.164)"
+regex = '''\+1\d{10}'''
+
+[[rules]]
+id = "invite-or-handoff-url"
+description = "Invite/handoff URLs are clipboard-only per Coven policy (2026-06-11)"
+regex = '''https?://[^\s"']*(invite|handoff|ts\.net)[^\s"']*token[^\s"']*'''
+
+# The guard definitions and the security doc contain the forbidden patterns
+# by design (as rules and as documentation examples). Default gitleaks rules
+# still apply everywhere; this allowlist covers only the custom Coven rules.
+[allowlist]
+description = "Guard definition + documentation files"
+paths = [
+  '''\.gitleaks\.toml''',
+  '''scripts/guard-scan\.sh''',
+  '''SECURITY\.md''',
+  '''\.github/workflows/privacy-guard\.yml''',
+]

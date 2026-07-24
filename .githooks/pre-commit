@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Coven memory-layer pre-commit guard (tracked; installed via scripts/setup-hooks.sh)
+# 1) privacy/secret scan on staged content (fail-closed)
+# 2) chain to beads-managed hook if present
+set -e
+REPO_ROOT=$(git rev-parse --show-toplevel)
+"$REPO_ROOT/scripts/guard-scan.sh" --staged
+if [ -x "$REPO_ROOT/.beads/hooks/pre-commit" ]; then
+  "$REPO_ROOT/.beads/hooks/pre-commit" "$@"
+fi
