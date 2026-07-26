@@ -4,14 +4,18 @@ import {
   useCallback,
   useEffect,
   useRef,
-  useState
+  useState,
+  useSyncExternalStore
 } from "react";
 import { useLocalSession } from "@/components/launch-gate";
 import {
   DEFAULT_MEMORY_FILTERS,
   type MemoryFilters
 } from "./filter-memories";
-import { MemoryFiltersBar } from "./memory-filters";
+import {
+  MemoryFiltersBar,
+  MemorySearch
+} from "./memory-filters";
 import { MemoryList, type MemoryListHandle } from "./memory-list";
 import { MemoryOverview } from "./memory-overview";
 import { MemoryReader } from "./memory-reader";
@@ -23,7 +27,11 @@ export function MemoryDashboard() {
   const session = useLocalSession();
   const dashboard = useMemoryDashboard({ onUnauthorized: session.lock });
   const [narrowPane, setNarrowPane] = useState<"list" | "reader">("list");
-  const [isNarrowLayout, setIsNarrowLayout] = useState(false);
+  const isNarrowLayout = useSyncExternalStore(
+    subscribeToNarrowLayout,
+    getNarrowLayoutSnapshot,
+    getNarrowLayoutServerSnapshot
+  );
   const listRef = useRef<MemoryListHandle>(null);
   const listSlotRef = useRef<HTMLDivElement>(null);
   const readerSlotRef = useRef<HTMLDivElement>(null);
@@ -40,11 +48,9 @@ export function MemoryDashboard() {
 
   useEffect(() => {
     const layout = window.matchMedia(NARROW_LAYOUT_QUERY);
-    setIsNarrowLayout(layout.matches);
-    const synchronizeLayout = (event: MediaQueryListEvent) => {
+    const synchronizeLayout = () => {
       cancelFocusReturn();
       readerFocusIntentRef.current = false;
-      setIsNarrowLayout(event.matches);
       const activeElement = document.activeElement;
       setNarrowPane(
         activeElement && readerSlotRef.current?.contains(activeElement)
@@ -119,13 +125,18 @@ export function MemoryDashboard() {
           <span className="memory-brand-mark" aria-hidden="true">
             ◇
           </span>
-          <div>
-            <p className="cv-eyebrow">Secure local memory dashboard</p>
-            <h1>Memory</h1>
-          </div>
+          <h1>Memory</h1>
         </div>
+
+        <div className="memory-header-search">
+          <MemorySearch
+            value={dashboard.filters.query}
+            onChange={(value) => setFilter("query", value)}
+          />
+        </div>
+
         <div className="memory-header-actions">
-          <div className="cv-status-strip" role="status">
+          <div className="memory-daemon-status" role="status">
             <span
               className={`cv-status-dot ${connectionDotClass(
                 dashboard.list.status
@@ -133,22 +144,31 @@ export function MemoryDashboard() {
               aria-hidden="true"
             />
             <span>{connectionLabel(dashboard.list.status)}</span>
-            <span className="memory-header-updated">
-              {lastUpdatedLabel(dashboard)}
-            </span>
+            <span aria-hidden="true" className="memory-status-divider" />
+            <span>{lastUpdatedLabel(dashboard)}</span>
           </div>
+          <span className="memory-protection-status">
+            <span aria-hidden="true">◇</span>
+            Protected by default
+          </span>
           <button
             type="button"
-            className="cv-action cv-action-secondary"
+            className="memory-icon-action"
+            aria-label="Refresh"
+            title="Refresh memory"
             onClick={dashboard.reload}
             disabled={dashboard.isRefreshing}
           >
-            {dashboard.isRefreshing ? "Refreshing…" : "Refresh"}
+            <span aria-hidden="true">↻</span>
+            <span className="memory-action-label">
+              {dashboard.isRefreshing ? "Refreshing…" : "Refresh"}
+            </span>
           </button>
           <details className="memory-session-menu">
             <summary
-              className="cv-action cv-action-ghost"
+              className="memory-icon-action"
               aria-label="Session actions"
+              title="Session actions"
             >
               •••
             </summary>
@@ -168,19 +188,34 @@ export function MemoryDashboard() {
         </div>
       </header>
 
-      <MemoryOverview
-        state={dashboard.overview}
-        sourceCount={sourceCount}
-      />
-
-      <MemoryFiltersBar
-        entries={allEntries}
-        filters={dashboard.filters}
-        onChange={setFilter}
-        onClear={clearFilters}
-      />
+      {hasActiveFilters ? (
+        <div className="memory-filter-chips" aria-label="Active filters">
+          <span className="memory-filter-chips-label">Scoped</span>
+          {filterLabels(dashboard.filters).map((label) => (
+            <span className="memory-filter-chip" key={label}>
+              {label}
+            </span>
+          ))}
+          <button type="button" onClick={clearFilters}>
+            Clear all filters
+          </button>
+        </div>
+      ) : null}
 
       <div className="memory-workspace">
+        <aside className="memory-library-slot">
+          <MemoryFiltersBar
+            entries={allEntries}
+            filters={dashboard.filters}
+            onChange={setFilter}
+            onClear={clearFilters}
+          />
+          <MemoryOverview
+            state={dashboard.overview}
+            sourceCount={sourceCount}
+          />
+        </aside>
+
         <div ref={listSlotRef} className="memory-list-slot">
           <MemoryList
             ref={listRef}
@@ -199,6 +234,7 @@ export function MemoryDashboard() {
             onClearFilters={clearFilters}
           />
         </div>
+
         <div ref={readerSlotRef} className="memory-reader-slot">
           <MemoryReader
             state={dashboard.detail}
@@ -221,6 +257,30 @@ export function MemoryDashboard() {
       </div>
     </main>
   );
+}
+
+function subscribeToNarrowLayout(onChange: () => void) {
+  const layout = window.matchMedia(NARROW_LAYOUT_QUERY);
+  layout.addEventListener("change", onChange);
+  return () => layout.removeEventListener("change", onChange);
+}
+
+function getNarrowLayoutSnapshot() {
+  return window.matchMedia(NARROW_LAYOUT_QUERY).matches;
+}
+
+function getNarrowLayoutServerSnapshot() {
+  return false;
+}
+
+function filterLabels(filters: MemoryFilters) {
+  return [
+    filters.query ? `Search: ${filters.query}` : null,
+    filters.familiar ? `Familiar: ${filters.familiar}` : null,
+    filters.source ? `Source: ${filters.source}` : null,
+    filters.verification ? `State: ${filters.verification}` : null,
+    filters.freshness !== "all" ? `Updated: ${filters.freshness}` : null
+  ].filter((label): label is string => Boolean(label));
 }
 
 function connectionLabel(status: "idle" | "loading" | "ready" | "error") {
@@ -247,17 +307,17 @@ function lastUpdatedLabel(
   dashboard: ReturnType<typeof useMemoryDashboard>
 ) {
   if (dashboard.overview.status !== "ready") {
-    return "Update time unavailable";
+    return "Update unavailable";
   }
   const value =
     dashboard.overview.data.lastUpdatedAt ??
     dashboard.overview.data.generatedAt;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Update time unavailable";
+    return "Update unavailable";
   }
-  return `Updated ${new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit"
-  }).format(date)}`;
+  }).format(date);
 }

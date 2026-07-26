@@ -21,6 +21,27 @@ export function SimpleMarkdown({ content }: { content: string }) {
         }
 
         const lines = block.split("\n");
+        const fencedCode = /^```[^\n]*\n([\s\S]*?)\n```$/.exec(block);
+        if (fencedCode) {
+          return (
+            <pre key={`${index}-code`}>
+              <code>{fencedCode[1]}</code>
+            </pre>
+          );
+        }
+
+        if (lines.every((line) => /^[-*]\s+/.test(line))) {
+          return (
+            <ul key={`${index}-list`}>
+              {lines.map((line, lineIndex) => (
+                <li key={`${lineIndex}-${line.slice(0, 16)}`}>
+                  {line.replace(/^[-*]\s+/, "")}
+                </li>
+              ))}
+            </ul>
+          );
+        }
+
         return (
           <p key={`${index}-${block.slice(0, 24)}`}>
             {lines.map((line, lineIndex) => (

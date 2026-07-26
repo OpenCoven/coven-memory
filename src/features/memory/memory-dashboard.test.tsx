@@ -245,6 +245,43 @@ describe("MemoryDashboard", () => {
     expect(screen.queryByText("Synthetic durable fact.")).not.toBeInTheDocument();
   });
 
+  it("renders the approved read-only library, index, reader, and provenance shell", async () => {
+    installMatchMedia(false);
+    installApi();
+    render(
+      <LaunchGate>
+        <MemoryDashboard />
+      </LaunchGate>
+    );
+
+    expect(
+      await screen.findByRole("navigation", { name: "Memory library" })
+    ).toBeVisible();
+    expect(
+      screen.getByRole("searchbox", { name: "Search memories" })
+    ).toHaveAttribute("placeholder", "Search memories…");
+    expect(
+      screen.getByRole("region", { name: "Memory index" })
+    ).toBeVisible();
+    expect(
+      await screen.findByRole("complementary", {
+        name: "Memory provenance"
+      })
+    ).toBeVisible();
+    expect(
+      screen.getByRole("region", { name: "Memory reader" })
+    ).toBeVisible();
+    expect(screen.getByText("Protected by default")).toBeVisible();
+
+    expect(
+      screen.queryByRole("button", { name: "New memory" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Preview state")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Edit content" })
+    ).not.toBeInTheDocument();
+  });
+
   it("does not steal focus when a row opens in the wide master-detail layout", async () => {
     installMatchMedia(false);
     installApi();
@@ -393,7 +430,7 @@ describe("MemoryDashboard", () => {
     const cancelAnimationFrame = vi.fn();
     vi.stubGlobal(
       "requestAnimationFrame",
-      vi.fn((_callback: FrameRequestCallback) => {
+      vi.fn(() => {
         nextFrame += 1;
         return nextFrame;
       })

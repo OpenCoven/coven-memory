@@ -76,7 +76,11 @@ export const MemoryList = forwardRef<MemoryListHandle, MemoryListProps>(
 
     if (state.status === "loading" || state.status === "idle") {
       return (
-        <section className="cv-pane memory-list-pane" aria-busy="true">
+        <section
+          className="memory-list-pane"
+          aria-label="Memory index"
+          aria-busy="true"
+        >
           <MemoryListHeading ref={headingRef} />
           <div className="memory-list-state" role="status">
             <span className="memory-skeleton memory-skeleton-row" />
@@ -89,7 +93,7 @@ export const MemoryList = forwardRef<MemoryListHandle, MemoryListProps>(
 
     if (state.status === "error") {
       return (
-        <section className="cv-pane memory-list-pane">
+        <section className="memory-list-pane" aria-label="Memory index">
           <MemoryListHeading ref={headingRef} />
           <div className="memory-list-state">
             <strong>Couldn&apos;t load memory</strong>
@@ -108,7 +112,7 @@ export const MemoryList = forwardRef<MemoryListHandle, MemoryListProps>(
 
     if (state.data.length === 0) {
       return (
-        <section className="cv-pane memory-list-pane">
+        <section className="memory-list-pane" aria-label="Memory index">
           <MemoryListHeading ref={headingRef} />
           <div className="memory-list-state">
             <strong>No memories yet</strong>
@@ -120,7 +124,7 @@ export const MemoryList = forwardRef<MemoryListHandle, MemoryListProps>(
 
     if (entries.length === 0) {
       return (
-        <section className="cv-pane memory-list-pane">
+        <section className="memory-list-pane" aria-label="Memory index">
           <MemoryListHeading ref={headingRef} />
           <div className="memory-list-state">
             <strong>No memories match these filters</strong>
@@ -138,7 +142,7 @@ export const MemoryList = forwardRef<MemoryListHandle, MemoryListProps>(
     }
 
     return (
-      <section className="cv-pane memory-list-pane">
+      <section className="memory-list-pane" aria-label="Memory index">
         <h2
           ref={headingRef}
           className="cv-pane-header memory-pane-title memory-list-heading"

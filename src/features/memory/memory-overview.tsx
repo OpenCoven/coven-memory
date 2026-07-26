@@ -17,7 +17,8 @@ export function MemoryOverview({
         aria-label="Memory overview"
         aria-busy="true"
       >
-        <p role="status">Loading memory overview…</p>
+        <span className="memory-overview-dot memory-overview-dot-waiting" />
+        <p role="status">Loading overview…</p>
       </section>
     );
   }
@@ -28,11 +29,10 @@ export function MemoryOverview({
         className="memory-overview memory-overview-error"
         aria-label="Memory overview"
       >
-        <div className="cv-alert cv-alert-warning">
-          <strong className="cv-alert-title">Overview unavailable</strong>
-          <span className="cv-alert-copy">
-            Browse remains available when the memory list can still connect.
-          </span>
+        <span className="memory-overview-dot memory-overview-dot-warning" />
+        <div>
+          <strong>Overview unavailable</strong>
+          <p>Memory browsing remains available.</p>
         </div>
       </section>
     );
@@ -46,77 +46,50 @@ export function MemoryOverview({
       : 0;
 
   return (
-    <section className="memory-overview" aria-labelledby="memory-overview-title">
-      <div className="memory-section-heading">
-        <div>
-          <p className="cv-eyebrow">At a glance</p>
-          <h2 id="memory-overview-title">Memory overview</h2>
-        </div>
-        <span className="memory-overview-generated">
-          Snapshot {formatTime(overview.generatedAt)}
+    <details className="memory-overview">
+      <summary>
+        <span
+          className={`memory-overview-dot memory-overview-dot-${overview.verification.state}`}
+          aria-hidden="true"
+        />
+        <span>
+          <strong>Memory overview</strong>
+          <small>
+            <span>{overview.totals.entries} entries</span>
+            <span aria-hidden="true"> · </span>
+            <span>
+              {sourceCount} {sourceCount === 1 ? "source" : "sources"}
+            </span>
+          </small>
         </span>
-      </div>
+        <span className="memory-overview-caret" aria-hidden="true">
+          ⌃
+        </span>
+      </summary>
 
-      <div className="memory-overview-grid">
-        <article className="memory-stat">
-          <span className="memory-stat-label">Memories</span>
-          <strong className="memory-stat-value">{overview.totals.entries}</strong>
-          <span className="memory-stat-note">
-            {sourceCount} {sourceCount === 1 ? "source" : "sources"}
-          </span>
-        </article>
-        <article className="memory-stat">
-          <span className="memory-stat-label">Familiars</span>
-          <strong className="memory-stat-value">
-            {overview.totals.familiars}
-          </strong>
-          <span className="memory-stat-note">Contributing memory</span>
-        </article>
-        <article className="memory-stat">
-          <span className="memory-stat-label">Verification</span>
-          {verificationAvailable ? (
-            <>
-              <strong className="memory-stat-value">{verifiedPercent}%</strong>
-              <span className="memory-stat-note">
-                {verifiedPercent}% verified
-              </span>
-            </>
-          ) : (
-            <>
-              <strong className="memory-stat-value memory-stat-unavailable">
-                Unavailable
-              </strong>
-              <span className="memory-stat-note">
-                Verification unavailable
-              </span>
-            </>
-          )}
-        </article>
-        <article className="memory-stat">
-          <span className="memory-stat-label">Attention</span>
-          {verificationAvailable ? (
-            <>
-              <strong className="memory-stat-value">
-                {overview.totals.needsReview}
-              </strong>
-              <span className="memory-stat-note">
-                {overview.totals.needsReview} need review
-              </span>
-            </>
-          ) : (
-            <>
-              <strong className="memory-stat-value memory-stat-unavailable">
-                —
-              </strong>
-              <span className="memory-stat-note">Review state unavailable</span>
-            </>
-          )}
-        </article>
-      </div>
+      <div className="memory-overview-body">
+        <div className="memory-overview-stats">
+          <OverviewStat label="Memories" value={overview.totals.entries} />
+          <OverviewStat label="Familiars" value={overview.totals.familiars} />
+          <OverviewStat
+            label="Verification"
+            value={
+              verificationAvailable
+                ? `${verifiedPercent}% verified`
+                : "Verification unavailable"
+            }
+          />
+          <OverviewStat
+            label="Attention"
+            value={
+              verificationAvailable
+                ? `${overview.totals.needsReview} need review`
+                : "Review state unavailable"
+            }
+          />
+        </div>
 
-      <details className="memory-system-checks">
-        <summary>System checks</summary>
-        <dl className="memory-check-grid">
+        <dl className="memory-system-checks">
           <div>
             <dt>Manifest</dt>
             <dd>{overview.verification.manifest ?? "Unavailable"}</dd>
@@ -126,25 +99,35 @@ export function MemoryOverview({
             <dd>{overview.verification.index ?? "Unavailable"}</dd>
           </div>
           <div>
-            <dt>Checked</dt>
-            <dd>{formatTime(overview.verification.checkedAt)}</dd>
+            <dt>Snapshot</dt>
+            <dd>{formatTime(overview.generatedAt)}</dd>
           </div>
         </dl>
+
         {overview.verification.issues.length > 0 ? (
           <ul className="memory-check-issues">
             {overview.verification.issues.map((issue) => (
               <li key={issue}>{issue}</li>
             ))}
           </ul>
-        ) : (
-          <p className="memory-muted">
-            {verificationAvailable
-              ? "No verification issues reported."
-              : "Verification diagnostics are not supplied by this daemon."}
-          </p>
-        )}
-      </details>
-    </section>
+        ) : null}
+      </div>
+    </details>
+  );
+}
+
+function OverviewStat({
+  label,
+  value
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 

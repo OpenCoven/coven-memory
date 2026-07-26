@@ -17,9 +17,7 @@ type MemoryReaderProps = {
   onRetry: () => void;
 };
 
-export function MemoryReader({
-  ...props
-}: MemoryReaderProps) {
+export function MemoryReader({ ...props }: MemoryReaderProps) {
   return (
     <MemoryReaderSelection
       key={props.selectedId ?? "no-selection"}
@@ -41,13 +39,16 @@ function MemoryReaderSelection({
 
   if (!selectedId || state.status === "idle") {
     return (
-      <section className="cv-pane memory-reader-pane">
+      <section className="memory-reader-pane" aria-label="Memory reader">
         <ReaderBack onBack={onBack} />
         <div className="memory-reader-state">
+          <span className="memory-reader-state-mark" aria-hidden="true">
+            ◇
+          </span>
           <p className="cv-eyebrow">Reader</p>
           <h2>Select a memory to read</h2>
           <p>
-            Choose an entry from the index. Content remains hidden when privacy
+            Choose an entry from the index. Content stays hidden when privacy
             metadata is unknown.
           </p>
         </div>
@@ -58,7 +59,8 @@ function MemoryReaderSelection({
   if (state.status === "loading") {
     return (
       <section
-        className="cv-pane memory-reader-pane"
+        className="memory-reader-pane"
+        aria-label="Memory reader"
         aria-busy="true"
         aria-live="polite"
       >
@@ -74,9 +76,12 @@ function MemoryReaderSelection({
 
   if (state.status === "error") {
     return (
-      <section className="cv-pane memory-reader-pane">
+      <section className="memory-reader-pane" aria-label="Memory reader">
         <ReaderBack onBack={onBack} />
         <div className="memory-reader-state">
+          <span className="memory-reader-state-mark" aria-hidden="true">
+            !
+          </span>
           <p className="cv-eyebrow">Reader unavailable</p>
           <h2>Couldn&apos;t open this memory</h2>
           <p>The index is still available. Retry this entry when ready.</p>
@@ -98,10 +103,10 @@ function MemoryReaderSelection({
   const verification = verificationLabel(detail.verification.state);
 
   return (
-    <section className="cv-pane memory-reader-pane" aria-labelledby="reader-title">
+    <section className="memory-reader-pane" aria-label="Memory reader">
       <ReaderBack onBack={onBack} />
       <header className="memory-reader-header">
-        <div>
+        <div className="memory-reader-title">
           <p className="cv-eyebrow">
             {detail.familiarId} · {detail.source.label}
           </p>
@@ -112,87 +117,95 @@ function MemoryReaderSelection({
             Updated {formatDate(detail.updatedAt)}
           </p>
         </div>
-        <span
-          className={`memory-verification-badge memory-verification-${detail.verification.state}`}
-        >
-          <span className="memory-status-mark" aria-hidden="true" />
-          {verification}
-        </span>
-      </header>
-
-      <div className="memory-provenance-spine" aria-label="Memory provenance">
-        <div>
-          <span>Source</span>
-          <strong>{detail.source.label}</strong>
-        </div>
-        <div>
-          <span>Privacy</span>
-          <strong>{privacyLabel(detail.privacy.classification)}</strong>
-        </div>
-        <div>
-          <span>Verification</span>
-          <strong>{verification}</strong>
-        </div>
-      </div>
-
-      <div className="memory-reader-body">
-        {!revealed ? (
-          <div className="memory-redaction" role="region" aria-label="Hidden content">
-            <div className="memory-redaction-glyph" aria-hidden="true">
-              ◈
-            </div>
-            <p className="cv-eyebrow">Privacy check</p>
-            <h3>Content hidden until you reveal it</h3>
-            <p>
-              {detail.privacy.reason ||
-                "This memory is sensitive or has no recognized privacy classification."}
-            </p>
+        <div className="memory-reader-tools">
+          <div className="memory-view-toggle" aria-label="Content view">
             <button
               type="button"
-              className="cv-action cv-action-primary"
-              onClick={() => setRevealedId(detail.id)}
+              aria-pressed={view === "rendered"}
+              onClick={() => setView("rendered")}
             >
-              Reveal memory content
+              Read
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === "raw"}
+              onClick={() => setView("raw")}
+            >
+              Raw
             </button>
           </div>
-        ) : (
-          <>
-            <div className="memory-view-toggle" aria-label="Content view">
-              <button
-                type="button"
-                className="cv-action cv-action-ghost"
-                aria-pressed={view === "rendered"}
-                onClick={() => setView("rendered")}
-              >
-                Rendered
-              </button>
-              <button
-                type="button"
-                className="cv-action cv-action-ghost"
-                aria-pressed={view === "raw"}
-                onClick={() => setView("raw")}
-              >
-                Raw
-              </button>
-            </div>
-            {view === "rendered" ? (
-              <SimpleMarkdown content={detail.content} />
-            ) : (
-              <pre className="memory-raw">
-                <code>{detail.content}</code>
-              </pre>
-            )}
-          </>
-        )}
+          <span
+            className={`memory-verification-badge memory-verification-${detail.verification.state}`}
+          >
+            <span className="memory-status-mark" aria-hidden="true" />
+            {verification}
+          </span>
+        </div>
+      </header>
 
-        <aside className="memory-metadata" aria-label="Memory metadata">
-          <section>
+      <div className="memory-reader-layout">
+        <div className="memory-reader-content">
+          {!revealed ? (
+            <div
+              className="memory-redaction"
+              role="region"
+              aria-label="Hidden content"
+            >
+              <div className="memory-redaction-glyph" aria-hidden="true">
+                ◈
+              </div>
+              <p className="cv-eyebrow">Privacy check</p>
+              <h3>Content hidden until you reveal it</h3>
+              <p>
+                {detail.privacy.reason ||
+                  "This memory is sensitive or has no recognized privacy classification."}
+              </p>
+              <button
+                type="button"
+                className="cv-action cv-action-primary"
+                onClick={() => setRevealedId(detail.id)}
+              >
+                Reveal memory content
+              </button>
+              <small>Reveal applies only to this memory in this session.</small>
+            </div>
+          ) : view === "rendered" ? (
+            <article className="memory-document">
+              <SimpleMarkdown content={detail.content} />
+            </article>
+          ) : (
+            <pre className="memory-raw">
+              <code>{detail.content}</code>
+            </pre>
+          )}
+        </div>
+
+        <aside className="memory-inspector" aria-label="Memory provenance">
+          <div className="memory-inspector-heading">
+            <span>Provenance</span>
+            <span
+              className={`memory-status-mark memory-status-${detail.verification.state}`}
+              aria-hidden="true"
+            />
+          </div>
+
+          <dl className="memory-provenance-list">
+            <MetadataRow label="Source" value={detail.source.label} />
+            <MetadataRow label="Familiar" value={detail.familiarId} />
+            <MetadataRow
+              label="Privacy"
+              value={privacyLabel(detail.privacy.classification)}
+            />
+            <MetadataRow label="Verification" value={verification} />
+          </dl>
+
+          <section className="memory-inspector-section">
             <h3>Verification</h3>
             <p>
               <strong>{verification}.</strong> {detail.verification.reason}
             </p>
           </section>
-          <section>
+          <section className="memory-inspector-section">
             <h3>Attestation</h3>
             <p>
               {capabilities?.attestationMetadata
@@ -202,7 +215,7 @@ function MemoryReaderSelection({
                 : "Attestation unavailable"}
             </p>
           </section>
-          <section>
+          <section className="memory-inspector-section">
             <h3>Supersession</h3>
             <p>
               {capabilities?.supersessionHistory
@@ -216,13 +229,23 @@ function MemoryReaderSelection({
   );
 }
 
+function MetadataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
+}
+
 function ReaderBack({ onBack }: { onBack: () => void }) {
   return (
     <button
       type="button"
-      className="cv-action cv-action-ghost memory-reader-back"
+      className="memory-reader-back"
       onClick={onBack}
     >
+      <span aria-hidden="true">←</span>
       Back to memories
     </button>
   );

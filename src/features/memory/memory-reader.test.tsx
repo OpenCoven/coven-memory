@@ -39,6 +39,9 @@ describe("MemoryReader", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Durable fact.")).not.toBeInTheDocument();
     expect(screen.getAllByText("Unknown").length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole("complementary", { name: "Memory provenance" })
+    ).toHaveTextContent("Coven origin");
 
     fireEvent.click(
       screen.getByRole("button", { name: "Reveal memory content" })
@@ -129,6 +132,9 @@ describe("MemoryReader", () => {
     );
 
     expect(screen.getByText("Durable fact.")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Read" })
+    ).toHaveAttribute("aria-pressed", "true");
     expect(
       screen.getByRole("button", { name: "Back to memories" })
     ).toBeInTheDocument();
