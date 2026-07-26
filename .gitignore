@@ -17,3 +17,4 @@ output/
 *.tsbuildinfo
 .env*
 !.env.example
+/docs/superpowers
