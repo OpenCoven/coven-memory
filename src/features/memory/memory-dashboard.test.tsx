@@ -99,7 +99,15 @@ function installApi(options: {
 } = {}) {
   const fetchMock = vi.fn((input: string | URL | Request) => {
     const url = String(input);
-    if (url === "/api/session/status" || url === "/api/session/logout") {
+    if (url === "/api/session/status") {
+      return Promise.resolve(
+        Response.json({
+          ok: true,
+          expiresAt: new Date(Date.now() + 60_000).toISOString()
+        })
+      );
+    }
+    if (url === "/api/session/logout") {
       return Promise.resolve(new Response(null, { status: 200 }));
     }
     if (url === "/api/memory/overview") {

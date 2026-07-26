@@ -179,7 +179,11 @@ try {
       body: JSON.stringify({ token })
     }
   );
-  await json(exchanged.clone(), 200);
+  const exchangeBody = await json(exchanged.clone(), 200);
+  invariant(
+    Date.parse(exchangeBody?.expiresAt) > Date.now(),
+    "exchange omitted a future session expiry"
+  );
   const cookie = cookiePair(exchanged);
 
   const replay = await fetch(`${dashboardOrigin}/api/session/exchange`, {
@@ -197,6 +201,14 @@ try {
     cache: "no-store",
     headers: { cookie }
   };
+  const statusBody = await json(
+    await fetch(`${dashboardOrigin}/api/session/status`, authenticated),
+    200
+  );
+  invariant(
+    Date.parse(statusBody?.expiresAt) > Date.now(),
+    "status omitted a future session expiry"
+  );
   const unsupported = await fetch(`${dashboardOrigin}/api/memory`, {
     method: "POST",
     cache: "no-store",

@@ -41,7 +41,9 @@ describe("session routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ ok: true });
+    const body = await response.json();
+    expect(body.ok).toBe(true);
+    expect(Date.parse(body.expiresAt)).toBeGreaterThan(Date.now());
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(response.headers.get("set-cookie")).toMatch(
       new RegExp(`^${SESSION_COOKIE}=`)
@@ -128,6 +130,9 @@ describe("session routes", () => {
       localRequest("/api/session/status", { headers: { cookie } })
     );
     expect(statusResponse.status).toBe(200);
+    const statusBody = await statusResponse.json();
+    expect(statusBody.ok).toBe(true);
+    expect(Date.parse(statusBody.expiresAt)).toBeGreaterThan(Date.now());
     expect(statusResponse.headers.get("cache-control")).toContain("no-store");
 
     const logoutResponse = await logout(
