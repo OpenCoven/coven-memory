@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { Ref } from "react";
 import type { MemoryDetail, MemoryOverview } from "@/lib/memory-types";
 import type { LoadState } from "./use-memory-dashboard";
 import { memoryRequiresReveal } from "./privacy";
@@ -11,6 +12,7 @@ type MemoryReaderProps = {
   state: LoadState<MemoryDetail>;
   selectedId: string | null;
   capabilities?: MemoryOverview["capabilities"];
+  titleRef?: Ref<HTMLHeadingElement>;
   onBack: () => void;
   onRetry: () => void;
 };
@@ -30,6 +32,7 @@ function MemoryReaderSelection({
   state,
   selectedId,
   capabilities,
+  titleRef,
   onBack,
   onRetry
 }: MemoryReaderProps) {
@@ -102,7 +105,9 @@ function MemoryReaderSelection({
           <p className="cv-eyebrow">
             {detail.familiarId} · {detail.source.label}
           </p>
-          <h2 id="reader-title">{detail.title}</h2>
+          <h2 id="reader-title" ref={titleRef} tabIndex={-1}>
+            {detail.title}
+          </h2>
           <p className="memory-reader-time">
             Updated {formatDate(detail.updatedAt)}
           </p>

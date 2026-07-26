@@ -326,6 +326,10 @@ select {
   justify-content: space-between;
 }
 
+.memory-list-heading {
+  font-size: var(--cv-font-size-md);
+}
+
 .memory-pane-title > span:last-child {
   color: var(--cv-text-muted);
   font-size: var(--cv-font-size-xs);
@@ -334,11 +338,10 @@ select {
 
 .memory-list {
   flex: 1;
+  margin: 0;
+  padding: 0;
   overflow-y: auto;
-}
-
-.memory-list:focus-visible {
-  box-shadow: inset var(--cv-focus-ring);
+  list-style: none;
 }
 
 .memory-list-row {
@@ -361,12 +364,12 @@ select {
   background: var(--cv-surface-interactive);
 }
 
-.memory-list-row[aria-selected="true"] {
+.memory-list-row[aria-current="true"] {
   background: var(--cv-surface-accent-soft);
   box-shadow: inset 3px 0 0 var(--cv-accent-primary);
 }
 
-.memory-list-row:last-child {
+.memory-list > li:last-child .memory-list-row {
   border-block-end: 0;
 }
 

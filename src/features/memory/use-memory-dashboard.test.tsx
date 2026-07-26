@@ -155,6 +155,30 @@ describe("useMemoryDashboard", () => {
     expect(result.current.detail.data).toEqual(detailFor(secondId));
   });
 
+  it("keeps loaded detail when the current ID is selected again", async () => {
+    const fetchMock = vi.fn((input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/overview")) return json(overview);
+      if (url === "/api/memory") return json(entries);
+      return json(detailFor(firstId));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() =>
+      useMemoryDashboard({ onUnauthorized: vi.fn() })
+    );
+    await waitFor(() => expect(result.current.detail.status).toBe("ready"));
+    const detailCalls = fetchMock.mock.calls.filter(([input]) =>
+      String(input).endsWith(firstId)
+    ).length;
+
+    act(() => result.current.setSelectedId(firstId));
+
+    expect(result.current.detail.status).toBe("ready");
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).endsWith(firstId))
+    ).toHaveLength(detailCalls);
+  });
+
   it("clears a selection that a filter removes", async () => {
     vi.stubGlobal(
       "fetch",

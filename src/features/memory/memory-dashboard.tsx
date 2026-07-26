@@ -1,21 +1,80 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import { useLocalSession } from "@/components/launch-gate";
 import {
   DEFAULT_MEMORY_FILTERS,
   type MemoryFilters
 } from "./filter-memories";
 import { MemoryFiltersBar } from "./memory-filters";
-import { MemoryList } from "./memory-list";
+import { MemoryList, type MemoryListHandle } from "./memory-list";
 import { MemoryOverview } from "./memory-overview";
 import { MemoryReader } from "./memory-reader";
 import { useMemoryDashboard } from "./use-memory-dashboard";
+
+const NARROW_LAYOUT_QUERY = "(max-width: 56rem)";
 
 export function MemoryDashboard() {
   const session = useLocalSession();
   const dashboard = useMemoryDashboard({ onUnauthorized: session.lock });
   const [narrowPane, setNarrowPane] = useState<"list" | "reader">("list");
+  const [isNarrowLayout, setIsNarrowLayout] = useState(false);
+  const listRef = useRef<MemoryListHandle>(null);
+  const listSlotRef = useRef<HTMLDivElement>(null);
+  const readerSlotRef = useRef<HTMLDivElement>(null);
+  const readerTitleRef = useRef<HTMLHeadingElement>(null);
+  const readerFocusIntentRef = useRef(false);
+  const focusReturnFrameRef = useRef<number | null>(null);
+
+  const cancelFocusReturn = useCallback(() => {
+    if (focusReturnFrameRef.current !== null) {
+      window.cancelAnimationFrame(focusReturnFrameRef.current);
+      focusReturnFrameRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const layout = window.matchMedia(NARROW_LAYOUT_QUERY);
+    setIsNarrowLayout(layout.matches);
+    const synchronizeLayout = (event: MediaQueryListEvent) => {
+      cancelFocusReturn();
+      readerFocusIntentRef.current = false;
+      setIsNarrowLayout(event.matches);
+      const activeElement = document.activeElement;
+      setNarrowPane(
+        activeElement && readerSlotRef.current?.contains(activeElement)
+          ? "reader"
+          : "list"
+      );
+    };
+    layout.addEventListener("change", synchronizeLayout);
+    return () => {
+      layout.removeEventListener("change", synchronizeLayout);
+      cancelFocusReturn();
+    };
+  }, [cancelFocusReturn]);
+
+  useEffect(() => {
+    if (
+      readerFocusIntentRef.current &&
+      isNarrowLayout &&
+      narrowPane === "reader" &&
+      dashboard.detail.status === "ready"
+    ) {
+      readerFocusIntentRef.current = false;
+      readerTitleRef.current?.focus();
+    }
+  }, [
+    dashboard.detail.status,
+    dashboard.selectedId,
+    isNarrowLayout,
+    narrowPane
+  ]);
 
   const allEntries =
     dashboard.list.status === "ready" ? dashboard.list.data : [];
@@ -36,11 +95,15 @@ export function MemoryDashboard() {
     key: Key,
     value: MemoryFilters[Key]
   ) => {
+    cancelFocusReturn();
+    readerFocusIntentRef.current = false;
     dashboard.setFilter(key, value);
     setNarrowPane("list");
   };
 
   const clearFilters = () => {
+    cancelFocusReturn();
+    readerFocusIntentRef.current = false;
     dashboard.clearFilters();
     setNarrowPane("list");
   };
@@ -118,14 +181,17 @@ export function MemoryDashboard() {
       />
 
       <div className="memory-workspace">
-        <div className="memory-list-slot">
+        <div ref={listSlotRef} className="memory-list-slot">
           <MemoryList
+            ref={listRef}
             state={dashboard.list}
             entries={dashboard.filteredEntries}
             selectedId={dashboard.selectedId}
             hasActiveFilters={hasActiveFilters}
             onSelect={dashboard.setSelectedId}
             onOpen={(id) => {
+              cancelFocusReturn();
+              readerFocusIntentRef.current = isNarrowLayout;
               dashboard.setSelectedId(id);
               setNarrowPane("reader");
             }}
@@ -133,12 +199,22 @@ export function MemoryDashboard() {
             onClearFilters={clearFilters}
           />
         </div>
-        <div className="memory-reader-slot">
+        <div ref={readerSlotRef} className="memory-reader-slot">
           <MemoryReader
             state={dashboard.detail}
             selectedId={dashboard.selectedId}
             capabilities={capabilities}
-            onBack={() => setNarrowPane("list")}
+            titleRef={readerTitleRef}
+            onBack={() => {
+              readerFocusIntentRef.current = false;
+              cancelFocusReturn();
+              setNarrowPane("list");
+              focusReturnFrameRef.current =
+                window.requestAnimationFrame(() => {
+                  focusReturnFrameRef.current = null;
+                  listRef.current?.focusSelected();
+                });
+            }}
             onRetry={dashboard.retryDetail}
           />
         </div>

@@ -352,6 +352,9 @@ export function useMemoryDashboard({
   }, [detailVersion, selectedId]);
 
   const selectMemory = useCallback((id: string | null) => {
+    if (selectedIdRef.current === id) {
+      return;
+    }
     selectedIdRef.current = id;
     setSelectedId(id);
     setDetail(id ? loading() : idle());
