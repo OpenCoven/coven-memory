@@ -400,3 +400,16 @@ Phase 1 is complete when:
 7. the app passes targeted daemon, server, component, accessibility, and
    integration tests;
 8. documentation no longer describes this repository as spec/PM-only.
+
+## 14. Implementation
+
+- Daemon API: `OpenCoven/coven` branch `feature/memory-dashboard-api`, tracked
+  by `cmem-8qg.1` and landing work `cmem-8qg.3`.
+- Dashboard UI: this repository's `feature/memory-dashboard` branch, tracked
+  by `cmem-8qg.2`.
+- Parent delivery record: `cmem-8qg`.
+- Dashboard validation: `pnpm check` and
+  `./scripts/guard-scan.sh --beads`.
+- Daemon validation: `cargo fmt --all -- --check`,
+  `cargo clippy --workspace --all-targets -- -D warnings`, and
+  `cargo test --workspace --locked`.

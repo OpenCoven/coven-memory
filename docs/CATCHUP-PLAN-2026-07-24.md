@@ -99,3 +99,8 @@ schema lock (M1), and seam contract are unbuilt.
 This repo carries spec/plan/beads only — no Rust code. Repo description updated.
 Extraction (Option A) is rejected: it was never an explicit architectural decision, and
 duplicating a CI-green crate is pure compatibility risk.
+
+**Superseding UI decision (2026-07-26):** Option B still governs the substrate:
+the Rust crate remains authoritative in the `coven` monorepo. This repository
+now also owns the standalone user-facing memory dashboard, which consumes daemon
+APIs and does not duplicate storage/index logic.
