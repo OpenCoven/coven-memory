@@ -1,6 +1,6 @@
 import { once } from "node:events";
 import { spawn } from "node:child_process";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -95,15 +95,31 @@ async function json(response, expectedStatus) {
   return response.json();
 }
 
-function cookiePair(response) {
-  const header = response.headers.get("set-cookie");
-  invariant(header, "session cookie was not issued");
-  const cookie = header.split(";", 1)[0];
-  invariant(
-    cookie.startsWith("coven_memory_session="),
-    "unexpected session cookie"
-  );
-  return cookie;
+function requestWithHost(url, headers) {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest(url, { headers }, (response) => {
+      const chunks = [];
+      response.on("data", (chunk) => chunks.push(chunk));
+      response.once("end", () => {
+        const responseHeaders = new Headers();
+        for (const [name, value] of Object.entries(response.headers)) {
+          for (const entry of Array.isArray(value) ? value : [value]) {
+            if (entry !== undefined) {
+              responseHeaders.append(name, entry);
+            }
+          }
+        }
+        resolve(
+          new Response(Buffer.concat(chunks), {
+            status: response.statusCode ?? 500,
+            headers: responseHeaders
+          })
+        );
+      });
+    });
+    request.once("error", reject);
+    request.end();
+  });
 }
 
 async function stop(child) {
@@ -126,13 +142,45 @@ async function stop(child) {
 try {
   const fakePort = await freePort();
   const dashboardPort = await freePort();
+  const stockNextPort = await freePort();
   const fakeOrigin = `http://${host}:${fakePort}`;
   const dashboardOrigin = `http://${host}:${dashboardPort}`;
+  const stockNextOrigin = `http://${host}:${stockNextPort}`;
+  const absentSocketPath = join(
+    tmpdir(),
+    "coven-memory-smoke-missing.sock"
+  );
 
   start(process.execPath, ["scripts/fake-memory-daemon.mjs"], {
     FAKE_DAEMON_PORT: String(fakePort)
   });
   await waitFor(`${fakeOrigin}/api/v1/memory`);
+
+  start(
+    process.execPath,
+    [
+      "node_modules/next/dist/bin/next",
+      "start",
+      "-H",
+      host,
+      "-p",
+      String(stockNextPort)
+    ],
+    {
+      NODE_ENV: "production",
+      COVEN_DAEMON_URL: fakeOrigin,
+      COVEN_DAEMON_SOCKET: absentSocketPath
+    }
+  );
+  await waitFor(`${stockNextOrigin}/`);
+  const stockNextApi = await json(
+    await fetch(`${stockNextOrigin}/api/memory`, { cache: "no-store" }),
+    403
+  );
+  invariant(
+    stockNextApi?.code === "invalid_transport",
+    "stock Next.js hosting did not fail closed"
+  );
 
   const dashboard = start(
     process.execPath,
@@ -142,18 +190,16 @@ try {
       HOST: host,
       PORT: String(dashboardPort),
       COVEN_DAEMON_URL: fakeOrigin,
-      COVEN_DAEMON_SOCKET: join(
-        tmpdir(),
-        "coven-memory-smoke-missing.sock"
-      )
+      COVEN_DAEMON_SOCKET: absentSocketPath
     }
   );
   const launched = await launchUrl(dashboard);
   invariant(launched.origin === dashboardOrigin, "unexpected dashboard origin");
-
-  const fragment = new URLSearchParams(launched.hash.slice(1));
-  const token = fragment.get("launch");
-  invariant(token, "launch token was not issued");
+  invariant(launched.hash === "", "dashboard URL contained a launch fragment");
+  invariant(
+    launched.search === "",
+    "dashboard URL contained launch credentials"
+  );
 
   const documentResponse = await fetch(`${dashboardOrigin}/`, {
     cache: "no-store"
@@ -208,65 +254,13 @@ try {
     "prefetched HTML nonce propagation failed"
   );
 
-  const unauthenticated = await fetch(`${dashboardOrigin}/api/memory`, {
+  const direct = {
     cache: "no-store"
-  });
-  await json(unauthenticated, 401);
-  await json(
-    await fetch(`${dashboardOrigin}/api/memory`, {
-      method: "OPTIONS",
-      cache: "no-store"
-    }),
-    401
-  );
-
-  const exchanged = await fetch(
-    `${dashboardOrigin}/api/session/exchange`,
-    {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "content-type": "application/json",
-        origin: dashboardOrigin
-      },
-      body: JSON.stringify({ token })
-    }
-  );
-  const exchangeBody = await json(exchanged.clone(), 200);
-  invariant(
-    Date.parse(exchangeBody?.expiresAt) > Date.now(),
-    "exchange omitted a future session expiry"
-  );
-  const cookie = cookiePair(exchanged);
-
-  const replay = await fetch(`${dashboardOrigin}/api/session/exchange`, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      "content-type": "application/json",
-      origin: dashboardOrigin
-    },
-    body: JSON.stringify({ token })
-  });
-  await json(replay, 401);
-
-  const authenticated = {
-    cache: "no-store",
-    headers: { cookie }
   };
-  const statusBody = await json(
-    await fetch(`${dashboardOrigin}/api/session/status`, authenticated),
-    200
-  );
-  invariant(
-    Date.parse(statusBody?.expiresAt) > Date.now(),
-    "status omitted a future session expiry"
-  );
   const unsupported = await fetch(`${dashboardOrigin}/api/memory`, {
     method: "POST",
     cache: "no-store",
     headers: {
-      cookie,
       origin: dashboardOrigin
     }
   });
@@ -276,12 +270,33 @@ try {
     "unsupported method omitted Allow"
   );
 
+  const tailscaleHost = "memory.example-tailnet.ts.net";
+  const tailscaleOrigin = `https://${tailscaleHost}`;
+  const tailscaleList = await json(
+    await requestWithHost(`${dashboardOrigin}/api/memory`, {
+      host: tailscaleHost,
+      origin: tailscaleOrigin
+    }),
+    200
+  );
+  invariant(
+    tailscaleList?.ok === true && Array.isArray(tailscaleList.data),
+    "Tailscale Serve request did not reach local memory"
+  );
+  await json(
+    await requestWithHost(`${dashboardOrigin}/api/memory`, {
+      host: tailscaleHost,
+      origin: "https://other.example-tailnet.ts.net"
+    }),
+    403
+  );
+
   const overview = await json(
-    await fetch(`${dashboardOrigin}/api/memory/overview`, authenticated),
+    await fetch(`${dashboardOrigin}/api/memory/overview`, direct),
     200
   );
   const list = await json(
-    await fetch(`${dashboardOrigin}/api/memory`, authenticated),
+    await fetch(`${dashboardOrigin}/api/memory`, direct),
     200
   );
   invariant(overview?.ok === true, "overview response was invalid");
@@ -304,13 +319,13 @@ try {
     const detail = await json(
       await fetch(
         `${dashboardOrigin}/api/memory/${encodeURIComponent(entry.id)}`,
-        authenticated
+        direct
       ),
       200
     );
     invariant(
       detail?.ok === true && typeof detail.data?.content === "string",
-      "authenticated detail content was unavailable"
+      "local detail content was unavailable"
     );
     invariant(
       detail.data.source?.kind === entry.source?.kind &&
@@ -323,24 +338,8 @@ try {
     );
   }
 
-  await json(
-    await fetch(`${dashboardOrigin}/api/session/logout`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        cookie,
-        origin: dashboardOrigin
-      }
-    }),
-    200
-  );
-  await json(
-    await fetch(`${dashboardOrigin}/api/session/status`, authenticated),
-    401
-  );
-
   process.stdout.write(
-    "Dashboard smoke passed: session, overview, list, detail, and logout.\n"
+    "Dashboard smoke passed: stock-host closure, local transport, Tailscale Host, overview, list, and detail.\n"
   );
 } finally {
   await Promise.allSettled(children.reverse().map(stop));

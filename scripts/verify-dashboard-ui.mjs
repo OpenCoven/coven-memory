@@ -653,6 +653,11 @@ async function verifyDashboard() {
   );
   const launched = await launchUrl(dashboard);
   invariant(launched.origin === dashboardOrigin, "unexpected dashboard origin");
+  invariant(launched.hash === "", "dashboard URL contained a launch fragment");
+  invariant(
+    launched.search === "",
+    "dashboard URL contained launch credentials"
+  );
 
   browser = await chromium.launch();
   const context = await browser.newContext({
@@ -663,8 +668,10 @@ async function verifyDashboard() {
     timezoneId: "UTC"
   });
   const errors = [];
+  const expectedTransportErrors = [];
   const foreignRequests = [];
   const detailRequests = [];
+  const sessionRequests = [];
 
   await context.route("**/*", async (route) => {
     const requestUrl = route.request().url();
@@ -687,12 +694,23 @@ async function verifyDashboard() {
   function trackPage(page) {
     page.on("console", (message) => {
       if (message.type() === "error") {
-        errors.push(message.text());
+        const text = message.text();
+        if (
+          text ===
+          "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+        ) {
+          expectedTransportErrors.push(text);
+        } else {
+          errors.push(text);
+        }
       }
     });
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("request", (request) => {
       const url = new URL(request.url());
+      if (url.pathname.startsWith("/api/session/")) {
+        sessionRequests.push(url.pathname);
+      }
       if (/^\/api\/memory\/[0-9a-f-]{36}$/i.test(url.pathname)) {
         detailRequests.push(url.pathname);
       }
@@ -722,8 +740,6 @@ async function verifyDashboard() {
     .getByRole("heading", { name: "Architecture decisions" })
     .waitFor();
   await expectNoText(page, "Loading memory…");
-  await page.waitForFunction(() => window.location.hash === "");
-  invariant(new URL(page.url()).hash === "", "launch token remained in URL");
 
   await page
     .getByRole("button", { name: "Coven origin, 2" })
@@ -1174,188 +1190,55 @@ async function verifyDashboard() {
   );
   await page.emulateMedia({ reducedMotion: "no-preference" });
 
-  const sessionStatusPattern = "**/api/session/status";
-  let releaseRevalidation;
-  let restorationRouteStarted = false;
-  let finishRestorationRoute;
-  const heldRevalidation = new Promise((resolve) => {
-    releaseRevalidation = resolve;
-  });
-  const restorationRouteFinished = new Promise((resolve) => {
-    finishRestorationRoute = resolve;
-  });
-  const restorationHandler = async (route) => {
-    restorationRouteStarted = true;
-    try {
-      await heldRevalidation;
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          expiresAt: new Date(Date.now() + 60_000).toISOString()
-        })
-      });
-    } finally {
-      finishRestorationRoute();
-    }
-  };
-  await page.route(
-    sessionStatusPattern,
-    restorationHandler,
-    { times: 1 }
-  );
-  await runWithCleanup(
-    async () => {
-      const statusRequest = page.waitForRequest(
-        (request) => request.url() === `${dashboardOrigin}/api/session/status`
-      );
-      await page.evaluate(() => {
-        window.dispatchEvent(
-          new PageTransitionEvent("pageshow", { persisted: true })
-        );
-      });
-      await statusRequest;
-      await page.getByRole("heading", { name: "Opening memory" }).waitFor();
-      invariant(
-        (await page.locator(".memory-dashboard").count()) === 0,
-        "page restoration left private UI mounted during revalidation"
-      );
-    },
-    [
-      async () => {
-        releaseRevalidation();
-      },
-      async () => {
-        if (restorationRouteStarted) {
-          await restorationRouteFinished;
-        }
-      },
-      async () => {
-        await page.unroute(sessionStatusPattern, restorationHandler);
-      }
-    ],
-    "session restoration verification"
-  );
-  await page.locator(".memory-dashboard").waitFor();
-
-  const expiryPage = await context.newPage();
-  trackPage(expiryPage);
-  const safeExpiryHandler = async (route) => {
+  const rejectedListPattern = "**/api/memory";
+  const rejectedListHandler = async (route) => {
     await route.fulfill({
-      status: 200,
+      status: 403,
       contentType: "application/json",
       body: JSON.stringify({
-        ok: true,
-        expiresAt: new Date(Date.now() + 60_000).toISOString()
+        ok: false,
+        code: "invalid_transport"
       })
     });
   };
-  await expiryPage.route(
-    sessionStatusPattern,
-    safeExpiryHandler,
-    { times: 1 }
-  );
-  await expiryPage.goto(dashboardOrigin, { waitUntil: "domcontentloaded" });
-  await expiryPage.locator(".memory-dashboard").waitFor();
-  invariant(
-    (await expiryPage.locator(".memory-dashboard").count()) === 1,
-    "expiry page never mounted the private dashboard"
-  );
-  await expiryPage.unroute(sessionStatusPattern, safeExpiryHandler);
-
-  let releaseNearExpiry;
-  let nearExpiryRouteStarted = false;
-  let finishNearExpiryRoute;
-  const heldNearExpiry = new Promise((resolve) => {
-    releaseNearExpiry = resolve;
+  await page.route(rejectedListPattern, rejectedListHandler, {
+    times: 1
   });
-  const nearExpiryRouteFinished = new Promise((resolve) => {
-    finishNearExpiryRoute = resolve;
-  });
-  const nearExpiryHandler = async (route) => {
-    nearExpiryRouteStarted = true;
-    try {
-      await heldNearExpiry;
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          ok: true,
-          expiresAt: new Date(Date.now() + 3_000).toISOString()
-        })
-      });
-    } finally {
-      finishNearExpiryRoute();
-    }
-  };
-  await expiryPage.route(
-    sessionStatusPattern,
-    nearExpiryHandler,
-    { times: 1 }
-  );
   await runWithCleanup(
     async () => {
-      const nearExpiryRequest = expiryPage.waitForRequest(
-        (request) =>
-          request.url() === `${dashboardOrigin}/api/session/status`
-      );
-      const nearExpiryResponse = expiryPage.waitForResponse(
-        (response) =>
-          response.url() === `${dashboardOrigin}/api/session/status`
-      );
-      await expiryPage.evaluate(() => {
-        window.dispatchEvent(
-          new PageTransitionEvent("pageshow", { persisted: true })
-        );
-      });
-      await nearExpiryRequest;
-      await expiryPage
-        .getByRole("heading", { name: "Opening memory" })
-        .waitFor();
+      await page.getByRole("button", { name: "Refresh" }).click();
+      await page.getByText("Couldn't load memory").waitFor();
       invariant(
-        (await expiryPage.locator(".memory-dashboard").count()) === 0,
-        "near-expiry revalidation left private UI mounted"
+        (await page.locator(".memory-list-row").count()) === 0,
+        "access rejection retained private memory rows"
       );
-      releaseNearExpiry();
       invariant(
-        (await nearExpiryResponse).status() === 200,
-        "near-expiry revalidation failed"
+        (await page.locator(".memory-markdown, .memory-raw").count()) === 0,
+        "access rejection retained private memory content"
       );
-      await expiryPage.locator(".memory-dashboard").waitFor();
-      invariant(
-        (await expiryPage.locator(".memory-dashboard").count()) === 1,
-        "near-expiry session did not remount the private dashboard"
-      );
+      await expectNoText(page, "Memory is locked");
+      await page
+        .getByRole("button", { name: "Retry memory list" })
+        .click();
+      await page.locator(".memory-list-row").first().waitFor();
     },
     [
       async () => {
-        releaseNearExpiry();
-      },
-      async () => {
-        if (nearExpiryRouteStarted) {
-          await nearExpiryRouteFinished;
-        }
-      },
-      async () => {
-        await expiryPage.unroute(
-          sessionStatusPattern,
-          nearExpiryHandler
-        );
+        await page.unroute(rejectedListPattern, rejectedListHandler);
       }
     ],
-    "near-expiry verification"
+    "transport rejection verification"
   );
-  await expiryPage
-    .getByRole("heading", { name: "Memory is locked" })
-    .waitFor({ timeout: 8_000 });
-  invariant(
-    (await expiryPage.locator(".memory-dashboard").count()) === 0,
-    "expiry timer left private UI mounted"
-  );
-  await expiryPage.close();
 
   invariant(errors.length === 0, `browser errors: ${errors.join(" | ")}`);
+  invariant(
+    expectedTransportErrors.length === 1,
+    `expected one transport rejection error, received ${expectedTransportErrors.length}`
+  );
+  invariant(
+    sessionRequests.length === 0,
+    `obsolete session requests were sent: ${sessionRequests.join(" | ")}`
+  );
   invariant(
     foreignRequests.length === 0,
     `remote requests escaped loopback: ${foreignRequests.join(" | ")}`
@@ -1382,5 +1265,5 @@ await runWithCleanup(
   "dashboard browser verification"
 );
 process.stdout.write(
-  "Dashboard browser verification passed: CSP, session lifecycle, sources, Markdown safety, keyboard focus, redaction reset, themes, contrast, reduced motion, and responsive layout.\n"
+  "Dashboard browser verification passed: CSP, local transport rejection, sources, Markdown safety, keyboard focus, redaction reset, themes, contrast, reduced motion, and responsive layout.\n"
 );
