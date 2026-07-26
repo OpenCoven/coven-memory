@@ -13,7 +13,14 @@ export function GET(request: Request) {
       { status: guard.status }
     );
   }
-  return jsonNoStore({ ok: true });
+  const expiresAt = runtime().sessions.sessionExpiresAt(guard.session);
+  if (expiresAt === null) {
+    return jsonNoStore(
+      { ok: false, code: "session_required" },
+      { status: 401 }
+    );
+  }
+  return jsonNoStore({ ok: true, expiresAt: new Date(expiresAt).toISOString() });
 }
 
 const unsupported = (request: Request) =>

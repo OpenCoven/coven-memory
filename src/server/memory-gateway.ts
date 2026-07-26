@@ -21,6 +21,11 @@ type MemoryGatewayErrorCode =
   | "invalid_payload"
   | "daemon_status";
 
+const COVEN_ORIGIN_SOURCE = {
+  kind: "coven-origin",
+  label: "Coven origin"
+} as const;
+
 export class MemoryGatewayError extends Error {
   constructor(
     public readonly code: MemoryGatewayErrorCode,
@@ -70,7 +75,7 @@ export function createMemoryGateway(transport: Transport) {
         updatedAt: entry.updated_at_iso,
         relativeUpdatedAt: entry.updated_at,
         excerpt: entry.excerpt,
-        source: { kind: "coven-origin", label: "Coven origin" },
+        source: entry.source ?? COVEN_ORIGIN_SOURCE,
         privacy: {
           classification: entry.privacy_classification,
           revealRequired: entry.reveal_required

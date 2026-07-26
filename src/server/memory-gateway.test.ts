@@ -1,6 +1,10 @@
 import { createMemoryGateway, MemoryGatewayError } from "./memory-gateway";
 
 const id = "d251bc66-3e45-5d03-8d78-1e76919642f9";
+const futureDaemonSource = {
+  kind: "future-daemon-source",
+  label: "Future daemon label"
+};
 
 function transportResponse(status: number, value: unknown) {
   return {
@@ -24,7 +28,8 @@ describe("memory gateway", () => {
         excerpt: "Safe synthetic excerpt.",
         privacy_classification: null,
         reveal_required: null,
-        verification_state: "unknown"
+        verification_state: "unknown",
+        source: { kind: "promotion", label: "Promoted memory" }
       }
     ]);
 
@@ -38,12 +43,78 @@ describe("memory gateway", () => {
         updatedAt: "2026-07-26T09:56:00Z",
         relativeUpdatedAt: "4m ago",
         excerpt: "Safe synthetic excerpt.",
-        source: { kind: "coven-origin", label: "Coven origin" },
+        source: { kind: "promotion", label: "Promoted memory" },
         privacy: { classification: null, revealRequired: null },
         verification: { state: "unknown" }
       }
     ]);
     expect(JSON.stringify(result)).not.toContain("path");
+  });
+
+  it("falls back to Coven origin only for older daemon summaries", async () => {
+    const transport = transportResponse(200, [
+      {
+        id,
+        familiar_id: "sage",
+        title: "Legacy synthetic note",
+        path: "sage/legacy-synthetic-note.md",
+        updated_at: "4m ago",
+        updated_at_iso: "2026-07-26T09:56:00Z",
+        excerpt: "Legacy safe excerpt.",
+        privacy_classification: null,
+        reveal_required: null,
+        verification_state: "unknown"
+      }
+    ]);
+
+    await expect(createMemoryGateway(transport).list()).resolves.toMatchObject([
+      { source: { kind: "coven-origin", label: "Coven origin" } }
+    ]);
+  });
+
+  it("preserves opaque future daemon sources in list and detail mappings", async () => {
+    const listTransport = transportResponse(200, [
+      {
+        id,
+        familiar_id: "sage",
+        title: "Future source note",
+        path: "sage/future-source-note.md",
+        updated_at: "4m ago",
+        updated_at_iso: "2026-07-26T09:56:00Z",
+        excerpt: "Safe synthetic excerpt.",
+        privacy_classification: null,
+        reveal_required: null,
+        verification_state: "unknown",
+        source: futureDaemonSource
+      }
+    ]);
+    const detailTransport = transportResponse(200, {
+      id,
+      familiar_id: "sage",
+      title: "Future source note",
+      updated_at: "2026-07-26T09:56:00Z",
+      source: futureDaemonSource,
+      content: "# Synthetic content",
+      content_format: "markdown",
+      privacy: {
+        classification: null,
+        reveal_required: null,
+        reason: "privacy taxonomy unavailable"
+      },
+      verification: {
+        state: "unknown",
+        reason: "verification metadata unavailable"
+      },
+      attestation: null,
+      supersession: { supersedes: null, superseded_by: null }
+    });
+
+    await expect(createMemoryGateway(listTransport).list()).resolves.toMatchObject([
+      { source: futureDaemonSource }
+    ]);
+    await expect(createMemoryGateway(detailTransport).detail(id)).resolves.toMatchObject({
+      source: futureDaemonSource
+    });
   });
 
   it("normalizes overview capability names and preserves unavailable state", async () => {

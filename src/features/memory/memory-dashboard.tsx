@@ -1,21 +1,86 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore
+} from "react";
 import { useLocalSession } from "@/components/launch-gate";
 import {
   DEFAULT_MEMORY_FILTERS,
   type MemoryFilters
 } from "./filter-memories";
-import { MemoryFiltersBar } from "./memory-filters";
-import { MemoryList } from "./memory-list";
+import {
+  MemoryFiltersBar,
+  MemorySearch
+} from "./memory-filters";
+import { MemoryList, type MemoryListHandle } from "./memory-list";
 import { MemoryOverview } from "./memory-overview";
 import { MemoryReader } from "./memory-reader";
 import { useMemoryDashboard } from "./use-memory-dashboard";
+
+const NARROW_LAYOUT_QUERY = "(max-width: 56rem)";
 
 export function MemoryDashboard() {
   const session = useLocalSession();
   const dashboard = useMemoryDashboard({ onUnauthorized: session.lock });
   const [narrowPane, setNarrowPane] = useState<"list" | "reader">("list");
+  const isNarrowLayout = useSyncExternalStore(
+    subscribeToNarrowLayout,
+    getNarrowLayoutSnapshot,
+    getNarrowLayoutServerSnapshot
+  );
+  const listRef = useRef<MemoryListHandle>(null);
+  const listSlotRef = useRef<HTMLDivElement>(null);
+  const readerSlotRef = useRef<HTMLDivElement>(null);
+  const readerTitleRef = useRef<HTMLHeadingElement>(null);
+  const readerFocusIntentRef = useRef(false);
+  const focusReturnFrameRef = useRef<number | null>(null);
+
+  const cancelFocusReturn = useCallback(() => {
+    if (focusReturnFrameRef.current !== null) {
+      window.cancelAnimationFrame(focusReturnFrameRef.current);
+      focusReturnFrameRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const layout = window.matchMedia(NARROW_LAYOUT_QUERY);
+    const synchronizeLayout = () => {
+      cancelFocusReturn();
+      readerFocusIntentRef.current = false;
+      const activeElement = document.activeElement;
+      setNarrowPane(
+        activeElement && readerSlotRef.current?.contains(activeElement)
+          ? "reader"
+          : "list"
+      );
+    };
+    layout.addEventListener("change", synchronizeLayout);
+    return () => {
+      layout.removeEventListener("change", synchronizeLayout);
+      cancelFocusReturn();
+    };
+  }, [cancelFocusReturn]);
+
+  useEffect(() => {
+    if (
+      readerFocusIntentRef.current &&
+      isNarrowLayout &&
+      narrowPane === "reader" &&
+      dashboard.detail.status === "ready"
+    ) {
+      readerFocusIntentRef.current = false;
+      readerTitleRef.current?.focus();
+    }
+  }, [
+    dashboard.detail.status,
+    dashboard.selectedId,
+    isNarrowLayout,
+    narrowPane
+  ]);
 
   const allEntries =
     dashboard.list.status === "ready" ? dashboard.list.data : [];
@@ -36,11 +101,15 @@ export function MemoryDashboard() {
     key: Key,
     value: MemoryFilters[Key]
   ) => {
+    cancelFocusReturn();
+    readerFocusIntentRef.current = false;
     dashboard.setFilter(key, value);
     setNarrowPane("list");
   };
 
   const clearFilters = () => {
+    cancelFocusReturn();
+    readerFocusIntentRef.current = false;
     dashboard.clearFilters();
     setNarrowPane("list");
   };
@@ -56,13 +125,18 @@ export function MemoryDashboard() {
           <span className="memory-brand-mark" aria-hidden="true">
             ◇
           </span>
-          <div>
-            <p className="cv-eyebrow">Secure local memory dashboard</p>
-            <h1>Memory</h1>
-          </div>
+          <h1>Memory</h1>
         </div>
+
+        <div className="memory-header-search">
+          <MemorySearch
+            value={dashboard.filters.query}
+            onChange={(value) => setFilter("query", value)}
+          />
+        </div>
+
         <div className="memory-header-actions">
-          <div className="cv-status-strip" role="status">
+          <div className="memory-daemon-status" role="status">
             <span
               className={`cv-status-dot ${connectionDotClass(
                 dashboard.list.status
@@ -70,22 +144,31 @@ export function MemoryDashboard() {
               aria-hidden="true"
             />
             <span>{connectionLabel(dashboard.list.status)}</span>
-            <span className="memory-header-updated">
-              {lastUpdatedLabel(dashboard)}
-            </span>
+            <span aria-hidden="true" className="memory-status-divider" />
+            <span>{lastUpdatedLabel(dashboard)}</span>
           </div>
+          <span className="memory-protection-status">
+            <span aria-hidden="true">◇</span>
+            Protected by default
+          </span>
           <button
             type="button"
-            className="cv-action cv-action-secondary"
+            className="memory-icon-action"
+            aria-label="Refresh"
+            title="Refresh memory"
             onClick={dashboard.reload}
             disabled={dashboard.isRefreshing}
           >
-            {dashboard.isRefreshing ? "Refreshing…" : "Refresh"}
+            <span aria-hidden="true">↻</span>
+            <span className="memory-action-label">
+              {dashboard.isRefreshing ? "Refreshing…" : "Refresh"}
+            </span>
           </button>
           <details className="memory-session-menu">
             <summary
-              className="cv-action cv-action-ghost"
+              className="memory-icon-action"
               aria-label="Session actions"
+              title="Session actions"
             >
               •••
             </summary>
@@ -105,27 +188,45 @@ export function MemoryDashboard() {
         </div>
       </header>
 
-      <MemoryOverview
-        state={dashboard.overview}
-        sourceCount={sourceCount}
-      />
-
-      <MemoryFiltersBar
-        entries={allEntries}
-        filters={dashboard.filters}
-        onChange={setFilter}
-        onClear={clearFilters}
-      />
+      {hasActiveFilters ? (
+        <div className="memory-filter-chips" aria-label="Active filters">
+          <span className="memory-filter-chips-label">Scoped</span>
+          {filterLabels(dashboard.filters).map((label) => (
+            <span className="memory-filter-chip" key={label}>
+              {label}
+            </span>
+          ))}
+          <button type="button" onClick={clearFilters}>
+            Clear all filters
+          </button>
+        </div>
+      ) : null}
 
       <div className="memory-workspace">
-        <div className="memory-list-slot">
+        <aside className="memory-library-slot">
+          <MemoryFiltersBar
+            entries={allEntries}
+            filters={dashboard.filters}
+            onChange={setFilter}
+            onClear={clearFilters}
+          />
+          <MemoryOverview
+            state={dashboard.overview}
+            sourceCount={sourceCount}
+          />
+        </aside>
+
+        <div ref={listSlotRef} className="memory-list-slot">
           <MemoryList
+            ref={listRef}
             state={dashboard.list}
             entries={dashboard.filteredEntries}
             selectedId={dashboard.selectedId}
             hasActiveFilters={hasActiveFilters}
             onSelect={dashboard.setSelectedId}
             onOpen={(id) => {
+              cancelFocusReturn();
+              readerFocusIntentRef.current = isNarrowLayout;
               dashboard.setSelectedId(id);
               setNarrowPane("reader");
             }}
@@ -133,18 +234,53 @@ export function MemoryDashboard() {
             onClearFilters={clearFilters}
           />
         </div>
-        <div className="memory-reader-slot">
+
+        <div ref={readerSlotRef} className="memory-reader-slot">
           <MemoryReader
             state={dashboard.detail}
             selectedId={dashboard.selectedId}
             capabilities={capabilities}
-            onBack={() => setNarrowPane("list")}
+            titleRef={readerTitleRef}
+            onBack={() => {
+              readerFocusIntentRef.current = false;
+              cancelFocusReturn();
+              setNarrowPane("list");
+              focusReturnFrameRef.current =
+                window.requestAnimationFrame(() => {
+                  focusReturnFrameRef.current = null;
+                  listRef.current?.focusSelected();
+                });
+            }}
             onRetry={dashboard.retryDetail}
           />
         </div>
       </div>
     </main>
   );
+}
+
+function subscribeToNarrowLayout(onChange: () => void) {
+  const layout = window.matchMedia(NARROW_LAYOUT_QUERY);
+  layout.addEventListener("change", onChange);
+  return () => layout.removeEventListener("change", onChange);
+}
+
+function getNarrowLayoutSnapshot() {
+  return window.matchMedia(NARROW_LAYOUT_QUERY).matches;
+}
+
+function getNarrowLayoutServerSnapshot() {
+  return false;
+}
+
+function filterLabels(filters: MemoryFilters) {
+  return [
+    filters.query ? `Search: ${filters.query}` : null,
+    filters.familiar ? `Familiar: ${filters.familiar}` : null,
+    filters.source ? `Source: ${filters.source}` : null,
+    filters.verification ? `State: ${filters.verification}` : null,
+    filters.freshness !== "all" ? `Updated: ${filters.freshness}` : null
+  ].filter((label): label is string => Boolean(label));
 }
 
 function connectionLabel(status: "idle" | "loading" | "ready" | "error") {
@@ -171,17 +307,17 @@ function lastUpdatedLabel(
   dashboard: ReturnType<typeof useMemoryDashboard>
 ) {
   if (dashboard.overview.status !== "ready") {
-    return "Update time unavailable";
+    return "Update unavailable";
   }
   const value =
     dashboard.overview.data.lastUpdatedAt ??
     dashboard.overview.data.generatedAt;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Update time unavailable";
+    return "Update unavailable";
   }
-  return `Updated ${new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit"
-  }).format(date)}`;
+  }).format(date);
 }

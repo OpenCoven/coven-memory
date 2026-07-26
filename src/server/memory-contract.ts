@@ -11,6 +11,10 @@ const wireVerificationState = z.enum([
 const isoTimestamp = z.iso.datetime({ offset: true });
 const opaqueId = z.uuid();
 const shortText = z.string().max(2_048);
+const memorySourceSchema = z.strictObject({
+  kind: z.string().min(1).max(128),
+  label: z.string().min(1).max(256)
+});
 const attestationMetadata = z
   .record(
     z.string().min(1).max(128),
@@ -47,7 +51,8 @@ export const memoryListSchema = z.array(
     excerpt: shortText,
     privacy_classification: z.string().max(128).nullable(),
     reveal_required: z.boolean().nullable(),
-    verification_state: wireVerificationState
+    verification_state: wireVerificationState,
+    source: memorySourceSchema.optional()
   })
 );
 
@@ -95,10 +100,7 @@ export const memoryDetailSchema = z.strictObject({
   familiar_id: z.string().min(1).max(256),
   title: z.string().min(1).max(1_024),
   updated_at: isoTimestamp,
-  source: z.strictObject({
-    kind: z.string().min(1).max(128),
-    label: z.string().min(1).max(256)
-  }),
+  source: memorySourceSchema,
   content: z.string(),
   content_format: z.literal("markdown"),
   privacy: z.strictObject({

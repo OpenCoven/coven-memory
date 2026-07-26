@@ -49,13 +49,16 @@ export async function POST(request: Request) {
     return jsonNoStore({ ok: false, code: "invalid_token" }, { status: 400 });
   }
 
-  const session = runtime().sessions.exchangeLaunchToken(token);
-  if (!session) {
+  const established = runtime().sessions.exchangeLaunchToken(token);
+  if (!established) {
     return jsonNoStore({ ok: false, code: "invalid_token" }, { status: 401 });
   }
 
-  const response = jsonNoStore({ ok: true });
-  response.cookies.set(SESSION_COOKIE, session, {
+  const response = jsonNoStore({
+    ok: true,
+    expiresAt: new Date(established.expiresAt).toISOString()
+  });
+  response.cookies.set(SESSION_COOKIE, established.session, {
     httpOnly: true,
     sameSite: "strict",
     secure: new URL(request.url).protocol === "https:",

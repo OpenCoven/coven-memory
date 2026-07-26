@@ -1,4 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen
+} from "@testing-library/react";
 import type { MemorySummary } from "@/lib/memory-types";
 import { MemoryList } from "./memory-list";
 
@@ -27,6 +32,13 @@ const entries: MemorySummary[] = [
   }
 ];
 
+const addedEntry: MemorySummary = {
+  ...entries[1],
+  id: "8fd3e8d8-761c-5fb2-b117-1fb6331a5cd7",
+  title: "Operations notes",
+  relativeUpdatedAt: "8d ago"
+};
+
 describe("MemoryList", () => {
   it("renders selection and fail-closed preview states", () => {
     render(
@@ -42,15 +54,26 @@ describe("MemoryList", () => {
       />
     );
 
-    expect(
-      screen.getByRole("option", { name: /Architecture decisions/ })
-    ).toHaveAttribute("aria-selected", "true");
+    const list = screen.getByRole("list", { name: "Memories" });
+    const rows = [
+      screen.getByRole("button", { name: /Architecture decisions/ }),
+      screen.getByRole("button", { name: /Public handoff/ })
+    ];
+    expect(list).toContainElement(rows[0]);
+    expect(list).toContainElement(rows[1]);
+    expect(list).not.toHaveAttribute("tabindex");
+    expect(rows.filter((row) => row.tabIndex === 0)).toHaveLength(1);
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+    expect(rows[1]).not.toHaveAttribute("aria-current");
+    expect(rows[0]).toHaveAccessibleName(
+      "Architecture decisions, sage, Coven origin, 4m ago, Unknown, Preview hidden"
+    );
     expect(screen.getByText("Preview hidden")).toBeInTheDocument();
     expect(screen.queryByText("Hidden synthetic excerpt.")).not.toBeInTheDocument();
     expect(screen.getByText("Safe public excerpt.")).toBeInTheDocument();
   });
 
-  it("moves selection with arrows and opens with Enter", () => {
+  it("moves roving focus without selection and activates with Enter or Space", () => {
     const onSelect = vi.fn();
     const onOpen = vi.fn();
     render(
@@ -65,12 +88,90 @@ describe("MemoryList", () => {
         onClearFilters={vi.fn()}
       />
     );
-    const listbox = screen.getByRole("listbox", { name: "Memories" });
+    const rows = [
+      screen.getByRole("button", { name: /Architecture decisions/ }),
+      screen.getByRole("button", { name: /Public handoff/ })
+    ];
 
-    fireEvent.keyDown(listbox, { key: "ArrowDown" });
-    expect(onSelect).toHaveBeenCalledWith(entries[1].id);
-    fireEvent.keyDown(listbox, { key: "Enter" });
-    expect(onOpen).toHaveBeenCalledWith(entries[0].id);
+    act(() => rows[0].focus());
+    fireEvent.keyDown(rows[0], { key: "ArrowDown" });
+    expect(rows[1]).toHaveFocus();
+    expect(rows[1]).toHaveAttribute("tabindex", "0");
+    expect(rows[0]).toHaveAttribute("tabindex", "-1");
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onOpen).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(rows[1], { key: "ArrowUp" });
+    expect(rows[0]).toHaveFocus();
+    fireEvent.keyDown(rows[0], { key: "End" });
+    expect(rows[1]).toHaveFocus();
+    fireEvent.keyDown(rows[1], { key: "Home" });
+    expect(rows[0]).toHaveFocus();
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onOpen).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(rows[0], { key: "End" });
+    fireEvent.keyDown(rows[1], { key: "Enter" });
+    expect(onSelect).toHaveBeenLastCalledWith(entries[1].id);
+    expect(onOpen).toHaveBeenLastCalledWith(entries[1].id);
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    act(() => rows[0].focus());
+    fireEvent.keyDown(rows[0], { key: " " });
+    expect(onSelect).toHaveBeenLastCalledWith(entries[0].id);
+    expect(onOpen).toHaveBeenLastCalledWith(entries[0].id);
+    expect(onSelect).toHaveBeenCalledTimes(2);
+    expect(onOpen).toHaveBeenCalledTimes(2);
+  });
+
+  it("resets roving focus only when the entry ID set changes", () => {
+    const renderList = (
+      visibleEntries: readonly MemorySummary[],
+      selectedId: string | null
+    ) => (
+      <MemoryList
+        state={{ status: "ready", data: [...visibleEntries], error: null }}
+        entries={visibleEntries}
+        selectedId={selectedId}
+        hasActiveFilters={false}
+        onSelect={vi.fn()}
+        onOpen={vi.fn()}
+        onRetry={vi.fn()}
+        onClearFilters={vi.fn()}
+      />
+    );
+    const view = render(renderList(entries, entries[0].id));
+    act(() =>
+      screen.getByRole("button", { name: /Public handoff/ }).focus()
+    );
+
+    view.rerender(
+      renderList(
+        entries.map((entry) => ({ ...entry })),
+        entries[0].id
+      )
+    );
+    expect(
+      screen.getByRole("button", { name: /Public handoff/ })
+    ).toHaveAttribute("tabindex", "0");
+
+    view.rerender(
+      renderList([...entries, addedEntry], entries[0].id)
+    );
+    expect(
+      screen.getByRole("button", { name: /Architecture decisions/ })
+    ).toHaveAttribute("tabindex", "0");
+    expect(
+      screen.getByRole("button", { name: /Public handoff/ })
+    ).toHaveAttribute("tabindex", "-1");
+
+    view.rerender(
+      renderList([entries[1], addedEntry], entries[0].id)
+    );
+    expect(
+      screen.getByRole("button", { name: /Public handoff/ })
+    ).toHaveAttribute("tabindex", "0");
   });
 
   it("distinguishes true empty, filtered empty, and request error", () => {

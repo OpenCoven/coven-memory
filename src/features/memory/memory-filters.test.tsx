@@ -21,7 +21,7 @@ const entries: MemorySummary[] = [
 ];
 
 describe("MemoryFiltersBar", () => {
-  it("exposes all filters with persistent accessible names", () => {
+  it("exposes library scopes and refinements with persistent accessible names", () => {
     render(
       <MemoryFiltersBar
         entries={entries}
@@ -32,11 +32,15 @@ describe("MemoryFiltersBar", () => {
     );
 
     expect(
-      screen.getByRole("searchbox", { name: "Search memories" })
-    ).toHaveAttribute("placeholder", "Search memories...");
+      screen.getByRole("navigation", { name: "Memory library" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "All memories, 1" })
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: "sage, 1" })
+    ).toBeInTheDocument();
     for (const name of [
-      "Familiar",
-      "Source",
       "Verification",
       "Freshness"
     ]) {
@@ -47,7 +51,7 @@ describe("MemoryFiltersBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("changes facets, clears Escape query only, and clears all filters", () => {
+  it("changes library scopes, refinements, and clears all filters", () => {
     const onChange = vi.fn();
     const onClear = vi.fn();
     const filters: MemoryFilters = {
@@ -69,8 +73,8 @@ describe("MemoryFiltersBar", () => {
     });
     expect(onChange).toHaveBeenCalledWith("freshness", "recent");
 
-    fireEvent.keyDown(screen.getByRole("searchbox"), { key: "Escape" });
-    expect(onChange).toHaveBeenCalledWith("query", "");
+    fireEvent.click(screen.getByRole("button", { name: "sage, 1" }));
+    expect(onChange).toHaveBeenCalledWith("familiar", "");
 
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(onClear).toHaveBeenCalledOnce();

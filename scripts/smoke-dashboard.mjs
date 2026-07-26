@@ -155,6 +155,59 @@ try {
   const token = fragment.get("launch");
   invariant(token, "launch token was not issued");
 
+  const documentResponse = await fetch(`${dashboardOrigin}/`, {
+    cache: "no-store"
+  });
+  const csp =
+    documentResponse.headers.get("content-security-policy") ?? "";
+  invariant(documentResponse.status === 200, "dashboard document failed");
+  invariant(csp.includes("'strict-dynamic'"), "strict CSP missing");
+  invariant(!csp.includes("'unsafe-inline'"), "unsafe inline CSP remained");
+  invariant(!csp.includes("'unsafe-eval'"), "production eval CSP remained");
+  invariant(
+    documentResponse.headers.get("cache-control")?.includes("no-store"),
+    "protected document was cacheable"
+  );
+  const html = await documentResponse.text();
+  const nonce = /script-src[^;]*'nonce-([^']+)'/.exec(csp)?.[1];
+  invariant(
+    nonce && html.includes(`nonce="${nonce}"`),
+    "Next nonce propagation failed"
+  );
+
+  const prefetchedDocument = await fetch(`${dashboardOrigin}/`, {
+    cache: "no-store",
+    headers: {
+      accept: "text/html",
+      purpose: "prefetch"
+    }
+  });
+  const prefetchCsp =
+    prefetchedDocument.headers.get("content-security-policy") ?? "";
+  invariant(
+    prefetchedDocument.status === 200 &&
+      prefetchedDocument.headers
+        .get("content-type")
+        ?.includes("text/html"),
+    "prefetched dashboard document failed"
+  );
+  invariant(
+    prefetchCsp.includes("'strict-dynamic'"),
+    "prefetched HTML bypassed strict CSP"
+  );
+  invariant(
+    prefetchedDocument.headers.get("cache-control")?.includes("no-store"),
+    "prefetched dashboard document was cacheable"
+  );
+  const prefetchedHtml = await prefetchedDocument.text();
+  const prefetchNonce =
+    /script-src[^;]*'nonce-([^']+)'/.exec(prefetchCsp)?.[1];
+  invariant(
+    prefetchNonce &&
+      prefetchedHtml.includes(`nonce="${prefetchNonce}"`),
+    "prefetched HTML nonce propagation failed"
+  );
+
   const unauthenticated = await fetch(`${dashboardOrigin}/api/memory`, {
     cache: "no-store"
   });
@@ -179,7 +232,11 @@ try {
       body: JSON.stringify({ token })
     }
   );
-  await json(exchanged.clone(), 200);
+  const exchangeBody = await json(exchanged.clone(), 200);
+  invariant(
+    Date.parse(exchangeBody?.expiresAt) > Date.now(),
+    "exchange omitted a future session expiry"
+  );
   const cookie = cookiePair(exchanged);
 
   const replay = await fetch(`${dashboardOrigin}/api/session/exchange`, {
@@ -197,6 +254,14 @@ try {
     cache: "no-store",
     headers: { cookie }
   };
+  const statusBody = await json(
+    await fetch(`${dashboardOrigin}/api/session/status`, authenticated),
+    200
+  );
+  invariant(
+    Date.parse(statusBody?.expiresAt) > Date.now(),
+    "status omitted a future session expiry"
+  );
   const unsupported = await fetch(`${dashboardOrigin}/api/memory`, {
     method: "POST",
     cache: "no-store",
@@ -223,6 +288,10 @@ try {
   invariant(list?.ok === true && Array.isArray(list.data), "list was invalid");
   invariant(list.data.length > 0, "synthetic list was empty");
   invariant(
+    new Set(list.data.map((entry) => entry.source?.kind)).size === 2,
+    "summary source facets were not authoritative"
+  );
+  invariant(
     !("path" in list.data[0]),
     "browser list exposed a daemon path"
   );
@@ -231,21 +300,28 @@ try {
     "smoke fixture does not exercise reveal-by-default"
   );
 
-  const detail = await json(
-    await fetch(
-      `${dashboardOrigin}/api/memory/${encodeURIComponent(list.data[0].id)}`,
-      authenticated
-    ),
-    200
-  );
-  invariant(
-    detail?.ok === true && typeof detail.data?.content === "string",
-    "authenticated detail content was unavailable"
-  );
-  invariant(
-    !("path" in detail.data),
-    "browser detail exposed a daemon path"
-  );
+  for (const entry of list.data) {
+    const detail = await json(
+      await fetch(
+        `${dashboardOrigin}/api/memory/${encodeURIComponent(entry.id)}`,
+        authenticated
+      ),
+      200
+    );
+    invariant(
+      detail?.ok === true && typeof detail.data?.content === "string",
+      "authenticated detail content was unavailable"
+    );
+    invariant(
+      detail.data.source?.kind === entry.source?.kind &&
+        detail.data.source?.label === entry.source?.label,
+      "summary and detail source metadata disagreed"
+    );
+    invariant(
+      !("path" in detail.data),
+      "browser detail exposed a daemon path"
+    );
+  }
 
   await json(
     await fetch(`${dashboardOrigin}/api/session/logout`, {

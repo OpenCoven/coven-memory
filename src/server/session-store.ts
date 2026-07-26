@@ -18,6 +18,14 @@ export function createSessionStore(options: SessionStoreOptions = {}) {
   const sessionTtlMs = options.sessionTtlMs ?? DEFAULT_SESSION_TTL_MS;
   let launchToken: { value: string; expiresAt: number } | null = null;
   const sessions = new Map<string, number>();
+  const sessionExpiresAt = (session: string) => {
+    const expiresAt = sessions.get(session);
+    if (!expiresAt || expiresAt <= now()) {
+      sessions.delete(session);
+      return null;
+    }
+    return expiresAt;
+  };
 
   return {
     issueLaunchToken() {
@@ -38,17 +46,17 @@ export function createSessionStore(options: SessionStoreOptions = {}) {
       }
 
       const session = randomToken();
-      sessions.set(session, now() + sessionTtlMs);
-      return session;
+      const expiresAt = now() + sessionTtlMs;
+      sessions.set(session, expiresAt);
+      return { session, expiresAt };
+    },
+
+    sessionExpiresAt(session: string) {
+      return sessionExpiresAt(session);
     },
 
     hasSession(session: string) {
-      const expiresAt = sessions.get(session);
-      if (!expiresAt || expiresAt <= now()) {
-        sessions.delete(session);
-        return false;
-      }
-      return true;
+      return sessionExpiresAt(session) !== null;
     },
 
     revokeSession(session: string) {

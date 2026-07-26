@@ -16,7 +16,8 @@ const listEntry = {
   excerpt: "A synthetic durable fact.",
   privacy_classification: null,
   reveal_required: null,
-  verification_state: "unknown"
+  verification_state: "unknown",
+  source: { kind: "promotion", label: "Promoted memory" }
 };
 
 const overview = {
@@ -73,6 +74,17 @@ describe("memory daemon schemas", () => {
       "unavailable"
     );
     expect(memoryDetailSchema.parse(detail).content).toContain("Synthetic");
+  });
+
+  it("accepts summary source during a backward-compatible rollout", () => {
+    expect(memoryListSchema.parse([listEntry])[0].source).toEqual({
+      kind: "promotion",
+      label: "Promoted memory"
+    });
+
+    const { source, ...legacyEntry } = listEntry;
+    expect(source).toEqual({ kind: "promotion", label: "Promoted memory" });
+    expect(memoryListSchema.parse([legacyEntry])[0].source).toBeUndefined();
   });
 
   it("requires the privacy and verification metadata added to list rows", () => {
