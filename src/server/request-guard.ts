@@ -1,34 +1,13 @@
-export const SESSION_COOKIE = "coven_memory_session";
-
 type GuardFailure = {
   ok: false;
-  status: 401 | 403;
-  code: "invalid_host" | "foreign_origin" | "session_required";
+  status: 403;
+  code:
+    | "invalid_host"
+    | "invalid_transport"
+    | "foreign_origin";
 };
 
-type LoopbackGuard = { ok: true } | GuardFailure;
-type SessionGuard = { ok: true; session: string } | GuardFailure;
-
-function sessionCookie(header: string | null): string | null {
-  let session: string | null = null;
-
-  for (const part of (header ?? "").split(";")) {
-    const separator = part.indexOf("=");
-    if (separator < 0 || part.slice(0, separator).trim() !== SESSION_COOKIE) {
-      continue;
-    }
-    if (session !== null) {
-      return null;
-    }
-    try {
-      session = decodeURIComponent(part.slice(separator + 1).trim());
-    } catch {
-      return null;
-    }
-  }
-
-  return session;
-}
+type TransportGuard = { ok: true } | GuardFailure;
 
 function parseHost(host: string): URL | null {
   try {
@@ -45,45 +24,73 @@ function isExplicitLoopback(hostname: string): boolean {
   return hostname === "127.0.0.1" || hostname === "[::1]";
 }
 
-export function guardLoopbackRequest(request: Request): LoopbackGuard {
+function isTailscaleMagicDns(hostname: string): boolean {
+  const labels = hostname.split(".");
+  if (
+    labels.length < 3 ||
+    labels.at(-2) !== "ts" ||
+    labels.at(-1) !== "net"
+  ) {
+    return false;
+  }
+  return labels.every((label) =>
+    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label)
+  );
+}
+
+function isTrustedHost(hostname: string): boolean {
+  return isExplicitLoopback(hostname) || isTailscaleMagicDns(hostname);
+}
+
+function isMatchingOrigin(
+  origin: string,
+  host: string,
+  hostname: string
+): boolean {
+  try {
+    const parsed = new URL(origin);
+    const expectedProtocol = isTailscaleMagicDns(hostname)
+      ? "https:"
+      : "http:";
+    return (
+      parsed.origin === origin &&
+      parsed.protocol === expectedProtocol &&
+      parsed.host === host &&
+      !parsed.username &&
+      !parsed.password
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function guardLocalTransportRequest(
+  request: Request,
+  validateTransport: (headers: Headers) => boolean
+): TransportGuard {
+  if (!validateTransport(request.headers)) {
+    return { ok: false, status: 403, code: "invalid_transport" };
+  }
+
   const requestUrl = new URL(request.url);
   const host = request.headers.get("host");
   const parsedHost = host ? parseHost(host) : null;
-
   if (
     !host ||
     !parsedHost ||
-    !isExplicitLoopback(parsedHost.hostname) ||
+    !isTrustedHost(parsedHost.hostname) ||
     (requestUrl.protocol !== "http:" && requestUrl.protocol !== "https:")
   ) {
     return { ok: false, status: 403, code: "invalid_host" };
   }
 
   const origin = request.headers.get("origin");
-  const expectedOrigin = `${requestUrl.protocol}//${host}`;
-  if (origin && origin !== expectedOrigin) {
-    if (origin === requestUrl.origin) {
-      return { ok: false, status: 403, code: "invalid_host" };
-    }
+  if (
+    origin &&
+    !isMatchingOrigin(origin, host, parsedHost.hostname)
+  ) {
     return { ok: false, status: 403, code: "foreign_origin" };
   }
 
   return { ok: true };
-}
-
-export function guardLocalRequest(
-  request: Request,
-  hasSession: (session: string) => boolean
-): SessionGuard {
-  const local = guardLoopbackRequest(request);
-  if (!local.ok) {
-    return local;
-  }
-
-  const session = sessionCookie(request.headers.get("cookie"));
-  if (!session || !hasSession(session)) {
-    return { ok: false, status: 401, code: "session_required" };
-  }
-
-  return { ok: true, session };
 }

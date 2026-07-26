@@ -11,28 +11,37 @@ import { MemoryGatewayError } from "@/server/memory-gateway";
 vi.mock("@/server/runtime", () => ({
   runtime: vi.fn()
 }));
+vi.mock("@/server/local-transport", () => ({
+  localTransportAuthority: () => ({
+    validate: (headers: Headers) =>
+      headers.get("x-coven-local-transport") === "test-proof"
+  })
+}));
 
 const mockedRuntime = vi.mocked(runtime);
 const id = "d251bc66-3e45-5d03-8d78-1e76919642f9";
 
 function request(
   path: string,
-  options: { session?: string; origin?: string; host?: string } = {}
+  options: {
+    transport?: boolean;
+    origin?: string;
+    host?: string;
+  } = {}
 ) {
   const origin = options.origin ?? "http://127.0.0.1:3737";
   return new Request(`http://127.0.0.1:3737${path}`, {
     headers: {
       host: options.host ?? "127.0.0.1:3737",
       origin,
-      ...(options.session === undefined
+      ...(options.transport === false
         ? {}
-        : { cookie: `coven_memory_session=${options.session}` })
+        : { "x-coven-local-transport": "test-proof" })
     }
   });
 }
 
 function useRuntime(options: {
-  authenticated?: boolean;
   list?: ReturnType<typeof vi.fn>;
   overview?: ReturnType<typeof vi.fn>;
   detail?: ReturnType<typeof vi.fn>;
@@ -42,27 +51,24 @@ function useRuntime(options: {
     overview: options.overview ?? vi.fn(),
     detail: options.detail ?? vi.fn()
   };
-  mockedRuntime.mockReturnValue({
-    sessions: {
-      hasSession: vi.fn().mockReturnValue(options.authenticated ?? true)
-    },
-    memory
-  } as never);
+  mockedRuntime.mockReturnValue({ memory } as never);
   return memory;
 }
 
 describe("memory API routes", () => {
   afterEach(() => vi.clearAllMocks());
 
-  it("rejects missing sessions before reading daemon data", async () => {
-    const memory = useRuntime({ authenticated: false });
+  it("rejects requests without local transport proof before reading daemon data", async () => {
+    const memory = useRuntime({});
 
-    const response = await list(request("/api/memory"));
+    const response = await list(
+      request("/api/memory", { transport: false })
+    );
 
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       ok: false,
-      code: "session_required"
+      code: "invalid_transport"
     });
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(memory.list).not.toHaveBeenCalled();
@@ -72,13 +78,11 @@ describe("memory API routes", () => {
     const memory = useRuntime({});
     const foreignOrigin = await list(
       request("/api/memory", {
-        session: "valid",
         origin: "https://example.invalid"
       })
     );
     const foreignHost = await list(
       request("/api/memory", {
-        session: "valid",
         host: "192.168.1.12:3737"
       })
     );
@@ -89,25 +93,25 @@ describe("memory API routes", () => {
   });
 
   it("guards unsupported methods and returns no-store 405 responses", async () => {
-    const unauthenticatedMemory = useRuntime({ authenticated: false });
-    const unauthenticated = await listOptions(request("/api/memory"));
+    const rejectedMemory = useRuntime({});
+    const rejected = await listOptions(
+      request("/api/memory", { transport: false })
+    );
 
-    expect(unauthenticated.status).toBe(401);
-    expect(unauthenticated.headers.get("cache-control")).toContain("no-store");
-    expect(unauthenticated.headers.get("pragma")).toBe("no-cache");
-    expect(unauthenticatedMemory.list).not.toHaveBeenCalled();
+    expect(rejected.status).toBe(403);
+    expect(rejected.headers.get("cache-control")).toContain("no-store");
+    expect(rejected.headers.get("pragma")).toBe("no-cache");
+    expect(rejectedMemory.list).not.toHaveBeenCalled();
 
-    const authenticatedMemory = useRuntime({ authenticated: true });
+    const trustedMemory = useRuntime({});
     for (const handler of [listOptions, listPost]) {
-      const response = await handler(
-        request("/api/memory", { session: "valid" })
-      );
+      const response = await handler(request("/api/memory"));
       expect(response.status).toBe(405);
       expect(response.headers.get("allow")).toBe("GET, HEAD");
       expect(response.headers.get("cache-control")).toContain("no-store");
       expect(response.headers.get("pragma")).toBe("no-cache");
     }
-    expect(authenticatedMemory.list).not.toHaveBeenCalled();
+    expect(trustedMemory.list).not.toHaveBeenCalled();
   });
 
   it("returns normalized list, overview, and detail data with no-store", async () => {
@@ -118,9 +122,9 @@ describe("memory API routes", () => {
     });
 
     const responses = [
-      await list(request("/api/memory", { session: "valid" })),
-      await overview(request("/api/memory/overview", { session: "valid" })),
-      await detail(request(`/api/memory/${id}`, { session: "valid" }), {
+      await list(request("/api/memory")),
+      await overview(request("/api/memory/overview")),
+      await detail(request(`/api/memory/${id}`), {
         params: Promise.resolve({ id })
       })
     ];
@@ -136,7 +140,7 @@ describe("memory API routes", () => {
   it("distinguishes missing detail from daemon unavailability", async () => {
     useRuntime({ detail: vi.fn().mockResolvedValue(null) });
     const missing = await detail(
-      request(`/api/memory/${id}`, { session: "valid" }),
+      request(`/api/memory/${id}`),
       { params: Promise.resolve({ id }) }
     );
     expect(missing.status).toBe(404);
@@ -151,7 +155,7 @@ describe("memory API routes", () => {
         .mockRejectedValue(new MemoryGatewayError("daemon_status", 503))
     });
     const unavailable = await detail(
-      request(`/api/memory/${id}`, { session: "valid" }),
+      request(`/api/memory/${id}`),
       { params: Promise.resolve({ id }) }
     );
     expect(unavailable.status).toBe(503);
@@ -166,7 +170,7 @@ describe("memory API routes", () => {
       detail: vi.fn().mockRejectedValue(new MemoryGatewayError("invalid_id"))
     });
     const invalidId = await detail(
-      request("/api/memory/not-an-id", { session: "valid" }),
+      request("/api/memory/not-an-id"),
       { params: Promise.resolve({ id: "not-an-id" }) }
     );
     expect(invalidId.status).toBe(400);
@@ -180,9 +184,7 @@ describe("memory API routes", () => {
         .fn()
         .mockRejectedValue(new MemoryGatewayError("invalid_payload"))
     });
-    const invalidPayload = await list(
-      request("/api/memory", { session: "valid" })
-    );
+    const invalidPayload = await list(request("/api/memory"));
     expect(invalidPayload.status).toBe(502);
     expect(await invalidPayload.json()).toEqual({
       ok: false,

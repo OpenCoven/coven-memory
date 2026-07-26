@@ -33,10 +33,9 @@ pnpm install
 pnpm dev
 ```
 
-The custom server binds to `127.0.0.1:3737` by default and prints one launch URL.
-Open that URL as printed. Its fragment contains a short-lived, one-time token;
-the browser removes the fragment before exchanging it for an HttpOnly local
-session.
+The custom server binds to `127.0.0.1:3737` by default and prints a plain local
+URL. Open that URL directly. There is no launch token, cookie, expiry timer, or
+lock screen: the loopback-only server is the trust boundary.
 
 For deterministic synthetic data:
 
@@ -49,6 +48,32 @@ COVEN_DAEMON_URL=http://127.0.0.1:43117 pnpm dev
 ```
 
 The fake daemon is loopback-only and contains no real memory.
+
+## Genuine local data and Tailscale
+
+Each dashboard process reads only the Coven daemon on that same machine. The
+custom server strips any caller-supplied transport credential and injects its
+own process-local proof only for an exact loopback socket peer. Memory routes
+also require a matching loopback or Tailscale MagicDNS Host and same-origin
+Origin.
+
+To view one machine from its tailnet, configure Tailscale Serve separately to
+proxy that machine's MagicDNS HTTPS name to `http://127.0.0.1:3737`. The app
+does not create, replace, or remove Tailscale Serve configuration. Every person
+runs their own local dashboard and daemon, so one machine cannot select or
+cross over into another person's memory store through a shared app account.
+
+## Vercel and other stock Next.js hosts
+
+A Vercel deployment is fail-closed for memory data. Stock Next.js hosting does
+not run this repository's custom loopback server, cannot inject its
+process-local proof, and cannot reach a viewer's local Coven daemon. Therefore
+`/api/memory*` returns `403 invalid_transport`; deploying the UI does not upload,
+relay, or expose genuine local memory.
+
+Vercel is suitable for a synthetic UI preview, not for viewing each visitor's
+local daemon. Genuine data requires each viewer's own local custom-server
+process, optionally reached through that viewer's tailnet.
 
 ## Production run
 
@@ -80,7 +105,7 @@ pnpm audit:prod
 ```
 
 `pnpm check` runs lint, TypeScript, unit/component/integration tests, the
-production build, a local fake-daemon session/API smoke, and the repository
+production build, a local fake-daemon transport/API smoke, and the repository
 privacy guard. `pnpm audit:prod` checks the production dependency graph for
 high-severity advisories. Browser smoke artifacts belong under ignored
 `output/playwright/`; only deterministic synthetic fixtures may be used.
@@ -94,5 +119,7 @@ bd show cmem-8qg
 
 See
 [`docs/superpowers/specs/2026-07-26-standalone-memory-dashboard-design.md`](docs/superpowers/specs/2026-07-26-standalone-memory-dashboard-design.md)
-for the approved architecture and [`SECURITY.md`](SECURITY.md) for the privacy
-boundary.
+for the original dashboard architecture,
+[`docs/tailscale-local-transport-design.md`](docs/tailscale-local-transport-design.md)
+for the current local/Tailscale transport amendment, and
+[`SECURITY.md`](SECURITY.md) for the privacy boundary.

@@ -33,12 +33,17 @@ The Phase 1 dashboard is a read-only local client with these enforced
 properties:
 
 - the application server binds only to explicit IPv4 or IPv6 loopback;
-- launch tokens are random, memory-only, short-lived, single-use, carried in a
-  URL fragment, and removed before exchange;
-- sessions are process-local, short-lived, non-sliding HttpOnly cookies with
-  `SameSite=Strict`;
-- every data route validates the loopback Host, same-origin Origin when
-  present, and the local session before contacting the daemon;
+- the custom server removes any caller-supplied transport header, then injects
+  an unguessable process-local proof only for an exact loopback socket peer;
+- every data route validates that proof, a loopback or syntactically valid
+  `.ts.net` Host, and a matching same-origin Origin when present before
+  contacting the daemon;
+- Tailscale access is supported only through an operator-configured Tailscale
+  Serve proxy whose backend connection reaches the custom server on loopback;
+- stock Next.js and Vercel runtimes cannot inject the proof, so memory APIs
+  fail closed instead of attempting to reach or relay a viewer's local daemon;
+- the app has no launch token, browser session, auth cookie, expiry timer,
+  logout route, or lock lifecycle;
 - all API success and error responses are `no-store`, and no permissive CORS is
   enabled;
 - the Content Security Policy permits only local application resources;
@@ -48,7 +53,7 @@ properties:
   databases directly;
 - unclassified, unknown, or unrecognized privacy data requires an explicit
   per-entry reveal;
-- memory content, excerpts, cookies, tokens, and local paths are not logged.
+- memory content, excerpts, transport proofs, and local paths are not logged.
 
 The Coven daemon remains responsible for opaque ID validation, containment,
 symlink rejection, source reads, and future verification authority. UI

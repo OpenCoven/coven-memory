@@ -226,8 +226,7 @@ select {
   color: var(--cv-accent-primary);
 }
 
-.memory-refresh-action,
-.memory-session-action {
+.memory-refresh-action {
   min-height: 1.75rem;
   padding-inline: var(--cv-space-2);
   font-size: var(--cv-font-size-xs);
@@ -239,40 +238,6 @@ select {
 .memory-filter-clear:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.memory-session-menu {
-  position: relative;
-}
-
-.memory-session-menu > summary {
-  width: 1.75rem;
-  padding: 0;
-  list-style: none;
-}
-
-.memory-session-menu > summary::-webkit-details-marker {
-  display: none;
-}
-
-.memory-session-popover {
-  position: absolute;
-  inset-block-start: calc(100% + var(--cv-space-2));
-  inset-inline-end: 0;
-  z-index: 30;
-  width: 16rem;
-}
-
-.memory-session-copy {
-  padding: var(--cv-space-3);
-  color: var(--cv-text-muted);
-  font-size: var(--cv-font-size-xs);
-}
-
-.memory-session-logout {
-  width: 100%;
-  border: 0;
-  background: transparent;
 }
 
 .memory-filter-chips {

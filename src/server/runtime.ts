@@ -2,10 +2,8 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { createDaemonTransport } from "./daemon-transport";
 import { createMemoryGateway, type MemoryGateway } from "./memory-gateway";
-import { createSessionStore, type SessionStore } from "./session-store";
 
 type Runtime = {
-  sessions: SessionStore;
   memory: MemoryGateway;
 };
 
@@ -23,7 +21,6 @@ export function runtime(): Runtime {
       loopbackUrl: process.env.COVEN_DAEMON_URL
     });
     globalRuntime.__covenMemoryRuntime = {
-      sessions: createSessionStore(),
       memory: createMemoryGateway(transport)
     };
   }

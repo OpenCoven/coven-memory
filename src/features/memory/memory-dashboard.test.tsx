@@ -6,7 +6,6 @@ import {
   within,
   waitFor
 } from "@testing-library/react";
-import { LaunchGate } from "@/components/launch-gate";
 import { MemoryDashboard } from "./memory-dashboard";
 
 const firstId = "d251bc66-3e45-5d03-8d78-1e76919642f9";
@@ -145,17 +144,6 @@ function installApi(options: {
   let listRequests = 0;
   const fetchMock = vi.fn((input: string | URL | Request) => {
     const url = String(input);
-    if (url === "/api/session/status") {
-      return Promise.resolve(
-        Response.json({
-          ok: true,
-          expiresAt: new Date(Date.now() + 60_000).toISOString()
-        })
-      );
-    }
-    if (url === "/api/session/logout") {
-      return Promise.resolve(new Response(null, { status: 200 }));
-    }
     if (url === "/api/memory/overview") {
       return api(
         options.overview ?? overview,
@@ -182,14 +170,10 @@ describe("MemoryDashboard", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("browses, filters, reveals, navigates narrow state, and logs out", async () => {
+  it("browses, filters, reveals, and navigates narrow state without a lock lifecycle", async () => {
     installMatchMedia(true);
-    installApi();
-    const { container } = render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    const fetchMock = installApi();
+    const { container } = render(<MemoryDashboard />);
 
     expect(await screen.findByRole("heading", { name: "Memory" })).toBeVisible();
     const firstRow = await screen.findByRole("button", {
@@ -240,21 +224,20 @@ describe("MemoryDashboard", () => {
       expect(secondRow).toHaveFocus();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Log out" }));
     expect(
-      await screen.findByRole("heading", { name: "Memory is locked" })
-    ).toBeVisible();
-    expect(screen.queryByText("Synthetic durable fact.")).not.toBeInTheDocument();
+      screen.queryByRole("button", { name: "Log out" })
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).startsWith("/api/session/")
+      )
+    ).toBe(false);
   });
 
   it("uses the approved Library, Memory Index, and Reader workspace order", async () => {
     installMatchMedia(false);
     installApi();
-    const { container } = render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    const { container } = render(<MemoryDashboard />);
 
     await screen.findByLabelText("Memory summary");
     const workspace = container.querySelector(".memory-workspace");
@@ -286,11 +269,7 @@ describe("MemoryDashboard", () => {
   it("does not steal focus when a row opens in the wide master-detail layout", async () => {
     installMatchMedia(false);
     installApi();
-    const { container } = render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    const { container } = render(<MemoryDashboard />);
 
     const secondRow = await screen.findByRole("button", {
       name: /Public handoff/
@@ -319,11 +298,7 @@ describe("MemoryDashboard", () => {
               resolveSecondDetail = resolve;
             })
     });
-    const { container } = render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    const { container } = render(<MemoryDashboard />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: /Public handoff/ })
@@ -355,11 +330,7 @@ describe("MemoryDashboard", () => {
   it("keeps focus in the visible pane across responsive breakpoint changes", async () => {
     const viewport = installMatchMedia(false);
     installApi();
-    const { container } = render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    const { container } = render(<MemoryDashboard />);
 
     const secondRow = await screen.findByRole("button", {
       name: /Public handoff/
@@ -403,11 +374,7 @@ describe("MemoryDashboard", () => {
     installApi({
       reloadList: () => new Promise<Response>(() => {})
     });
-    const { container } = render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    const { container } = render(<MemoryDashboard />);
 
     fireEvent.click(
       await screen.findByRole("button", { name: /Public handoff/ })
@@ -444,11 +411,7 @@ describe("MemoryDashboard", () => {
     async ({ response, message }) => {
       installMatchMedia(true);
       installApi({ reloadList: response });
-      const { container } = render(
-        <LaunchGate>
-          <MemoryDashboard />
-        </LaunchGate>
-      );
+      const { container } = render(<MemoryDashboard />);
 
       fireEvent.click(
         await screen.findByRole("button", { name: /Public handoff/ })
@@ -483,11 +446,7 @@ describe("MemoryDashboard", () => {
     );
     vi.stubGlobal("cancelAnimationFrame", cancelAnimationFrame);
     installApi();
-    const view = render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    const view = render(<MemoryDashboard />);
 
     const secondRow = await screen.findByRole("button", {
       name: /Public handoff/
@@ -509,11 +468,7 @@ describe("MemoryDashboard", () => {
   it("shows list failure instead of a convincing empty state", async () => {
     installMatchMedia(false);
     installApi({ list: "memory_unavailable", listStatus: 503 });
-    render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    render(<MemoryDashboard />);
 
     expect(await screen.findByText("Couldn't load memory")).toBeVisible();
     expect(screen.queryByText("No memories yet")).not.toBeInTheDocument();
@@ -535,11 +490,7 @@ describe("MemoryDashboard", () => {
   it("exposes a state-aware daemon status when narrow copy is visually compact", async () => {
     installMatchMedia(true);
     installApi({ list: "memory_unavailable", listStatus: 503 });
-    render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    render(<MemoryDashboard />);
 
     const status = await screen.findByRole("status", {
       name: "Daemon unavailable"
@@ -554,11 +505,7 @@ describe("MemoryDashboard", () => {
   it("uses human-facing labels in active filter chips", async () => {
     installMatchMedia(false);
     installApi();
-    render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    render(<MemoryDashboard />);
     await screen.findByRole("button", { name: /Architecture decisions/ });
 
     fireEvent.change(screen.getByRole("combobox", { name: "Source" }), {
@@ -583,11 +530,7 @@ describe("MemoryDashboard", () => {
   it("keeps a successful empty list authoritative", async () => {
     installMatchMedia(false);
     installApi({ list: [] });
-    render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    render(<MemoryDashboard />);
 
     expect(await screen.findByText("No memories yet")).toBeVisible();
     expect(
@@ -602,11 +545,7 @@ describe("MemoryDashboard", () => {
       overview: "memory_unavailable",
       overviewStatus: 503
     });
-    render(
-      <LaunchGate>
-        <MemoryDashboard />
-      </LaunchGate>
-    );
+    render(<MemoryDashboard />);
 
     expect(await screen.findByText("No memories yet")).toBeVisible();
     expect(screen.getByText("Overview unavailable")).toBeVisible();

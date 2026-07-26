@@ -110,9 +110,7 @@ describe("useMemoryDashboard", () => {
           : json("memory_unavailable", 503);
       })
     );
-    const failed = renderHook(() =>
-      useMemoryDashboard({ onUnauthorized: vi.fn() })
-    );
+    const failed = renderHook(() => useMemoryDashboard());
     await waitFor(() =>
       expect(failed.result.current.list.status).toBe("error")
     );
@@ -125,9 +123,7 @@ describe("useMemoryDashboard", () => {
         String(input).endsWith("/overview") ? json(overview) : json([])
       )
     );
-    const empty = renderHook(() =>
-      useMemoryDashboard({ onUnauthorized: vi.fn() })
-    );
+    const empty = renderHook(() => useMemoryDashboard());
     await waitFor(() =>
       expect(empty.result.current.list.status).toBe("ready")
     );
@@ -150,9 +146,7 @@ describe("useMemoryDashboard", () => {
       }
     );
     vi.stubGlobal("fetch", fetchMock);
-    const { result } = renderHook(() =>
-      useMemoryDashboard({ onUnauthorized: vi.fn() })
-    );
+    const { result } = renderHook(() => useMemoryDashboard());
     await waitFor(() => expect(result.current.selectedId).toBe(firstId));
     await waitFor(() => expect(firstDetailSignal).toBeDefined());
 
@@ -171,9 +165,7 @@ describe("useMemoryDashboard", () => {
       return json(detailFor(firstId));
     });
     vi.stubGlobal("fetch", fetchMock);
-    const { result } = renderHook(() =>
-      useMemoryDashboard({ onUnauthorized: vi.fn() })
-    );
+    const { result } = renderHook(() => useMemoryDashboard());
     await waitFor(() => expect(result.current.detail.status).toBe("ready"));
     const detailCalls = fetchMock.mock.calls.filter(([input]) =>
       String(input).endsWith(firstId)
@@ -207,9 +199,7 @@ describe("useMemoryDashboard", () => {
           : refreshedDetail.promise;
       })
     );
-    const { result } = renderHook(() =>
-      useMemoryDashboard({ onUnauthorized: vi.fn() })
-    );
+    const { result } = renderHook(() => useMemoryDashboard());
     await waitFor(() => expect(result.current.detail.status).toBe("ready"));
 
     act(() => result.current.reload());
@@ -246,9 +236,7 @@ describe("useMemoryDashboard", () => {
         return json(detailFor(firstId));
       })
     );
-    const { result } = renderHook(() =>
-      useMemoryDashboard({ onUnauthorized: vi.fn() })
-    );
+    const { result } = renderHook(() => useMemoryDashboard());
     await waitFor(() => expect(result.current.selectedId).toBe(firstId));
 
     act(() => result.current.setFilter("familiar", "echo"));
@@ -258,13 +246,32 @@ describe("useMemoryDashboard", () => {
     expect(result.current.detail.status).toBe("idle");
   });
 
-  it("locks the session after an unauthorized API response", async () => {
-    const onUnauthorized = vi.fn();
-    vi.stubGlobal("fetch", vi.fn(() => json("session_required", 401)));
+  it("clears private state and reports a retryable availability error after access is rejected", async () => {
+    let listCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/overview")) return json(overview);
+        if (url === "/api/memory") {
+          listCalls += 1;
+          return listCalls === 1
+            ? json(entries)
+            : json("invalid_transport", 403);
+        }
+        return json(detailFor(firstId));
+      })
+    );
+    const { result } = renderHook(() => useMemoryDashboard());
+    await waitFor(() => expect(result.current.detail.status).toBe("ready"));
 
-    renderHook(() => useMemoryDashboard({ onUnauthorized }));
+    act(() => result.current.reload());
 
-    await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.list.status).toBe("error"));
+    expect(result.current.list.error).toBe("invalid_transport");
+    expect(result.current.list.data).toBeNull();
+    expect(result.current.selectedId).toBeNull();
+    expect(result.current.detail.status).toBe("idle");
   });
 
   it.each([
@@ -277,17 +284,19 @@ describe("useMemoryDashboard", () => {
       })
     ]
   ])(
-    "locks the session before parsing %s unauthorized response",
+    "reports %s rejected response as unavailable without retaining private state",
     async (_description, response) => {
-      const onUnauthorized = vi.fn();
       vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(response)));
 
-      const view = renderHook(() =>
-        useMemoryDashboard({ onUnauthorized })
-      );
+      const view = renderHook(() => useMemoryDashboard());
 
-      await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
-      expect(view.result.current.list.status).toBe("error");
+      await waitFor(() =>
+        expect(view.result.current.list.status).toBe("error")
+      );
+      expect(view.result.current.list.error).toBe("memory_unavailable");
+      expect(view.result.current.list.data).toBeNull();
+      expect(view.result.current.selectedId).toBeNull();
+      expect(view.result.current.detail.status).toBe("idle");
     }
   );
 });
