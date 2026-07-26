@@ -18,15 +18,26 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
+# Optional baseline of pre-existing HISTORICAL findings (see the repo's
+# security notes). Only suppresses findings already recorded in the baseline —
+# any NEW finding still fails. Absent in repos with clean history.
+BASELINE_ARGS=()
+if [ -f .gitleaks-baseline.json ]; then
+  BASELINE_ARGS=(--baseline-path .gitleaks-baseline.json)
+fi
+
 if [ "$MODE" = "--staged" ]; then
-  gitleaks protect --staged --config .gitleaks.toml --no-banner --redact || FAIL=1
+  gitleaks protect --staged --config .gitleaks.toml --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
 else
-  gitleaks detect --config .gitleaks.toml --no-banner --redact || FAIL=1
+  gitleaks detect --config .gitleaks.toml --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
 fi
 
 # Belt-and-suspenders plain-pattern pass over tracked text files
 # (catches what regex-tuned tools miss; patterns mirror .gitleaks.toml)
 PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[A-Za-z0-9._-]+|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
+# Mirrors the [rules.allowlist] regexes in .gitleaks.toml so both passes agree
+# on what counts as an obvious placeholder rather than a real home directory.
+PLACEHOLDERS='(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|placeholder|you)\b'
 if [ "$MODE" = "--staged" ]; then
   LIST=(git diff --cached --name-only --diff-filter=ACM -z)
 else
@@ -42,7 +53,7 @@ while IFS= read -r -d '' f; do
     [ -f "$f" ] || continue
     CONTENT=$(cat "$f")
   fi
-  HITS=$(printf '%s' "$CONTENT" | grep -EnI "$PATTERNS" | grep -v "guard-scan-allow" || true)
+  HITS=$(printf '%s' "$CONTENT" | grep -EnI "$PATTERNS" | grep -vE "$PLACEHOLDERS" | grep -v "guard-scan-allow" || true)
   if [ -n "$HITS" ]; then
     echo "guard-scan: PRIVACY PATTERN in $f:" >&2
     echo "$HITS" | head -5 >&2
@@ -63,9 +74,10 @@ if [ "${2:-}" = "--beads" ] || [ "$MODE" = "--beads" ]; then
     echo "guard-scan: bd export FAILED — bead notes cannot be verified. Fail-closed." >&2
     exit 1
   fi
-  if grep -EqI "$PATTERNS" "$TMP"; then
+  BEAD_HITS=$(grep -EnI "$PATTERNS" "$TMP" | grep -vE "$PLACEHOLDERS" | grep -v "guard-scan-allow" || true)
+  if [ -n "$BEAD_HITS" ]; then
     echo "guard-scan: PRIVACY PATTERN in beads database (bd export). Clean bead notes before any dolt push." >&2
-    grep -EnI "$PATTERNS" "$TMP" | head -5 >&2
+    echo "$BEAD_HITS" | head -5 >&2
     FAIL=1
   fi
   rm -f "$TMP"

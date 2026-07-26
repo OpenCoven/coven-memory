@@ -46,7 +46,7 @@ description = "Absolute user home paths leak local machine layout (use FAMILIAR_
 # following path separator silently missed it.
 regex = '''(/Users/|/home/)[A-Za-z0-9._-]+'''
 [rules.allowlist]
-regexes = ['''(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|you)\b''']
+regexes = ['''(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|placeholder|you)\b''']
 paths = [
   '''^\.gitleaks\.toml$''',
   '''^scripts/guard-scan\.sh$''',
