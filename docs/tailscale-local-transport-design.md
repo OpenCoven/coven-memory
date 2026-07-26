@@ -1,7 +1,7 @@
 # Tailscale Local-Transport Access
 
 **Date:** 2026-07-26
-**Status:** Approved design; implementation pending
+**Status:** Approved and implemented
 
 ## 1. Goal
 

@@ -42,12 +42,19 @@ function isTrustedHost(hostname: string): boolean {
   return isExplicitLoopback(hostname) || isTailscaleMagicDns(hostname);
 }
 
-function isMatchingOrigin(origin: string, host: string): boolean {
+function isMatchingOrigin(
+  origin: string,
+  host: string,
+  hostname: string
+): boolean {
   try {
     const parsed = new URL(origin);
+    const expectedProtocol = isTailscaleMagicDns(hostname)
+      ? "https:"
+      : "http:";
     return (
       parsed.origin === origin &&
-      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      parsed.protocol === expectedProtocol &&
       parsed.host === host &&
       !parsed.username &&
       !parsed.password
@@ -78,7 +85,10 @@ export function guardLocalTransportRequest(
   }
 
   const origin = request.headers.get("origin");
-  if (origin && !isMatchingOrigin(origin, host)) {
+  if (
+    origin &&
+    !isMatchingOrigin(origin, host, parsedHost.hostname)
+  ) {
     return { ok: false, status: 403, code: "foreign_origin" };
   }
 

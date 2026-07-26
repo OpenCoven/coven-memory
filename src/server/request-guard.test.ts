@@ -112,6 +112,33 @@ describe("request guards", () => {
     });
   });
 
+  it.each([
+    [
+      "HTTP for Tailscale",
+      "mb-black.taile46e90.ts.net",
+      "http://mb-black.taile46e90.ts.net"
+    ],
+    [
+      "HTTPS for loopback",
+      "127.0.0.1:3737",
+      "https://127.0.0.1:3737"
+    ]
+  ])("rejects %s even when Origin Host matches", (_label, host, origin) => {
+    expect(
+      guardLocalTransportRequest(
+        trustedRequest("http://localhost:3737/api/memory", {
+          host,
+          origin
+        }),
+        transport.validate
+      )
+    ).toEqual({
+      ok: false,
+      status: 403,
+      code: "foreign_origin"
+    });
+  });
+
   it("accepts exact IPv4 and IPv6 loopback origins", () => {
     expect(
       guardLocalTransportRequest(trustedRequest(), transport.validate)
