@@ -5,10 +5,6 @@ vi.mock("next/server", () => ({
   connection: vi.fn().mockResolvedValue(undefined)
 }));
 
-vi.mock("@/components/launch-gate", () => ({
-  LaunchGate: ({ children }: { children: React.ReactNode }) => children
-}));
-
 vi.mock("@/features/memory/memory-dashboard", () => ({
   MemoryDashboard: () => (
     <main>
@@ -19,9 +15,12 @@ vi.mock("@/features/memory/memory-dashboard", () => ({
 }));
 
 describe("HomePage", () => {
-  it("renders the memory dashboard shell", async () => {
+  it("renders the memory dashboard directly without a lock gate", async () => {
     render(await HomePage());
     expect(screen.getByRole("heading", { name: "Memory" })).toBeInTheDocument();
     expect(screen.getByText("Secure local memory dashboard")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Memory is locked" })
+    ).not.toBeInTheDocument();
   });
 });

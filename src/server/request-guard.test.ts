@@ -1,8 +1,5 @@
 import {
-  guardLocalRequest,
-  guardLocalTransportRequest,
-  guardLoopbackRequest,
-  SESSION_COOKIE
+  guardLocalTransportRequest
 } from "./request-guard";
 import {
   createLocalTransportAuthority,
@@ -23,7 +20,6 @@ function request(
 }
 
 describe("request guards", () => {
-  const hasSession = (value: string) => value === "valid";
   const transport = createLocalTransportAuthority(Buffer.alloc(32, 5));
 
   function trustedRequest(
@@ -81,7 +77,9 @@ describe("request guards", () => {
     ["suffix trick", "node.ts.net.example.com"],
     ["empty label", "node..tailnet.ts.net"],
     ["leading hyphen", "-node.tailnet.ts.net"],
-    ["LAN address", "192.168.1.12"]
+    ["LAN address", "192.168.1.12"],
+    ["named localhost", "localhost"],
+    ["malformed value", "not a host@"]
   ])("rejects the invalid trusted Host %s", (_label, host) => {
     expect(
       guardLocalTransportRequest(
@@ -115,91 +113,14 @@ describe("request guards", () => {
   });
 
   it("accepts exact IPv4 and IPv6 loopback origins", () => {
-    expect(guardLoopbackRequest(request())).toEqual({ ok: true });
     expect(
-      guardLoopbackRequest(request("http://[::1]:3737/api/memory"))
+      guardLocalTransportRequest(trustedRequest(), transport.validate)
     ).toEqual({ ok: true });
-  });
-
-  it("uses the validated Host when the framework normalizes Request.url", () => {
-    const normalized = new Request(
-      "http://localhost:3737/api/session/exchange",
-      {
-        headers: {
-          host: "127.0.0.1:3737",
-          origin: "http://127.0.0.1:3737"
-        }
-      }
-    );
-
-    expect(guardLoopbackRequest(normalized)).toEqual({ ok: true });
-  });
-
-  it.each([
-    ["named localhost", "http://localhost:3737/api/memory"],
-    ["wildcard IPv4", "http://0.0.0.0:3737/api/memory"],
-    ["private network host", "http://192.168.1.12:3737/api/memory"]
-  ])("rejects a %s Host", (_label, url) => {
-    expect(guardLoopbackRequest(request(url))).toEqual({
-      ok: false,
-      status: 403,
-      code: "invalid_host"
-    });
-  });
-
-  it("rejects mismatched and malformed Host headers", () => {
     expect(
-      guardLoopbackRequest(request(undefined, { host: "127.0.0.1:9999" }))
-    ).toEqual({
-      ok: false,
-      status: 403,
-      code: "invalid_host"
-    });
-    expect(
-      guardLoopbackRequest(request(undefined, { host: "not a host@" }))
-    ).toEqual({
-      ok: false,
-      status: 403,
-      code: "invalid_host"
-    });
-  });
-
-  it("rejects foreign origins before checking the session", () => {
-    expect(
-      guardLocalRequest(
-        request(undefined, { origin: "https://example.invalid" }),
-        hasSession
+      guardLocalTransportRequest(
+        trustedRequest("http://[::1]:3737/api/memory"),
+        transport.validate
       )
-    ).toEqual({
-      ok: false,
-      status: 403,
-      code: "foreign_origin"
-    });
-  });
-
-  it("accepts a valid session cookie and ignores unrelated cookies", () => {
-    expect(
-      guardLocalRequest(
-        request(undefined, {
-          cookie: `theme=dark; ${SESSION_COOKIE}=valid; another=value`
-        }),
-        hasSession
-      )
-    ).toEqual({ ok: true, session: "valid" });
-  });
-
-  it.each([
-    ["missing", ""],
-    ["invalid", `${SESSION_COOKIE}=invalid`],
-    ["malformed encoding", `${SESSION_COOKIE}=%E0%A4%A`],
-    ["ambiguous duplicates", `${SESSION_COOKIE}=valid; ${SESSION_COOKIE}=valid`]
-  ])("rejects a %s session cookie", (_label, cookie) => {
-    expect(
-      guardLocalRequest(request(undefined, cookie ? { cookie } : {}), hasSession)
-    ).toEqual({
-      ok: false,
-      status: 401,
-      code: "session_required"
-    });
+    ).toEqual({ ok: true });
   });
 });

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { MemoryGatewayError } from "./memory-gateway";
-import {
-  guardLocalRequest,
-  guardLoopbackRequest
-} from "./request-guard";
-import { runtime } from "./runtime";
+import { localTransportAuthority } from "./local-transport";
+import { guardLocalTransportRequest } from "./request-guard";
 
 export const NO_STORE_HEADERS = {
   "cache-control": "private, no-store, max-age=0",
@@ -22,7 +19,9 @@ export function jsonNoStore(
   return NextResponse.json(body, { ...init, headers });
 }
 
-function rejectedGuard(guard: ReturnType<typeof guardLoopbackRequest>) {
+function rejectedGuard(
+  guard: ReturnType<typeof guardLocalTransportRequest>
+) {
   if (guard.ok) {
     return null;
   }
@@ -42,21 +41,14 @@ export function methodNotAllowed(allowed: readonly string[]) {
   );
 }
 
-export function loopbackMethodNotAllowed(
-  request: Request,
-  allowed: readonly string[]
-) {
-  return (
-    rejectedGuard(guardLoopbackRequest(request)) ??
-    methodNotAllowed(allowed)
-  );
-}
-
 export function guardedMethodNotAllowed(
   request: Request,
   allowed: readonly string[]
 ) {
-  const guard = guardLocalRequest(request, runtime().sessions.hasSession);
+  const guard = guardLocalTransportRequest(
+    request,
+    localTransportAuthority().validate
+  );
   return rejectedGuard(guard) ?? methodNotAllowed(allowed);
 }
 
@@ -69,7 +61,10 @@ export async function guardedMemoryJson<T>(
   load: () => Promise<T>,
   options: GuardedJsonOptions = {}
 ) {
-  const guard = guardLocalRequest(request, runtime().sessions.hasSession);
+  const guard = guardLocalTransportRequest(
+    request,
+    localTransportAuthority().validate
+  );
   if (!guard.ok) {
     return jsonNoStore(
       { ok: false, code: guard.code },

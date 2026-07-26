@@ -30,12 +30,14 @@ export type LoadState<T> =
   | ErrorState;
 
 type DashboardOptions = {
-  onUnauthorized: () => void;
   now?: number;
 };
 
 class DashboardRequestError extends Error {
-  constructor(public readonly code: string) {
+  constructor(
+    public readonly code: string,
+    public readonly accessRejected = false
+  ) {
     super(code);
   }
 }
@@ -56,25 +58,27 @@ function safeResponseCode(value: unknown): string {
 async function requestData<T>(
   path: string,
   signal: AbortSignal,
-  onUnauthorized: () => void,
   accepts: (value: unknown) => value is T
 ): Promise<T> {
   const response = await fetch(path, {
     cache: "no-store",
-    credentials: "same-origin",
     signal
   });
 
-  if (response.status === 401) {
-    onUnauthorized();
-    throw new DashboardRequestError("session_required");
-  }
+  const accessRejected = response.status === 401 || response.status === 403;
 
   let body: unknown;
   try {
     body = await response.json();
   } catch {
-    throw new DashboardRequestError("invalid_response");
+    throw new DashboardRequestError(
+      accessRejected ? "memory_unavailable" : "invalid_response",
+      accessRejected
+    );
+  }
+
+  if (accessRejected) {
+    throw new DashboardRequestError(safeResponseCode(body), true);
   }
 
   if (!response.ok) {
@@ -97,6 +101,12 @@ function errorCode(error: unknown): string {
   return error instanceof DashboardRequestError
     ? error.code
     : "memory_unavailable";
+}
+
+function isAccessRejection(error: unknown): boolean {
+  return (
+    error instanceof DashboardRequestError && error.accessRejected
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -226,11 +236,10 @@ const loading = (): LoadingState => ({
 });
 const idle = (): IdleState => ({ status: "idle", data: null, error: null });
 
-export function useMemoryDashboard({
-  onUnauthorized,
-  now
-}: DashboardOptions) {
-  const unauthorizedRef = useRef(onUnauthorized);
+export function useMemoryDashboard(
+  { now }: DashboardOptions = {}
+) {
+  const privateStateGenerationRef = useRef(0);
   const selectedIdRef = useRef<string | null>(null);
 
   const [overview, setOverview] = useState<LoadState<MemoryOverview>>(loading);
@@ -244,27 +253,44 @@ export function useMemoryDashboard({
   const [detailVersion, setDetailVersion] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(true);
 
-  useEffect(() => {
-    unauthorizedRef.current = onUnauthorized;
-  }, [onUnauthorized]);
+  const clearPrivateState = useCallback((error: string) => {
+    privateStateGenerationRef.current += 1;
+    selectedIdRef.current = null;
+    setOverview({ status: "error", data: null, error });
+    setList({ status: "error", data: null, error });
+    setDetail(idle());
+    setSelectedId(null);
+    setIsRefreshing(false);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
+    const generation = privateStateGenerationRef.current;
     let active = true;
 
     const loadOverview = requestData<MemoryOverview>(
       "/api/memory/overview",
       controller.signal,
-      () => unauthorizedRef.current(),
       isMemoryOverview
     )
       .then((data) => {
-        if (active) {
+        if (
+          active &&
+          generation === privateStateGenerationRef.current
+        ) {
           setOverview({ status: "ready", data, error: null });
         }
       })
       .catch((error: unknown) => {
         if (active && !controller.signal.aborted) {
+          if (isAccessRejection(error)) {
+            controller.abort();
+            clearPrivateState(errorCode(error));
+            return;
+          }
+          if (generation !== privateStateGenerationRef.current) {
+            return;
+          }
           setOverview({
             status: "error",
             data: null,
@@ -276,11 +302,13 @@ export function useMemoryDashboard({
     const loadList = requestData<MemorySummary[]>(
       "/api/memory",
       controller.signal,
-      () => unauthorizedRef.current(),
       isMemoryList
     )
       .then((data) => {
-        if (!active) {
+        if (
+          !active ||
+          generation !== privateStateGenerationRef.current
+        ) {
           return;
         }
         setList({ status: "ready", data, error: null });
@@ -297,6 +325,14 @@ export function useMemoryDashboard({
       })
       .catch((error: unknown) => {
         if (active && !controller.signal.aborted) {
+          if (isAccessRejection(error)) {
+            controller.abort();
+            clearPrivateState(errorCode(error));
+            return;
+          }
+          if (generation !== privateStateGenerationRef.current) {
+            return;
+          }
           setList({ status: "error", data: null, error: errorCode(error) });
           selectedIdRef.current = null;
           setSelectedId(null);
@@ -305,7 +341,10 @@ export function useMemoryDashboard({
       });
 
     void Promise.allSettled([loadOverview, loadList]).then(() => {
-      if (active) {
+      if (
+        active &&
+        generation === privateStateGenerationRef.current
+      ) {
         setIsRefreshing(false);
       }
     });
@@ -314,7 +353,7 @@ export function useMemoryDashboard({
       active = false;
       controller.abort();
     };
-  }, [reloadVersion]);
+  }, [clearPrivateState, reloadVersion]);
 
   const filteredEntries = useMemo(
     () =>
@@ -330,20 +369,31 @@ export function useMemoryDashboard({
     }
 
     const controller = new AbortController();
+    const generation = privateStateGenerationRef.current;
     let active = true;
     void requestData<MemoryDetail>(
       `/api/memory/${encodeURIComponent(selectedId)}`,
       controller.signal,
-      () => unauthorizedRef.current(),
       isMemoryDetail
     )
       .then((data) => {
-        if (active) {
+        if (
+          active &&
+          generation === privateStateGenerationRef.current
+        ) {
           setDetail({ status: "ready", data, error: null });
         }
       })
       .catch((error: unknown) => {
         if (active && !controller.signal.aborted) {
+          if (isAccessRejection(error)) {
+            controller.abort();
+            clearPrivateState(errorCode(error));
+            return;
+          }
+          if (generation !== privateStateGenerationRef.current) {
+            return;
+          }
           setDetail({ status: "error", data: null, error: errorCode(error) });
         }
       });
@@ -352,7 +402,7 @@ export function useMemoryDashboard({
       active = false;
       controller.abort();
     };
-  }, [detailVersion, selectedId]);
+  }, [clearPrivateState, detailVersion, selectedId]);
 
   const selectMemory = useCallback((id: string | null) => {
     if (selectedIdRef.current === id) {
@@ -389,6 +439,7 @@ export function useMemoryDashboard({
     []
   );
   const reload = useCallback(() => {
+    privateStateGenerationRef.current += 1;
     setIsRefreshing(true);
     setOverview(loading());
     setList(loading());

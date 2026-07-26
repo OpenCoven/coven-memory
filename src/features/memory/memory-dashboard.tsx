@@ -7,7 +7,6 @@ import {
   useState,
   useSyncExternalStore
 } from "react";
-import { useLocalSession } from "@/components/launch-gate";
 import {
   DEFAULT_MEMORY_FILTERS,
   type MemoryFilters
@@ -26,8 +25,7 @@ import { useMemoryDashboard } from "./use-memory-dashboard";
 const NARROW_LAYOUT_QUERY = "(max-width: 56rem)";
 
 export function MemoryDashboard() {
-  const session = useLocalSession();
-  const dashboard = useMemoryDashboard({ onUnauthorized: session.lock });
+  const dashboard = useMemoryDashboard();
   const [narrowPane, setNarrowPane] = useState<"list" | "reader">("list");
   const isNarrowLayout = useSyncExternalStore(
     subscribeToNarrowLayout,
@@ -184,26 +182,6 @@ export function MemoryDashboard() {
           >
             {dashboard.isRefreshing ? "Refreshing…" : "Refresh"}
           </button>
-          <details className="memory-session-menu">
-            <summary
-              className="cv-action cv-action-ghost memory-session-action"
-              aria-label="Session actions"
-            >
-              •••
-            </summary>
-            <div className="cv-menu memory-session-popover">
-              <p className="memory-session-copy">
-                This session exists only in the local dashboard process.
-              </p>
-              <button
-                type="button"
-                className="cv-menu-item memory-session-logout"
-                onClick={() => void session.logout()}
-              >
-                Log out
-              </button>
-            </div>
-          </details>
         </div>
       </header>
 
