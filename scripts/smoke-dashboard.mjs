@@ -223,6 +223,10 @@ try {
   invariant(list?.ok === true && Array.isArray(list.data), "list was invalid");
   invariant(list.data.length > 0, "synthetic list was empty");
   invariant(
+    new Set(list.data.map((entry) => entry.source?.kind)).size === 2,
+    "summary source facets were not authoritative"
+  );
+  invariant(
     !("path" in list.data[0]),
     "browser list exposed a daemon path"
   );
@@ -231,21 +235,28 @@ try {
     "smoke fixture does not exercise reveal-by-default"
   );
 
-  const detail = await json(
-    await fetch(
-      `${dashboardOrigin}/api/memory/${encodeURIComponent(list.data[0].id)}`,
-      authenticated
-    ),
-    200
-  );
-  invariant(
-    detail?.ok === true && typeof detail.data?.content === "string",
-    "authenticated detail content was unavailable"
-  );
-  invariant(
-    !("path" in detail.data),
-    "browser detail exposed a daemon path"
-  );
+  for (const entry of list.data) {
+    const detail = await json(
+      await fetch(
+        `${dashboardOrigin}/api/memory/${encodeURIComponent(entry.id)}`,
+        authenticated
+      ),
+      200
+    );
+    invariant(
+      detail?.ok === true && typeof detail.data?.content === "string",
+      "authenticated detail content was unavailable"
+    );
+    invariant(
+      detail.data.source?.kind === entry.source?.kind &&
+        detail.data.source?.label === entry.source?.label,
+      "summary and detail source metadata disagreed"
+    );
+    invariant(
+      !("path" in detail.data),
+      "browser detail exposed a daemon path"
+    );
+  }
 
   await json(
     await fetch(`${dashboardOrigin}/api/session/logout`, {

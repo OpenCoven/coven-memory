@@ -18,7 +18,8 @@ const entries = [
     excerpt: "The daemon remains the authority boundary.",
     privacy_classification: null,
     reveal_required: null,
-    verification_state: "unknown"
+    verification_state: "unknown",
+    source: { kind: "coven-origin", label: "Coven origin" }
   },
   {
     id: "27acb99a-4de2-5ac5-a1e2-55bc61cfbd4a",
@@ -30,7 +31,8 @@ const entries = [
     excerpt: "Keep handoffs concise and evidence-backed.",
     privacy_classification: "public",
     reveal_required: false,
-    verification_state: "verified"
+    verification_state: "verified",
+    source: { kind: "promotion", label: "Promoted memory" }
   },
   {
     id: "97557380-df25-566e-a6a7-5d5e2e2bb670",
@@ -42,7 +44,8 @@ const entries = [
     excerpt: "Synthetic protected preview.",
     privacy_classification: "sensitive",
     reveal_required: true,
-    verification_state: "needs_review"
+    verification_state: "needs_review",
+    source: { kind: "coven-origin", label: "Coven origin" }
   }
 ];
 
@@ -54,11 +57,8 @@ const details = new Map(
       familiar_id: entry.familiar_id,
       title: entry.title,
       updated_at: entry.updated_at_iso,
-      source: {
-        kind: entry.id === entries[1].id ? "promotion" : "coven-origin",
-        label: entry.id === entries[1].id ? "Promoted memory" : "Coven origin"
-      },
-      content: `# ${entry.title}\n\nThis is deterministic synthetic memory content.\n\n- No local paths\n- No personal data`,
+      source: entry.source,
+      content: `# ${entry.title}\n\nThis is deterministic synthetic memory content.\n\n- No local paths\n- No personal data\n\n<script>unsafe()</script>\n\n![Synthetic tracker](https://example.invalid/pixel.png)`,
       content_format: "markdown",
       privacy: {
         classification: entry.privacy_classification,
