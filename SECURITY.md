@@ -1,10 +1,11 @@
 # Security & Privacy Protocols — coven-memory
 
-This is a **public** repository for the spec, plan, and issue tracking of the
-OpenCoven memory layer. Because the subject matter *is memory*, the highest
-risk here is not code vulnerability — it is **accidental disclosure**: private
-session identifiers, local machine paths, personal data, or memory content
-that was never meant to leave a local machine.
+This is a **public** repository for the local dashboard, specifications, plans,
+and issue tracking of the OpenCoven memory layer. Because the subject matter
+*is memory*, its highest risks include both application vulnerabilities and
+**accidental disclosure**: private session identifiers, local machine paths,
+personal data, or memory content that was never meant to leave a local
+machine.
 
 ## The rule in one line
 
@@ -25,6 +26,37 @@ in code, docs, bead notes, commit messages, or PR discussion.**
 
 Use placeholders in examples: `FAMILIAR_ROOT`, `<familiar-id>`, `~/.coven/memory/`
 (the *contract* path is fine; per-user runtime paths are not), `01JEXAMPLE...`.
+
+## Local dashboard boundary
+
+The Phase 1 dashboard is a read-only local client with these enforced
+properties:
+
+- the application server binds only to explicit IPv4 or IPv6 loopback;
+- launch tokens are random, memory-only, short-lived, single-use, carried in a
+  URL fragment, and removed before exchange;
+- sessions are process-local, short-lived, non-sliding HttpOnly cookies with
+  `SameSite=Strict`;
+- every data route validates the loopback Host, same-origin Origin when
+  present, and the local session before contacting the daemon;
+- all API success and error responses are `no-store`, and no permissive CORS is
+  enabled;
+- the Content Security Policy permits only local application resources;
+- daemon payloads are parsed with strict runtime schemas before normalization;
+- browser DTOs omit daemon paths and transport details;
+- TypeScript does not read memory files, indexes, manifests, attestations, or
+  databases directly;
+- unclassified, unknown, or unrecognized privacy data requires an explicit
+  per-entry reveal;
+- memory content, excerpts, cookies, tokens, and local paths are not logged.
+
+The Coven daemon remains responsible for opaque ID validation, containment,
+symlink rejection, source reads, and future verification authority. UI
+failures must remain failures; they must never be rendered as a healthy empty
+memory collection.
+
+Browser and transport fixtures must be deterministic and synthetic. Real
+memory must never be copied into tests, screenshots, traces, or issue notes.
 
 ## Enforcement layers (defense in depth)
 

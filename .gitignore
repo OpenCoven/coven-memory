@@ -7,3 +7,13 @@
 
 # Local feature worktrees
 .worktrees/
+
+# Next.js application
+node_modules/
+.next/
+coverage/
+output/
+.playwright-cli/
+*.tsbuildinfo
+.env*
+!.env.example

@@ -1,0 +1,49 @@
+{
+  "name": "@opencoven/coven-memory-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "packageManager": "pnpm@10.34.0",
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "next build",
+    "start": "NODE_ENV=production tsx server.ts",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "audit:prod": "pnpm audit --prod --audit-level high",
+    "fake-daemon": "node scripts/fake-memory-daemon.mjs",
+    "test:smoke": "node scripts/smoke-dashboard.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:smoke && ./scripts/guard-scan.sh"
+  },
+  "dependencies": {
+    "@opencoven/coven-design-system": "git+https://github.com/OpenCoven/coven-design-system.git#6032f9f407982379e39ed1a40eec7a2e8b24e5c6",
+    "next": "16.2.11",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@types/node": "24.13.2",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.11",
+    "jsdom": "^27.4.0",
+    "tsx": "^4.20.6",
+    "typescript": "6.0.3",
+    "vitest": "4.1.9"
+  },
+  "pnpm": {
+    "overrides": {
+      "next>postcss": "8.5.23",
+      "next>sharp": "0.35.3"
+    }
+  }
+}
