@@ -24,7 +24,7 @@ const hidden: MemoryDetail = {
 };
 
 describe("MemoryReader", () => {
-  it("hides unknown privacy until explicit reveal and renders markdown safely", () => {
+  it("hides unknown privacy until explicit reveal and omits raw HTML", () => {
     render(
       <MemoryReader
         state={{ status: "ready", data: hidden, error: null }}
@@ -50,7 +50,24 @@ describe("MemoryReader", () => {
     expect(screen.getByText("Durable fact.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Decisions" })).toBeInTheDocument();
     expect(document.querySelector("script")).toBeNull();
-    expect(screen.getByText("<script>unsafe()</script>")).toBeInTheDocument();
+    expect(screen.queryByText("<script>unsafe()</script>")).not.toBeInTheDocument();
+
+    const view = screen.getByRole("group", { name: "Content view" });
+    const rendered = screen.getByRole("button", { name: "Rendered" });
+    const raw = screen.getByRole("button", { name: "Raw" });
+    expect(view).toContainElement(rendered);
+    expect(view).toContainElement(raw);
+    expect(rendered).toHaveClass("cv-segmented-item");
+    expect(rendered).toHaveAttribute("aria-pressed", "true");
+    expect(raw).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(raw);
+    expect(document.querySelector(".memory-raw code")?.textContent).toBe(
+      hidden.content
+    );
+    expect(document.querySelector("script")).toBeNull();
+    expect(raw).toHaveAttribute("aria-pressed", "true");
+    expect(rendered).toHaveAttribute("aria-pressed", "false");
   });
 
   it("does not let verified state bypass privacy and resets reveal for another entry", () => {
@@ -108,7 +125,7 @@ describe("MemoryReader", () => {
   it("shows explicitly public content, raw mode, and the narrow back action", () => {
     const publicDetail: MemoryDetail = {
       ...hidden,
-      attestationMetadata: { fieldCount: 2 },
+      attestationMetadata: { fieldCount: 1 },
       privacy: {
         classification: "public",
         revealRequired: false,
@@ -133,20 +150,63 @@ describe("MemoryReader", () => {
 
     expect(screen.getByText("Durable fact.")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Read" })
-    ).toHaveAttribute("aria-pressed", "true");
-    expect(
       screen.getByRole("button", { name: "Back to memories" })
     ).toBeInTheDocument();
-    expect(screen.getByText("2 metadata fields available")).toBeInTheDocument();
+    expect(screen.getByText("1 metadata field available")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Raw" }));
     expect(document.querySelector(".memory-raw code")?.textContent).toBe(
       publicDetail.content
     );
   });
 
-  it("renders loading, no-selection, and retryable detail errors honestly", () => {
+  it("uses plural attestation metadata grammar for zero and multiple fields", () => {
+    const publicDetail: MemoryDetail = {
+      ...hidden,
+      attestationMetadata: { fieldCount: 0 },
+      privacy: {
+        classification: "public",
+        revealRequired: false,
+        reason: "classified public"
+      }
+    };
+    const capabilities = {
+      detail: true,
+      verification: true,
+      attestationMetadata: true,
+      supersessionHistory: false,
+      mutations: false
+    };
     const { rerender } = render(
+      <MemoryReader
+        state={{ status: "ready", data: publicDetail, error: null }}
+        selectedId={publicDetail.id}
+        capabilities={capabilities}
+        onBack={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("0 metadata fields available")).toBeInTheDocument();
+
+    const multiple = {
+      ...publicDetail,
+      attestationMetadata: { fieldCount: 2 }
+    };
+    rerender(
+      <MemoryReader
+        state={{ status: "ready", data: multiple, error: null }}
+        selectedId={multiple.id}
+        capabilities={capabilities}
+        onBack={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("2 metadata fields available")).toBeInTheDocument();
+  });
+
+  it("renders loading, no-selection, and retryable detail errors honestly", () => {
+    const { container, rerender } = render(
       <MemoryReader
         state={{ status: "idle", data: null, error: null }}
         selectedId={null}
@@ -155,6 +215,10 @@ describe("MemoryReader", () => {
       />
     );
     expect(screen.getByText("Select a memory to read")).toBeInTheDocument();
+    expect(container.querySelector(".memory-reader-pane")).toHaveAttribute(
+      "tabindex",
+      "-1"
+    );
 
     rerender(
       <MemoryReader
@@ -165,6 +229,7 @@ describe("MemoryReader", () => {
       />
     );
     expect(screen.getByText("Loading memory…")).toBeInTheDocument();
+    const stableReader = container.querySelector(".memory-reader-pane");
 
     const onRetry = vi.fn();
     rerender(
@@ -176,6 +241,7 @@ describe("MemoryReader", () => {
       />
     );
     expect(screen.getByText("Couldn't open this memory")).toBeInTheDocument();
+    expect(container.querySelector(".memory-reader-pane")).toBe(stableReader);
     fireEvent.click(screen.getByRole("button", { name: "Retry memory detail" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });

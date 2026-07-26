@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:browser": "node scripts/verify-dashboard-ui.mjs",
     "audit:prod": "pnpm audit --prod --audit-level high",
     "fake-daemon": "node scripts/fake-memory-daemon.mjs",
     "test:smoke": "node scripts/smoke-dashboard.mjs",
@@ -25,6 +26,7 @@
     "next": "16.2.11",
     "react": "19.2.7",
     "react-dom": "19.2.7",
+    "react-markdown": "10.1.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -36,6 +38,7 @@
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.11",
     "jsdom": "^27.4.0",
+    "playwright": "1.62.0",
     "tsx": "^4.20.6",
     "typescript": "6.0.3",
     "vitest": "4.1.9"

@@ -1,10 +1,11 @@
+import { useState } from "react";
 import type { MemorySummary } from "@/lib/memory-types";
 import {
   DEFAULT_MEMORY_FILTERS,
   type MemoryFilters
 } from "./filter-memories";
 
-type MemoryFiltersBarProps = {
+type MemoryFilterProps = {
   entries: readonly MemorySummary[];
   filters: MemoryFilters;
   onChange: <Key extends keyof MemoryFilters>(
@@ -14,12 +15,17 @@ type MemoryFiltersBarProps = {
   onClear: () => void;
 };
 
-type MemorySearchProps = {
-  value: string;
-  onChange: (value: string) => void;
+type MemoryLibraryProps = Omit<MemoryFilterProps, "entries"> & {
+  entries: readonly MemorySummary[] | null;
 };
 
-export function MemorySearch({ value, onChange }: MemorySearchProps) {
+export function MemorySearch({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
   return (
     <label className="memory-search">
       <span className="cv-sr-only">Search memories</span>
@@ -54,42 +60,40 @@ export function MemorySearch({ value, onChange }: MemorySearchProps) {
   );
 }
 
-export function MemoryFiltersBar({
+export function MemoryLibrary({
   entries,
   filters,
   onChange,
   onClear
-}: MemoryFiltersBarProps) {
-  const familiars = countBy(entries, (entry) => entry.familiarId);
-  const sources = countBy(entries, (entry) => entry.source.kind);
+}: MemoryLibraryProps) {
+  const availableEntries = entries ?? [];
+  const familiars = countBy(availableEntries, (entry) => entry.familiarId);
+  const sources = countBy(availableEntries, (entry) => entry.source.kind);
   const sourceLabels = new Map(
-    entries.map((entry) => [entry.source.kind, entry.source.label])
+    availableEntries.map((entry) => [entry.source.kind, entry.source.label])
   );
-  const needsReview = entries.filter(
-    (entry) => entry.verification.state === "needs-review"
-  ).length;
-  const hasFilters =
-    filters.query !== DEFAULT_MEMORY_FILTERS.query ||
-    filters.familiar !== DEFAULT_MEMORY_FILTERS.familiar ||
-    filters.source !== DEFAULT_MEMORY_FILTERS.source ||
-    filters.verification !== DEFAULT_MEMORY_FILTERS.verification ||
-    filters.freshness !== DEFAULT_MEMORY_FILTERS.freshness;
-  const allSelected = !hasFilters;
+  const needsReview =
+    entries === null
+      ? null
+      : entries.filter(
+          (entry) => entry.verification.state === "needs-review"
+        ).length;
+  const hasFilters = hasActiveFilters(filters);
 
   return (
     <nav className="memory-library" aria-label="Memory library">
       <div className="memory-library-heading">
         <span>Library</span>
-        <span>{entries.length}</span>
+        <span>{entries?.length ?? "—"}</span>
       </div>
 
       <div className="memory-library-scroll">
         <div className="memory-scope-group">
           <ScopeButton
             label="All memories"
-            count={entries.length}
+            count={entries?.length ?? null}
             icon="◇"
-            selected={allSelected}
+            selected={entries !== null && !hasFilters}
             onClick={onClear}
           />
           <ScopeButton
@@ -140,7 +144,7 @@ export function MemoryFiltersBar({
         </LibrarySection>
 
         <LibrarySection label="Refine">
-          <FilterSelect
+          <LibrarySelect
             label="Verification"
             value={filters.verification}
             onChange={(value) =>
@@ -150,24 +154,17 @@ export function MemoryFiltersBar({
               )
             }
           >
-            <option value="">All states</option>
-            <option value="verified">Verified</option>
-            <option value="needs-review">Needs review</option>
-            <option value="degraded">Degraded</option>
-            <option value="unknown">Unknown</option>
-            <option value="unavailable">Unavailable</option>
-          </FilterSelect>
-          <FilterSelect
+            <VerificationOptions />
+          </LibrarySelect>
+          <LibrarySelect
             label="Freshness"
             value={filters.freshness}
             onChange={(value) =>
               onChange("freshness", value as MemoryFilters["freshness"])
             }
           >
-            <option value="all">Any time</option>
-            <option value="recent">Last 30 days</option>
-            <option value="older">Older than 30 days</option>
-          </FilterSelect>
+            <FreshnessOptions />
+          </LibrarySelect>
         </LibrarySection>
       </div>
 
@@ -180,6 +177,105 @@ export function MemoryFiltersBar({
         Clear filters
       </button>
     </nav>
+  );
+}
+
+export function MemoryFiltersBar({
+  entries,
+  filters,
+  onChange,
+  onClear
+}: MemoryFilterProps) {
+  const [facetsOpen, setFacetsOpen] = useState(false);
+  const familiars = [...new Set(entries.map((entry) => entry.familiarId))].sort(
+    (left, right) => left.localeCompare(right)
+  );
+  const sources = [
+    ...new Map(
+      entries.map((entry) => [entry.source.kind, entry.source.label])
+    ).entries()
+  ].sort((left, right) => left[1].localeCompare(right[1]));
+  const activeFacetCount = [
+    filters.familiar !== DEFAULT_MEMORY_FILTERS.familiar,
+    filters.source !== DEFAULT_MEMORY_FILTERS.source,
+    filters.verification !== DEFAULT_MEMORY_FILTERS.verification,
+    filters.freshness !== DEFAULT_MEMORY_FILTERS.freshness
+  ].filter(Boolean).length;
+
+  return (
+    <section className="memory-filter-shell" aria-label="Memory filters">
+      <div className="memory-filter-intro">
+        <span className="memory-filter-label">Refine index</span>
+        <button
+          type="button"
+          className="cv-action cv-action-secondary memory-filter-toggle"
+          aria-expanded={facetsOpen}
+          aria-controls="memory-filter-facets"
+          onClick={() => setFacetsOpen((open) => !open)}
+        >
+          Filters{activeFacetCount > 0 ? ` (${activeFacetCount})` : ""}
+        </button>
+        <button
+          type="button"
+          className="cv-action cv-action-ghost memory-filter-clear"
+          onClick={onClear}
+          disabled={!hasActiveFilters(filters)}
+        >
+          Clear filters
+        </button>
+      </div>
+      <div
+        id="memory-filter-facets"
+        className="memory-filter-facets"
+        data-open={facetsOpen}
+      >
+        <FilterSelect
+          label="Familiar"
+          value={filters.familiar}
+          onChange={(value) => onChange("familiar", value)}
+        >
+          <option value="">All familiars</option>
+          {familiars.map((familiar) => (
+            <option key={familiar} value={familiar}>
+              {familiar}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterSelect
+          label="Source"
+          value={filters.source}
+          onChange={(value) => onChange("source", value)}
+        >
+          <option value="">All sources</option>
+          {sources.map(([kind, label]) => (
+            <option key={kind} value={kind}>
+              {label}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterSelect
+          label="Verification"
+          value={filters.verification}
+          onChange={(value) =>
+            onChange(
+              "verification",
+              value as MemoryFilters["verification"]
+            )
+          }
+        >
+          <VerificationOptions />
+        </FilterSelect>
+        <FilterSelect
+          label="Freshness"
+          value={filters.freshness}
+          onChange={(value) =>
+            onChange("freshness", value as MemoryFilters["freshness"])
+          }
+        >
+          <FreshnessOptions />
+        </FilterSelect>
+      </div>
+    </section>
   );
 }
 
@@ -206,7 +302,7 @@ function ScopeButton({
   onClick
 }: {
   label: string;
-  count: number;
+  count: number | null;
   icon: string;
   selected: boolean;
   onClick: () => void;
@@ -215,7 +311,11 @@ function ScopeButton({
     <button
       type="button"
       className="memory-scope-button"
-      aria-label={`${label}, ${count}`}
+      aria-label={
+        count === null
+          ? `${label}, count unavailable`
+          : `${label}, ${count}`
+      }
       aria-pressed={selected}
       onClick={onClick}
     >
@@ -223,12 +323,12 @@ function ScopeButton({
         {icon}
       </span>
       <span>{label}</span>
-      <span className="memory-scope-count">{count}</span>
+      <span className="memory-scope-count">{count ?? "—"}</span>
     </button>
   );
 }
 
-function FilterSelect({
+function LibrarySelect({
   label,
   value,
   onChange,
@@ -249,6 +349,64 @@ function FilterSelect({
         {children}
       </select>
     </label>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  children
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="cv-field memory-filter-field">
+      <span className="cv-field-label">{label}</span>
+      <select
+        className="cv-select"
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
+function VerificationOptions() {
+  return (
+    <>
+      <option value="">All states</option>
+      <option value="verified">Verified</option>
+      <option value="needs-review">Needs review</option>
+      <option value="degraded">Degraded</option>
+      <option value="unknown">Unknown</option>
+      <option value="unavailable">Unavailable</option>
+    </>
+  );
+}
+
+function FreshnessOptions() {
+  return (
+    <>
+      <option value="all">Any time</option>
+      <option value="recent">Last 30 days</option>
+      <option value="older">Older than 30 days</option>
+    </>
+  );
+}
+
+function hasActiveFilters(filters: MemoryFilters) {
+  return (
+    filters.query !== DEFAULT_MEMORY_FILTERS.query ||
+    filters.familiar !== DEFAULT_MEMORY_FILTERS.familiar ||
+    filters.source !== DEFAULT_MEMORY_FILTERS.source ||
+    filters.verification !== DEFAULT_MEMORY_FILTERS.verification ||
+    filters.freshness !== DEFAULT_MEMORY_FILTERS.freshness
   );
 }
 

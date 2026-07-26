@@ -267,7 +267,9 @@ describe("LaunchGate", () => {
       await screen.findByRole("heading", { name: "Session check unavailable" })
     ).toBeVisible();
     expect(screen.queryByText("Private memory UI")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Retry session check" }));
+    const retry = screen.getByRole("button", { name: "Retry session check" });
+    expect(retry).toHaveClass("cv-action", "cv-action-secondary");
+    fireEvent.click(retry);
     expect(await screen.findByText("Private memory UI")).toBeInTheDocument();
   });
 

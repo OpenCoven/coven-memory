@@ -87,6 +87,14 @@ function json(data: unknown, status = 200) {
   );
 }
 
+function deferredResponse() {
+  let resolve!: (response: Response) => void;
+  const promise = new Promise<Response>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
+
 describe("useMemoryDashboard", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -179,6 +187,55 @@ describe("useMemoryDashboard", () => {
     ).toHaveLength(detailCalls);
   });
 
+  it("keeps refreshed detail ready when it resolves before the same-ID list", async () => {
+    const refreshedList = deferredResponse();
+    const refreshedDetail = deferredResponse();
+    let listCalls = 0;
+    let detailCalls = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith("/overview")) return json(overview);
+        if (url === "/api/memory") {
+          listCalls += 1;
+          return listCalls === 1 ? json(entries) : refreshedList.promise;
+        }
+        detailCalls += 1;
+        return detailCalls === 1
+          ? json(detailFor(firstId))
+          : refreshedDetail.promise;
+      })
+    );
+    const { result } = renderHook(() =>
+      useMemoryDashboard({ onUnauthorized: vi.fn() })
+    );
+    await waitFor(() => expect(result.current.detail.status).toBe("ready"));
+
+    act(() => result.current.reload());
+    await waitFor(() => expect(detailCalls).toBe(2));
+    await waitFor(() => expect(listCalls).toBe(2));
+
+    act(() => {
+      refreshedDetail.resolve(
+        Response.json({ ok: true, data: detailFor(firstId) })
+      );
+    });
+    await waitFor(() => expect(result.current.detail.status).toBe("ready"));
+
+    act(() => {
+      refreshedList.resolve(Response.json({ ok: true, data: entries }));
+    });
+    await waitFor(() => expect(result.current.list.status).toBe("ready"));
+
+    expect(result.current.selectedId).toBe(firstId);
+    expect(result.current.detail).toEqual({
+      status: "ready",
+      data: detailFor(firstId),
+      error: null
+    });
+  });
+
   it("clears a selection that a filter removes", async () => {
     vi.stubGlobal(
       "fetch",
@@ -209,4 +266,28 @@ describe("useMemoryDashboard", () => {
 
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
   });
+
+  it.each([
+    ["an empty", new Response(null, { status: 401 })],
+    [
+      "a non-JSON",
+      new Response("session expired", {
+        status: 401,
+        headers: { "content-type": "text/plain" }
+      })
+    ]
+  ])(
+    "locks the session before parsing %s unauthorized response",
+    async (_description, response) => {
+      const onUnauthorized = vi.fn();
+      vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(response)));
+
+      const view = renderHook(() =>
+        useMemoryDashboard({ onUnauthorized })
+      );
+
+      await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
+      expect(view.result.current.list.status).toBe("error");
+    }
+  );
 });
