@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Chain to beads-managed hook (core.hooksPath=.githooks would otherwise hide it)
+REPO_ROOT=$(git rev-parse --show-toplevel)
+if [ -x "$REPO_ROOT/.beads/hooks/post-merge" ]; then
+  "$REPO_ROOT/.beads/hooks/post-merge" "$@"
+fi

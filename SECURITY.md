@@ -33,9 +33,15 @@ Use placeholders in examples: `FAMILIAR_ROOT`, `<familiar-id>`, `~/.coven/memory
    Fail-closed: if gitleaks is missing, the commit is blocked.
 2. **Pre-push hook** — full-tree scan **plus a fresh `bd export` scan of the
    beads database**, because bead notes sync via dolt refs to this remote too.
+   Fail-closed: if `bd export` fails, the push is blocked.
 3. **CI (`privacy-guard.yml`)** — runs on every push and PR: full-history
    gitleaks scan, tracked-tree scan, and a changed-files scan on PRs.
-   Local hooks can be skipped; **CI cannot**. CI is the authority.
+   Local hooks can be skipped; **CI cannot**. CI is the authority for
+   everything that reaches a branch.
+   **Known limit:** bead notes sync via `bd dolt push` (refs/dolt/data), which
+   fires no git hooks and no branch CI. For notes, the guard runs locally only —
+   always sync via `scripts/bd-dolt-push.sh`, which scans a fresh `bd export`
+   (fail-closed) before pushing. Never run a bare `bd dolt push`.
 4. **Review discipline** — PR reviewers treat any privacy hit as a blocker,
    never a warn-and-proceed. Same fail-closed principle as the promotion gate.
 
@@ -46,11 +52,16 @@ scripts/setup-hooks.sh   # installs hooks (core.hooksPath=.githooks)
 brew install gitleaks    # or see github.com/gitleaks/gitleaks
 ```
 
+Sync bead notes with `scripts/bd-dolt-push.sh` (guarded), not bare `bd dolt push`.
+
 ## False positives
 
-Add the inline marker `guard-scan-allow` on the flagged line **and** justify it
-in the PR description. Reviewers must confirm the marker is legitimate. The
-marker does not bypass gitleaks default rules (real secrets are never allowed).
+For the plain-pattern scan, add the inline marker `guard-scan-allow` on the
+flagged line. For a hit from a **custom Coven gitleaks rule**, use gitleaks'
+own inline marker `gitleaks:allow` on the flagged line. Either way, justify it
+in the PR description and reviewers must confirm the marker is legitimate.
+Neither marker excuses a hit from the gitleaks **default** rules — real
+secrets are never allowed, anywhere, including the guard files themselves.
 
 ## Bead-notes discipline (contributors and familiars)
 
@@ -71,4 +82,7 @@ the repo — never session keys, chat IDs, or absolute local paths.
 
 The same standards apply to `OpenCoven/coven` (implementation home for the
 promotion layer, M2) and `OpenCoven/coven-threads` (authority layer). This
-document is the reference; those repos enforce via their own CI.
+document is the reference; each repo **must** enforce via its own CI.
+Status: `coven` runs a classic secret scan (Coven privacy tier tracked in
+`cmem-byc`/`cmem-gxq`); `coven-threads` has **no guard CI yet** — porting
+this stack there is tracked in the SEC bead (`cmem-byc`).

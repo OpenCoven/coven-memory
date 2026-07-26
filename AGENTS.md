@@ -20,7 +20,7 @@ bd ready              # Find available work
 bd show <id>          # View issue details
 bd update <id> --claim  # Claim work atomically
 bd close <id>         # Complete work
-bd dolt push          # Push beads data to remote
+scripts/bd-dolt-push.sh  # Push beads data to remote (guarded — scans notes first)
 ```
 
 ## Non-Interactive Shell Commands
