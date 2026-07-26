@@ -26,7 +26,7 @@ fi
 
 # Belt-and-suspenders plain-pattern pass over tracked text files
 # (catches what regex-tuned tools miss; patterns mirror .gitleaks.toml)
-PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[A-Za-z0-9._-]+/|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
+PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[A-Za-z0-9._-]+|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
 if [ "$MODE" = "--staged" ]; then
   LIST=(git diff --cached --name-only --diff-filter=ACM -z)
 else

@@ -37,7 +37,7 @@ jobs:
           git fetch origin "${{ github.base_ref }}" --depth=1
           # Standalone diff so a git failure fails the step instead of emptying the list
           git diff --name-only -z "origin/${{ github.base_ref }}"...HEAD -- > /tmp/changed.zlist
-          PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[A-Za-z0-9._-]+/|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
+          PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[A-Za-z0-9._-]+|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
           FAIL=0
           # NUL-delimited iteration: filenames containing whitespace must not dodge the scan
           while IFS= read -r -d '' f; do

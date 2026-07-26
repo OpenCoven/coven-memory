@@ -41,7 +41,10 @@ paths = [
 [[rules]]
 id = "absolute-home-path"
 description = "Absolute user home paths leak local machine layout (use FAMILIAR_ROOT)"
-regex = '''(/Users/|/home/)[A-Za-z0-9._-]+/'''
+# No trailing-slash requirement: a bare home-dir literal used as a fallback
+# default is exactly the leak this rule exists to catch, and requiring a
+# following path separator silently missed it.
+regex = '''(/Users/|/home/)[A-Za-z0-9._-]+'''
 [rules.allowlist]
 regexes = ['''(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|you)\b''']
 paths = [
