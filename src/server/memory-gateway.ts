@@ -141,7 +141,9 @@ export function createMemoryGateway(transport: Transport) {
           state: browserVerificationState(entry.verification.state),
           reason: entry.verification.reason
         },
-        attestation: entry.attestation,
+        attestationMetadata: entry.attestation
+          ? { fieldCount: Object.keys(entry.attestation).length }
+          : null,
         supersession: {
           supersedes: entry.supersession.supersedes,
           supersededBy: entry.supersession.superseded_by

@@ -1,4 +1,7 @@
-import { jsonNoStore } from "@/server/api-response";
+import {
+  jsonNoStore,
+  loopbackMethodNotAllowed
+} from "@/server/api-response";
 import { readJsonBody } from "@/server/request-body";
 import { guardLoopbackRequest, SESSION_COOKIE } from "@/server/request-guard";
 import { runtime } from "@/server/runtime";
@@ -61,3 +64,15 @@ export async function POST(request: Request) {
   });
   return response;
 }
+
+const unsupported = (request: Request) =>
+  loopbackMethodNotAllowed(request, ["POST"]);
+
+export {
+  unsupported as DELETE,
+  unsupported as GET,
+  unsupported as HEAD,
+  unsupported as OPTIONS,
+  unsupported as PATCH,
+  unsupported as PUT
+};

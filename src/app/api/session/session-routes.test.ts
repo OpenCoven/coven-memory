@@ -1,6 +1,9 @@
-import { POST as exchange } from "./exchange/route";
-import { POST as logout } from "./logout/route";
-import { GET as status } from "./status/route";
+import {
+  OPTIONS as exchangeOptions,
+  POST as exchange
+} from "./exchange/route";
+import { GET as logoutGet, POST as logout } from "./logout/route";
+import { GET as status, OPTIONS as statusOptions } from "./status/route";
 import { runtime } from "@/server/runtime";
 import { SESSION_COOKIE } from "@/server/request-guard";
 
@@ -144,5 +147,45 @@ describe("session routes", () => {
     );
     expect(afterLogout.status).toBe(401);
     expect(afterLogout.headers.get("cache-control")).toContain("no-store");
+  });
+
+  it("returns guarded no-store responses for unsupported methods", async () => {
+    const exchangeResponse = await exchangeOptions(
+      localRequest("/api/session/exchange")
+    );
+    expect(exchangeResponse.status).toBe(405);
+    expect(exchangeResponse.headers.get("allow")).toBe("POST");
+    expect(exchangeResponse.headers.get("cache-control")).toContain("no-store");
+
+    const unauthenticatedStatus = await statusOptions(
+      localRequest("/api/session/status")
+    );
+    expect(unauthenticatedStatus.status).toBe(401);
+    expect(unauthenticatedStatus.headers.get("cache-control")).toContain(
+      "no-store"
+    );
+
+    const token = runtime().sessions.issueLaunchToken();
+    const exchanged = await exchange(
+      localRequest("/api/session/exchange", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token })
+      })
+    );
+    const cookie = cookiePair(exchanged.headers.get("set-cookie"));
+
+    for (const [handler, path, allow] of [
+      [statusOptions, "/api/session/status", "GET, HEAD"],
+      [logoutGet, "/api/session/logout", "POST"]
+    ] as const) {
+      const response = await handler(
+        localRequest(path, { headers: { cookie } })
+      );
+      expect(response.status).toBe(405);
+      expect(response.headers.get("allow")).toBe(allow);
+      expect(response.headers.get("cache-control")).toContain("no-store");
+      expect(response.headers.get("pragma")).toBe("no-cache");
+    }
   });
 });

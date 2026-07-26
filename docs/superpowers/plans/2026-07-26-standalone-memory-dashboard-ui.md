@@ -1127,7 +1127,15 @@ export const memoryDetailSchema = z.object({
     state: z.enum(["verified", "degraded", "unknown", "unavailable"]),
     reason: z.string()
   }).strict(),
-  attestation: z.record(z.string(), z.unknown()).nullable(),
+  attestation: z.record(
+    z.string().min(1).max(128),
+    z.union([
+      z.string().max(2_048),
+      z.number().finite(),
+      z.boolean(),
+      z.null()
+    ])
+  ).refine((value) => Object.keys(value).length <= 64).nullable(),
   supersession: z.object({
     supersedes: z.string().nullable(),
     superseded_by: z.string().nullable()
@@ -1271,7 +1279,9 @@ export function createMemoryGateway(transport: Transport) {
         content: entry.content,
         privacy: entry.privacy,
         verification: entry.verification,
-        attestation: entry.attestation,
+        attestationMetadata: entry.attestation
+          ? { fieldCount: Object.keys(entry.attestation).length }
+          : null,
         supersession: entry.supersession
       };
     }

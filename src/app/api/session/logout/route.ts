@@ -1,4 +1,7 @@
-import { jsonNoStore } from "@/server/api-response";
+import {
+  guardedMethodNotAllowed,
+  jsonNoStore
+} from "@/server/api-response";
 import { guardLocalRequest, SESSION_COOKIE } from "@/server/request-guard";
 import { runtime } from "@/server/runtime";
 
@@ -22,3 +25,15 @@ export function POST(request: Request) {
   });
   return response;
 }
+
+const unsupported = (request: Request) =>
+  guardedMethodNotAllowed(request, ["POST"]);
+
+export {
+  unsupported as DELETE,
+  unsupported as GET,
+  unsupported as HEAD,
+  unsupported as OPTIONS,
+  unsupported as PATCH,
+  unsupported as PUT
+};

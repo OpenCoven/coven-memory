@@ -187,6 +187,7 @@ function isMemoryDetail(value: unknown): value is MemoryDetail {
   const source = value.source;
   const privacy = value.privacy;
   const verification = value.verification;
+  const attestationMetadata = value.attestationMetadata;
   const supersession = value.supersession;
   return (
     typeof value.id === "string" &&
@@ -206,7 +207,11 @@ function isMemoryDetail(value: unknown): value is MemoryDetail {
     isRecord(verification) &&
     isVerificationState(verification.state) &&
     typeof verification.reason === "string" &&
-    (value.attestation === null || isRecord(value.attestation)) &&
+    (attestationMetadata === null ||
+      (isRecord(attestationMetadata) &&
+        Object.keys(attestationMetadata).length === 1 &&
+        Number.isInteger(attestationMetadata.fieldCount) &&
+        Number(attestationMetadata.fieldCount) >= 0)) &&
     isRecord(supersession) &&
     isNullableString(supersession.supersedes) &&
     isNullableString(supersession.supersededBy)

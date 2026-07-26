@@ -159,6 +159,13 @@ try {
     cache: "no-store"
   });
   await json(unauthenticated, 401);
+  await json(
+    await fetch(`${dashboardOrigin}/api/memory`, {
+      method: "OPTIONS",
+      cache: "no-store"
+    }),
+    401
+  );
 
   const exchanged = await fetch(
     `${dashboardOrigin}/api/session/exchange`,
@@ -190,6 +197,20 @@ try {
     cache: "no-store",
     headers: { cookie }
   };
+  const unsupported = await fetch(`${dashboardOrigin}/api/memory`, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      cookie,
+      origin: dashboardOrigin
+    }
+  });
+  await json(unsupported, 405);
+  invariant(
+    unsupported.headers.get("allow") === "GET, HEAD",
+    "unsupported method omitted Allow"
+  );
+
   const overview = await json(
     await fetch(`${dashboardOrigin}/api/memory/overview`, authenticated),
     200

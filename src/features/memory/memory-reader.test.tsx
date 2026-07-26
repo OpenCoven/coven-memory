@@ -19,7 +19,7 @@ const hidden: MemoryDetail = {
     state: "unknown",
     reason: "verification metadata unavailable"
   },
-  attestation: null,
+  attestationMetadata: null,
   supersession: { supersedes: null, supersededBy: null }
 };
 
@@ -105,6 +105,7 @@ describe("MemoryReader", () => {
   it("shows explicitly public content, raw mode, and the narrow back action", () => {
     const publicDetail: MemoryDetail = {
       ...hidden,
+      attestationMetadata: { fieldCount: 2 },
       privacy: {
         classification: "public",
         revealRequired: false,
@@ -115,6 +116,13 @@ describe("MemoryReader", () => {
       <MemoryReader
         state={{ status: "ready", data: publicDetail, error: null }}
         selectedId={publicDetail.id}
+        capabilities={{
+          detail: true,
+          verification: true,
+          attestationMetadata: true,
+          supersessionHistory: false,
+          mutations: false
+        }}
         onBack={vi.fn()}
         onRetry={vi.fn()}
       />
@@ -124,6 +132,7 @@ describe("MemoryReader", () => {
     expect(
       screen.getByRole("button", { name: "Back to memories" })
     ).toBeInTheDocument();
+    expect(screen.getByText("2 metadata fields available")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Raw" }));
     expect(document.querySelector(".memory-raw code")?.textContent).toBe(
       publicDetail.content

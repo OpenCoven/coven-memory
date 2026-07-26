@@ -106,6 +106,32 @@ describe("memory daemon schemas", () => {
     ).toBe(false);
   });
 
+  it("accepts only bounded scalar attestation metadata", () => {
+    expect(
+      memoryDetailSchema.safeParse({
+        ...detail,
+        attestation: {
+          kind: "synthetic",
+          sequence: 1,
+          active: true,
+          issued_at: null
+        }
+      }).success
+    ).toBe(true);
+
+    for (const attestation of [
+      { nested: { body: "Synthetic nested body" } },
+      { list: ["Synthetic nested value"] },
+      Object.fromEntries(
+        Array.from({ length: 65 }, (_, index) => [`field_${index}`, index])
+      )
+    ]) {
+      expect(
+        memoryDetailSchema.safeParse({ ...detail, attestation }).success
+      ).toBe(false);
+    }
+  });
+
   it("rejects inconsistent overview counts", () => {
     expect(
       memoryOverviewSchema.safeParse({

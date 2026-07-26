@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { MemoryGatewayError } from "./memory-gateway";
-import { guardLocalRequest } from "./request-guard";
+import {
+  guardLocalRequest,
+  guardLoopbackRequest
+} from "./request-guard";
 import { runtime } from "./runtime";
 
 export const NO_STORE_HEADERS = {
@@ -17,6 +20,44 @@ export function jsonNoStore(
     headers.set(name, value);
   }
   return NextResponse.json(body, { ...init, headers });
+}
+
+function rejectedGuard(guard: ReturnType<typeof guardLoopbackRequest>) {
+  if (guard.ok) {
+    return null;
+  }
+  return jsonNoStore(
+    { ok: false, code: guard.code },
+    { status: guard.status }
+  );
+}
+
+export function methodNotAllowed(allowed: readonly string[]) {
+  return jsonNoStore(
+    { ok: false, code: "method_not_allowed" },
+    {
+      status: 405,
+      headers: { allow: allowed.join(", ") }
+    }
+  );
+}
+
+export function loopbackMethodNotAllowed(
+  request: Request,
+  allowed: readonly string[]
+) {
+  return (
+    rejectedGuard(guardLoopbackRequest(request)) ??
+    methodNotAllowed(allowed)
+  );
+}
+
+export function guardedMethodNotAllowed(
+  request: Request,
+  allowed: readonly string[]
+) {
+  const guard = guardLocalRequest(request, runtime().sessions.hasSession);
+  return rejectedGuard(guard) ?? methodNotAllowed(allowed);
 }
 
 type GuardedJsonOptions = {

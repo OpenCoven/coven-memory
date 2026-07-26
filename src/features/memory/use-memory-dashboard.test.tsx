@@ -73,7 +73,7 @@ function detailFor(id: string) {
       state: "unknown",
       reason: "verification metadata unavailable"
     },
-    attestation: null,
+    attestationMetadata: null,
     supersession: { supersedes: null, supersededBy: null }
   };
 }

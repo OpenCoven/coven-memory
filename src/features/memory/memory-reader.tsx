@@ -191,8 +191,8 @@ function MemoryReaderSelection({
             <h3>Attestation</h3>
             <p>
               {capabilities?.attestationMetadata
-                ? detail.attestation
-                  ? `${Object.keys(detail.attestation).length} metadata fields available`
+                ? detail.attestationMetadata
+                  ? `${detail.attestationMetadata.fieldCount} metadata fields available`
                   : "No attestation metadata"
                 : "Attestation unavailable"}
             </p>

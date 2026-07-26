@@ -11,6 +11,14 @@ const wireVerificationState = z.enum([
 const isoTimestamp = z.iso.datetime({ offset: true });
 const opaqueId = z.uuid();
 const shortText = z.string().max(2_048);
+const attestationMetadata = z
+  .record(
+    z.string().min(1).max(128),
+    z.union([shortText, z.number().finite(), z.boolean(), z.null()])
+  )
+  .refine((value) => Object.keys(value).length <= 64, {
+    message: "attestation metadata exceeds field limit"
+  });
 
 const relativeMemoryPath = z
   .string()
@@ -102,7 +110,7 @@ export const memoryDetailSchema = z.strictObject({
     state: wireVerificationState,
     reason: shortText
   }),
-  attestation: z.record(z.string(), z.unknown()).nullable(),
+  attestation: attestationMetadata.nullable(),
   supersession: z.strictObject({
     supersedes: opaqueId.nullable(),
     superseded_by: opaqueId.nullable()

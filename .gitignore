@@ -15,4 +15,5 @@ coverage/
 output/
 .playwright-cli/
 *.tsbuildinfo
-.env.local
+.env*
+!.env.example

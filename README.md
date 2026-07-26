@@ -76,11 +76,13 @@ rejected.
 
 ```bash
 pnpm check
+pnpm audit:prod
 ```
 
 `pnpm check` runs lint, TypeScript, unit/component/integration tests, the
 production build, a local fake-daemon session/API smoke, and the repository
-privacy guard. Browser smoke artifacts belong under ignored
+privacy guard. `pnpm audit:prod` checks the production dependency graph for
+high-severity advisories. Browser smoke artifacts belong under ignored
 `output/playwright/`; only deterministic synthetic fixtures may be used.
 
 Task state is tracked in Beads:

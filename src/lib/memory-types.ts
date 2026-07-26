@@ -70,7 +70,9 @@ export type MemoryDetail = {
     state: MemoryVerificationState;
     reason: string;
   };
-  attestation: Record<string, unknown> | null;
+  attestationMetadata: {
+    fieldCount: number;
+  } | null;
   supersession: {
     supersedes: string | null;
     supersededBy: string | null;

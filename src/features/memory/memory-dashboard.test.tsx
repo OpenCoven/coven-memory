@@ -77,7 +77,7 @@ function detail(id: string) {
       state: entry.verification.state,
       reason: "synthetic verification state"
     },
-    attestation: null,
+    attestationMetadata: null,
     supersession: { supersedes: null, supersededBy: null }
   };
 }

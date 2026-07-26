@@ -408,7 +408,7 @@ Phase 1 is complete when:
 - Dashboard UI: this repository's `feature/memory-dashboard` branch, tracked
   by `cmem-8qg.2`.
 - Parent delivery record: `cmem-8qg`.
-- Dashboard validation: `pnpm check` and
+- Dashboard validation: `pnpm check`, `pnpm audit:prod`, and
   `./scripts/guard-scan.sh --beads`.
 - Daemon validation: `cargo fmt --all -- --check`,
   `cargo clippy --workspace --all-targets -- -D warnings`, and

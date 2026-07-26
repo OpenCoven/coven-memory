@@ -1,6 +1,10 @@
 import { GET as detail } from "./[id]/route";
 import { GET as overview } from "./overview/route";
-import { GET as list } from "./route";
+import {
+  GET as list,
+  OPTIONS as listOptions,
+  POST as listPost
+} from "./route";
 import { runtime } from "@/server/runtime";
 import { MemoryGatewayError } from "@/server/memory-gateway";
 
@@ -82,6 +86,28 @@ describe("memory API routes", () => {
     expect(foreignOrigin.status).toBe(403);
     expect(foreignHost.status).toBe(403);
     expect(memory.list).not.toHaveBeenCalled();
+  });
+
+  it("guards unsupported methods and returns no-store 405 responses", async () => {
+    const unauthenticatedMemory = useRuntime({ authenticated: false });
+    const unauthenticated = await listOptions(request("/api/memory"));
+
+    expect(unauthenticated.status).toBe(401);
+    expect(unauthenticated.headers.get("cache-control")).toContain("no-store");
+    expect(unauthenticated.headers.get("pragma")).toBe("no-cache");
+    expect(unauthenticatedMemory.list).not.toHaveBeenCalled();
+
+    const authenticatedMemory = useRuntime({ authenticated: true });
+    for (const handler of [listOptions, listPost]) {
+      const response = await handler(
+        request("/api/memory", { session: "valid" })
+      );
+      expect(response.status).toBe(405);
+      expect(response.headers.get("allow")).toBe("GET, HEAD");
+      expect(response.headers.get("cache-control")).toContain("no-store");
+      expect(response.headers.get("pragma")).toBe("no-cache");
+    }
+    expect(authenticatedMemory.list).not.toHaveBeenCalled();
   });
 
   it("returns normalized list, overview, and detail data with no-store", async () => {

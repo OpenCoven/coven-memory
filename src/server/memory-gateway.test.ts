@@ -102,15 +102,25 @@ describe("memory gateway", () => {
         state: "unknown",
         reason: "verification metadata unavailable"
       },
-      attestation: null,
+      attestation: {
+        kind: "synthetic",
+        body: "Synthetic attestation body",
+        path: "synthetic/attestation.json"
+      },
       supersession: { supersedes: null, superseded_by: null }
     });
-    await expect(createMemoryGateway(transport).detail(id)).resolves.toMatchObject({
+
+    const result = await createMemoryGateway(transport).detail(id);
+
+    expect(result).toMatchObject({
       id,
       familiarId: "sage",
       contentFormat: "markdown",
-      privacy: { revealRequired: null }
+      privacy: { revealRequired: null },
+      attestationMetadata: { fieldCount: 3 }
     });
+    expect(JSON.stringify(result)).not.toContain("attestation body");
+    expect(JSON.stringify(result)).not.toContain("attestation.json");
 
     await expect(
       createMemoryGateway(transportResponse(404, {})).detail(id)
