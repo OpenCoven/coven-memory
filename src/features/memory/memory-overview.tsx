@@ -3,7 +3,7 @@ import type { LoadState } from "./use-memory-dashboard";
 
 type MemoryOverviewProps = {
   state: LoadState<Overview>;
-  sourceCount: number;
+  sourceCount: number | null;
 };
 
 export function MemoryOverview({
@@ -17,8 +17,7 @@ export function MemoryOverview({
         aria-label="Memory overview"
         aria-busy="true"
       >
-        <span className="memory-overview-dot memory-overview-dot-waiting" />
-        <p role="status">Loading overview…</p>
+        <p role="status">Loading memory overview…</p>
       </section>
     );
   }
@@ -29,106 +28,183 @@ export function MemoryOverview({
         className="memory-overview memory-overview-error"
         aria-label="Memory overview"
       >
-        <span className="memory-overview-dot memory-overview-dot-warning" />
-        <div>
-          <strong>Overview unavailable</strong>
-          <p>Memory browsing remains available.</p>
+        <div className="cv-alert cv-alert-warning">
+          <strong className="cv-alert-title">Overview unavailable</strong>
+          <span className="cv-alert-copy">
+            Browse remains available when the memory list can still connect.
+          </span>
         </div>
       </section>
     );
   }
 
   const overview = state.data;
+  const metrics = getOverviewMetrics(overview, sourceCount);
+
+  return (
+    <section className="memory-overview" aria-labelledby="memory-overview-title">
+      <div className="memory-section-heading">
+        <div>
+          <p className="cv-eyebrow memory-overview-eyebrow">
+            At a glance
+          </p>
+          <h2 id="memory-overview-title">Memory overview</h2>
+        </div>
+        <span className="memory-overview-generated">
+          Snapshot {formatTime(overview.generatedAt)}
+        </span>
+      </div>
+
+      <div className="memory-overview-summary" aria-label="Memory summary">
+        <strong>{metrics.memories}</strong>
+        <span>{metrics.familiars}</span>
+        <span>{metrics.sources}</span>
+        <span>{metrics.verification}</span>
+        <span>{metrics.review}</span>
+      </div>
+    </section>
+  );
+}
+
+export function MemoryDiagnostics({
+  overview,
+  sourceCount
+}: {
+  overview: Overview;
+  sourceCount: number | null;
+}) {
+  const metrics = getOverviewMetrics(overview, sourceCount);
+
+  return (
+    <details className="cv-expander memory-overview-details">
+      <summary className="cv-expander-summary">System details</summary>
+      <div className="cv-expander-body">
+        <div className="memory-overview-grid">
+          <article className="memory-stat">
+            <span className="memory-stat-label">Memories</span>
+            <strong className="memory-stat-value">
+              {overview.totals.entries}
+            </strong>
+            <span className="memory-stat-note">{metrics.sources}</span>
+          </article>
+          <article className="memory-stat">
+            <span className="memory-stat-label">Familiars</span>
+            <strong className="memory-stat-value">
+              {overview.totals.familiars}
+            </strong>
+            <span className="memory-stat-note">Contributing memory</span>
+          </article>
+          <article className="memory-stat">
+            <span className="memory-stat-label">Verification</span>
+            {metrics.verificationAvailable ? (
+              <>
+                <strong className="memory-stat-value">
+                  {metrics.verifiedPercent}%
+                </strong>
+                <span className="memory-stat-note">
+                  {metrics.verification}
+                </span>
+              </>
+            ) : (
+              <>
+                <strong className="memory-stat-value memory-stat-unavailable">
+                  Unavailable
+                </strong>
+                <span className="memory-stat-note">
+                  Verification unavailable
+                </span>
+              </>
+            )}
+          </article>
+          <article className="memory-stat">
+            <span className="memory-stat-label">Attention</span>
+            {metrics.verificationAvailable ? (
+              <>
+                <strong className="memory-stat-value">
+                  {overview.totals.needsReview}
+                </strong>
+                <span className="memory-stat-note">{metrics.review}</span>
+              </>
+            ) : (
+              <>
+                <strong className="memory-stat-value memory-stat-unavailable">
+                  —
+                </strong>
+                <span className="memory-stat-note">
+                  Review state unavailable
+                </span>
+              </>
+            )}
+          </article>
+        </div>
+
+        <div className="memory-system-checks">
+          <dl className="memory-check-grid">
+            <div>
+              <dt>Manifest</dt>
+              <dd>{overview.verification.manifest ?? "Unavailable"}</dd>
+            </div>
+            <div>
+              <dt>Index</dt>
+              <dd>{overview.verification.index ?? "Unavailable"}</dd>
+            </div>
+            <div>
+              <dt>Checked</dt>
+              <dd>{formatTime(overview.verification.checkedAt)}</dd>
+            </div>
+          </dl>
+          {overview.verification.issues.length > 0 ? (
+            <ul className="memory-check-issues">
+              {overview.verification.issues.map((issue) => (
+                <li key={issue}>{issue}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="memory-muted">
+              {metrics.verificationAvailable
+                ? "No verification issues reported."
+                : "Verification diagnostics are not supplied by this daemon."}
+            </p>
+          )}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function getOverviewMetrics(overview: Overview, sourceCount: number | null) {
   const verificationAvailable = overview.capabilities.verification;
   const verifiedPercent =
     overview.totals.entries > 0
       ? Math.round((overview.totals.verified / overview.totals.entries) * 100)
       : 0;
 
-  return (
-    <details className="memory-overview">
-      <summary>
-        <span
-          className={`memory-overview-dot memory-overview-dot-${overview.verification.state}`}
-          aria-hidden="true"
-        />
-        <span>
-          <strong>Memory overview</strong>
-          <small>
-            <span>{overview.totals.entries} entries</span>
-            <span aria-hidden="true"> · </span>
-            <span>
-              {sourceCount} {sourceCount === 1 ? "source" : "sources"}
-            </span>
-          </small>
-        </span>
-        <span className="memory-overview-caret" aria-hidden="true">
-          ⌃
-        </span>
-      </summary>
-
-      <div className="memory-overview-body">
-        <div className="memory-overview-stats">
-          <OverviewStat label="Memories" value={overview.totals.entries} />
-          <OverviewStat label="Familiars" value={overview.totals.familiars} />
-          <OverviewStat
-            label="Verification"
-            value={
-              verificationAvailable
-                ? `${verifiedPercent}% verified`
-                : "Verification unavailable"
-            }
-          />
-          <OverviewStat
-            label="Attention"
-            value={
-              verificationAvailable
-                ? `${overview.totals.needsReview} need review`
-                : "Review state unavailable"
-            }
-          />
-        </div>
-
-        <dl className="memory-system-checks">
-          <div>
-            <dt>Manifest</dt>
-            <dd>{overview.verification.manifest ?? "Unavailable"}</dd>
-          </div>
-          <div>
-            <dt>Index</dt>
-            <dd>{overview.verification.index ?? "Unavailable"}</dd>
-          </div>
-          <div>
-            <dt>Snapshot</dt>
-            <dd>{formatTime(overview.generatedAt)}</dd>
-          </div>
-        </dl>
-
-        {overview.verification.issues.length > 0 ? (
-          <ul className="memory-check-issues">
-            {overview.verification.issues.map((issue) => (
-              <li key={issue}>{issue}</li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-    </details>
-  );
+  return {
+    memories: formatCount(overview.totals.entries, "memory", "memories"),
+    familiars: formatCount(overview.totals.familiars, "familiar", "familiars"),
+    sources:
+      sourceCount === null
+        ? "Sources unavailable"
+        : formatCount(sourceCount, "source", "sources"),
+    verificationAvailable,
+    verifiedPercent,
+    verification: verificationAvailable
+      ? `${verifiedPercent}% verified`
+      : "Verification unavailable",
+    review: verificationAvailable
+      ? `${overview.totals.needsReview} ${
+          overview.totals.needsReview === 1 ? "needs" : "need"
+        } review`
+      : "Review state unavailable"
+  };
 }
 
-function OverviewStat({
-  label,
-  value
-}: {
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
+function formatCount(
+  count: number,
+  singular: string,
+  plural: string
+) {
+  return `${count} ${count === 1 ? singular : plural}`;
 }
 
 function formatTime(value: string) {

@@ -12,12 +12,14 @@ import {
   DEFAULT_MEMORY_FILTERS,
   type MemoryFilters
 } from "./filter-memories";
+import type { MemorySummary } from "@/lib/memory-types";
 import {
   MemoryFiltersBar,
+  MemoryLibrary,
   MemorySearch
 } from "./memory-filters";
 import { MemoryList, type MemoryListHandle } from "./memory-list";
-import { MemoryOverview } from "./memory-overview";
+import { MemoryDiagnostics, MemoryOverview } from "./memory-overview";
 import { MemoryReader } from "./memory-reader";
 import { useMemoryDashboard } from "./use-memory-dashboard";
 
@@ -33,8 +35,8 @@ export function MemoryDashboard() {
     getNarrowLayoutServerSnapshot
   );
   const listRef = useRef<MemoryListHandle>(null);
-  const listSlotRef = useRef<HTMLDivElement>(null);
   const readerSlotRef = useRef<HTMLDivElement>(null);
+  const readerFocusRef = useRef<HTMLElement>(null);
   const readerTitleRef = useRef<HTMLHeadingElement>(null);
   const readerFocusIntentRef = useRef(false);
   const focusReturnFrameRef = useRef<number | null>(null);
@@ -70,10 +72,17 @@ export function MemoryDashboard() {
       readerFocusIntentRef.current &&
       isNarrowLayout &&
       narrowPane === "reader" &&
-      dashboard.detail.status === "ready"
+      dashboard.detail.status !== "idle"
     ) {
-      readerFocusIntentRef.current = false;
-      readerTitleRef.current?.focus();
+      if (dashboard.detail.status === "ready") {
+        readerTitleRef.current?.focus();
+        readerFocusIntentRef.current = false;
+      } else {
+        readerFocusRef.current?.focus();
+      }
+      if (dashboard.detail.status === "error") {
+        readerFocusIntentRef.current = false;
+      }
     }
   }, [
     dashboard.detail.status,
@@ -84,7 +93,12 @@ export function MemoryDashboard() {
 
   const allEntries =
     dashboard.list.status === "ready" ? dashboard.list.data : [];
-  const sourceCount = new Set(allEntries.map((entry) => entry.source.kind)).size;
+  const libraryEntries =
+    dashboard.list.status === "ready" ? dashboard.list.data : null;
+  const sourceCount =
+    dashboard.list.status === "ready"
+      ? new Set(allEntries.map((entry) => entry.source.kind)).size
+      : null;
   const capabilities =
     dashboard.overview.status === "ready"
       ? dashboard.overview.data.capabilities
@@ -136,16 +150,27 @@ export function MemoryDashboard() {
         </div>
 
         <div className="memory-header-actions">
-          <div className="memory-daemon-status" role="status">
+          <div
+            className="memory-daemon-status"
+            role="status"
+            aria-label={connectionLabel(dashboard.list.status)}
+          >
             <span
-              className={`cv-status-dot ${connectionDotClass(
+              className={`cv-status-dot memory-status-dot ${connectionDotClass(
                 dashboard.list.status
               )}`}
               aria-hidden="true"
             />
-            <span>{connectionLabel(dashboard.list.status)}</span>
+            <span className="memory-status-symbol" aria-hidden="true">
+              {connectionSymbol(dashboard.list.status)}
+            </span>
+            <span className="memory-connection-copy">
+              {connectionLabel(dashboard.list.status)}
+            </span>
             <span aria-hidden="true" className="memory-status-divider" />
-            <span>{lastUpdatedLabel(dashboard)}</span>
+            <span className="memory-header-updated">
+              {lastUpdatedLabel(dashboard)}
+            </span>
           </div>
           <span className="memory-protection-status">
             <span aria-hidden="true">◇</span>
@@ -153,32 +178,26 @@ export function MemoryDashboard() {
           </span>
           <button
             type="button"
-            className="memory-icon-action"
-            aria-label="Refresh"
-            title="Refresh memory"
+            className="cv-action cv-action-secondary memory-refresh-action"
             onClick={dashboard.reload}
             disabled={dashboard.isRefreshing}
           >
-            <span aria-hidden="true">↻</span>
-            <span className="memory-action-label">
-              {dashboard.isRefreshing ? "Refreshing…" : "Refresh"}
-            </span>
+            {dashboard.isRefreshing ? "Refreshing…" : "Refresh"}
           </button>
           <details className="memory-session-menu">
             <summary
-              className="memory-icon-action"
+              className="cv-action cv-action-ghost memory-session-action"
               aria-label="Session actions"
-              title="Session actions"
             >
               •••
             </summary>
-            <div className="cv-menu">
+            <div className="cv-menu memory-session-popover">
               <p className="memory-session-copy">
                 This session exists only in the local dashboard process.
               </p>
               <button
                 type="button"
-                className="cv-menu-item"
+                className="cv-menu-item memory-session-logout"
                 onClick={() => void session.logout()}
               >
                 Log out
@@ -191,7 +210,7 @@ export function MemoryDashboard() {
       {hasActiveFilters ? (
         <div className="memory-filter-chips" aria-label="Active filters">
           <span className="memory-filter-chips-label">Scoped</span>
-          {filterLabels(dashboard.filters).map((label) => (
+          {filterLabels(dashboard.filters, allEntries).map((label) => (
             <span className="memory-filter-chip" key={label}>
               {label}
             </span>
@@ -202,10 +221,19 @@ export function MemoryDashboard() {
         </div>
       ) : null}
 
+      <div className="memory-mobile-filter-slot">
+        <MemoryFiltersBar
+          entries={allEntries}
+          filters={dashboard.filters}
+          onChange={setFilter}
+          onClear={clearFilters}
+        />
+      </div>
+
       <div className="memory-workspace">
         <aside className="memory-library-slot">
-          <MemoryFiltersBar
-            entries={allEntries}
+          <MemoryLibrary
+            entries={libraryEntries}
             filters={dashboard.filters}
             onChange={setFilter}
             onClear={clearFilters}
@@ -214,9 +242,15 @@ export function MemoryDashboard() {
             state={dashboard.overview}
             sourceCount={sourceCount}
           />
+          {dashboard.overview.status === "ready" ? (
+            <MemoryDiagnostics
+              overview={dashboard.overview.data}
+              sourceCount={sourceCount}
+            />
+          ) : null}
         </aside>
 
-        <div ref={listSlotRef} className="memory-list-slot">
+        <div className="memory-list-slot">
           <MemoryList
             ref={listRef}
             state={dashboard.list}
@@ -240,6 +274,7 @@ export function MemoryDashboard() {
             state={dashboard.detail}
             selectedId={dashboard.selectedId}
             capabilities={capabilities}
+            focusRef={readerFocusRef}
             titleRef={readerTitleRef}
             onBack={() => {
               readerFocusIntentRef.current = false;
@@ -273,14 +308,52 @@ function getNarrowLayoutServerSnapshot() {
   return false;
 }
 
-function filterLabels(filters: MemoryFilters) {
+function filterLabels(
+  filters: MemoryFilters,
+  entries: readonly MemorySummary[]
+) {
+  const sourceLabel = filters.source
+    ? entries.find((entry) => entry.source.kind === filters.source)?.source
+        .label
+    : null;
   return [
     filters.query ? `Search: ${filters.query}` : null,
     filters.familiar ? `Familiar: ${filters.familiar}` : null,
-    filters.source ? `Source: ${filters.source}` : null,
-    filters.verification ? `State: ${filters.verification}` : null,
-    filters.freshness !== "all" ? `Updated: ${filters.freshness}` : null
+    filters.source
+      ? `Source: ${sourceLabel ?? humanizeFilterValue(filters.source)}`
+      : null,
+    filters.verification
+      ? `State: ${verificationFilterLabel(filters.verification)}`
+      : null,
+    filters.freshness !== "all"
+      ? `Updated: ${freshnessFilterLabel(filters.freshness)}`
+      : null
   ].filter((label): label is string => Boolean(label));
+}
+
+function humanizeFilterValue(value: string) {
+  const words = value.replaceAll("-", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function verificationFilterLabel(
+  verification: Exclude<MemoryFilters["verification"], "">
+) {
+  return {
+    verified: "Verified",
+    "needs-review": "Needs review",
+    degraded: "Degraded",
+    unknown: "Unknown",
+    unavailable: "Unavailable"
+  }[verification];
+}
+
+function freshnessFilterLabel(freshness: MemoryFilters["freshness"]) {
+  return freshness === "recent"
+    ? "Last 30 days"
+    : freshness === "older"
+      ? "Older than 30 days"
+      : "Any time";
 }
 
 function connectionLabel(status: "idle" | "loading" | "ready" | "error") {
@@ -293,7 +366,19 @@ function connectionLabel(status: "idle" | "loading" | "ready" | "error") {
   return "Connecting to daemon";
 }
 
-function connectionDotClass(status: "idle" | "loading" | "ready" | "error") {
+function connectionSymbol(status: "idle" | "loading" | "ready" | "error") {
+  if (status === "ready") {
+    return "✓";
+  }
+  if (status === "error") {
+    return "!";
+  }
+  return "…";
+}
+
+function connectionDotClass(
+  status: "idle" | "loading" | "ready" | "error"
+) {
   if (status === "ready") {
     return "cv-status-dot-success";
   }
@@ -307,17 +392,17 @@ function lastUpdatedLabel(
   dashboard: ReturnType<typeof useMemoryDashboard>
 ) {
   if (dashboard.overview.status !== "ready") {
-    return "Update unavailable";
+    return "Update time unavailable";
   }
   const value =
     dashboard.overview.data.lastUpdatedAt ??
     dashboard.overview.data.generatedAt;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Update unavailable";
+    return "Update time unavailable";
   }
-  return new Intl.DateTimeFormat(undefined, {
+  return `Updated ${new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit"
-  }).format(date);
+  }).format(date)}`;
 }

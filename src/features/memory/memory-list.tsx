@@ -145,7 +145,7 @@ export const MemoryList = forwardRef<MemoryListHandle, MemoryListProps>(
       <section className="memory-list-pane" aria-label="Memory index">
         <h2
           ref={headingRef}
-          className="cv-pane-header memory-pane-title memory-list-heading"
+          className="memory-pane-title memory-list-heading"
           aria-label="Memory index"
           tabIndex={-1}
         >
@@ -251,7 +251,7 @@ const MemoryListHeading = forwardRef<HTMLHeadingElement>(
     return (
       <h2
         ref={ref}
-        className="cv-pane-header memory-list-heading"
+        className="memory-list-heading"
         tabIndex={-1}
       >
         Memory index

@@ -3,6 +3,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor
 } from "@testing-library/react";
 import { LaunchGate } from "@/components/launch-gate";
@@ -139,6 +140,7 @@ function installApi(options: {
   overview?: unknown;
   overviewStatus?: number;
   reloadList?: () => Promise<Response>;
+  detailResponse?: (id: string) => Promise<Response>;
 } = {}) {
   let listRequests = 0;
   const fetchMock = vi.fn((input: string | URL | Request) => {
@@ -168,7 +170,7 @@ function installApi(options: {
       return api(options.list ?? entries, options.listStatus ?? 200);
     }
     const id = url.split("/").at(-1)!;
-    return api(detail(id));
+    return options.detailResponse?.(id) ?? api(detail(id));
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
@@ -220,7 +222,7 @@ describe("MemoryDashboard", () => {
         "Public handoff"
       )
     );
-    expect(container.querySelector("#reader-title")).toHaveAttribute(
+    expect(container.querySelector(".memory-reader-pane")).toHaveAttribute(
       "tabindex",
       "-1"
     );
@@ -245,41 +247,40 @@ describe("MemoryDashboard", () => {
     expect(screen.queryByText("Synthetic durable fact.")).not.toBeInTheDocument();
   });
 
-  it("renders the approved read-only library, index, reader, and provenance shell", async () => {
+  it("uses the approved Library, Memory Index, and Reader workspace order", async () => {
     installMatchMedia(false);
     installApi();
-    render(
+    const { container } = render(
       <LaunchGate>
         <MemoryDashboard />
       </LaunchGate>
     );
 
+    await screen.findByLabelText("Memory summary");
+    const workspace = container.querySelector(".memory-workspace");
+    const orderedSurface = [
+      container.querySelector(".memory-library-slot"),
+      container.querySelector(".memory-list-slot"),
+      container.querySelector(".memory-reader-slot")
+    ];
+    expect(workspace).not.toBeNull();
+    expect(orderedSurface).not.toContain(null);
+    expect(workspace?.children).toHaveLength(3);
+    orderedSurface.forEach((surface, index) => {
+      expect(workspace?.children[index]).toBe(surface);
+    });
     expect(
-      await screen.findByRole("navigation", { name: "Memory library" })
-    ).toBeVisible();
+      screen.getByRole("navigation", { name: "Memory library" })
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("searchbox", { name: "Search memories" })
-    ).toHaveAttribute("placeholder", "Search memories…");
-    expect(
-      screen.getByRole("region", { name: "Memory index" })
-    ).toBeVisible();
+      screen.getByRole("region", { name: "Memory filters" })
+    ).toBeInTheDocument();
     expect(
       await screen.findByRole("complementary", {
         name: "Memory provenance"
       })
-    ).toBeVisible();
-    expect(
-      screen.getByRole("region", { name: "Memory reader" })
-    ).toBeVisible();
+    ).toBeInTheDocument();
     expect(screen.getByText("Protected by default")).toBeVisible();
-
-    expect(
-      screen.queryByRole("button", { name: "New memory" })
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText("Preview state")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Edit content" })
-    ).not.toBeInTheDocument();
   });
 
   it("does not steal focus when a row opens in the wide master-detail layout", async () => {
@@ -307,6 +308,50 @@ describe("MemoryDashboard", () => {
     expect(readerTitle).not.toHaveFocus();
   });
 
+  it("focuses one stable reader target through narrow loading and detail error", async () => {
+    installMatchMedia(true);
+    let resolveSecondDetail!: (response: Response) => void;
+    installApi({
+      detailResponse: (id) =>
+        id === firstId
+          ? api(detail(id))
+          : new Promise<Response>((resolve) => {
+              resolveSecondDetail = resolve;
+            })
+    });
+    const { container } = render(
+      <LaunchGate>
+        <MemoryDashboard />
+      </LaunchGate>
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Public handoff/ })
+    );
+    const readerPane = container.querySelector<HTMLElement>(
+      ".memory-reader-pane"
+    );
+    expect(await screen.findByText("Loading memory…")).toBeVisible();
+    await waitFor(() => expect(readerPane).toHaveFocus());
+
+    act(() => {
+      resolveSecondDetail(
+        Response.json(
+          { ok: false, code: "memory_unavailable" },
+          { status: 503 }
+        )
+      );
+    });
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Couldn't open this memory"
+      })
+    ).toBeVisible();
+    expect(container.querySelector(".memory-reader-pane")).toBe(readerPane);
+    expect(readerPane).toHaveFocus();
+  });
+
   it("keeps focus in the visible pane across responsive breakpoint changes", async () => {
     const viewport = installMatchMedia(false);
     installApi();
@@ -325,7 +370,8 @@ describe("MemoryDashboard", () => {
         "Public handoff"
       )
     );
-    const readerTitle = container.querySelector<HTMLElement>("#reader-title");
+    const readerTitle =
+      container.querySelector<HTMLElement>("#reader-title");
 
     act(() => secondRow.focus());
     act(() => viewport.setMatches(true));
@@ -471,6 +517,82 @@ describe("MemoryDashboard", () => {
 
     expect(await screen.findByText("Couldn't load memory")).toBeVisible();
     expect(screen.queryByText("No memories yet")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("Memory summary")).getByText(
+        "Sources unavailable"
+      )
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", {
+        name: "All memories, count unavailable"
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "All memories, 0" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("exposes a state-aware daemon status when narrow copy is visually compact", async () => {
+    installMatchMedia(true);
+    installApi({ list: "memory_unavailable", listStatus: 503 });
+    render(
+      <LaunchGate>
+        <MemoryDashboard />
+      </LaunchGate>
+    );
+
+    const status = await screen.findByRole("status", {
+      name: "Daemon unavailable"
+    });
+    expect(
+      within(status).getByText("!", {
+        selector: ".memory-status-symbol"
+      })
+    ).toBeInTheDocument();
+  });
+
+  it("uses human-facing labels in active filter chips", async () => {
+    installMatchMedia(false);
+    installApi();
+    render(
+      <LaunchGate>
+        <MemoryDashboard />
+      </LaunchGate>
+    );
+    await screen.findByRole("button", { name: /Architecture decisions/ });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Source" }), {
+      target: { value: "promotion" }
+    });
+    fireEvent.change(
+      screen.getAllByRole("combobox", { name: "Verification" })[0],
+      { target: { value: "needs-review" } }
+    );
+    fireEvent.change(
+      screen.getAllByRole("combobox", { name: "Freshness" })[0],
+      { target: { value: "recent" } }
+    );
+
+    const active = screen.getByLabelText("Active filters");
+    expect(within(active).getByText("Source: Promoted memory")).toBeVisible();
+    expect(within(active).getByText("State: Needs review")).toBeVisible();
+    expect(within(active).getByText("Updated: Last 30 days")).toBeVisible();
+    expect(within(active).queryByText(/needs-review/)).not.toBeInTheDocument();
+  });
+
+  it("keeps a successful empty list authoritative", async () => {
+    installMatchMedia(false);
+    installApi({ list: [] });
+    render(
+      <LaunchGate>
+        <MemoryDashboard />
+      </LaunchGate>
+    );
+
+    expect(await screen.findByText("No memories yet")).toBeVisible();
+    expect(
+      within(screen.getByLabelText("Memory summary")).getByText("0 sources")
+    ).toBeVisible();
   });
 
   it("keeps a successful empty list usable when overview fails", async () => {
@@ -488,5 +610,6 @@ describe("MemoryDashboard", () => {
 
     expect(await screen.findByText("No memories yet")).toBeVisible();
     expect(screen.getByText("Overview unavailable")).toBeVisible();
+    expect(screen.queryByText("System details")).not.toBeInTheDocument();
   });
 });

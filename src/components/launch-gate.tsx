@@ -196,7 +196,11 @@ export function LaunchGate({ children }: { children: React.ReactNode }) {
         <p className="cv-eyebrow">Local session</p>
         <h1>Session check unavailable</h1>
         <p>Private memory stays hidden until the local session can be confirmed.</p>
-        <button type="button" onClick={() => void checkSession()}>
+        <button
+          type="button"
+          className="cv-action cv-action-secondary"
+          onClick={() => void checkSession()}
+        >
           Retry session check
         </button>
       </main>

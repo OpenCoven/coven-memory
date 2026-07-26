@@ -65,6 +65,11 @@ async function requestData<T>(
     signal
   });
 
+  if (response.status === 401) {
+    onUnauthorized();
+    throw new DashboardRequestError("session_required");
+  }
+
   let body: unknown;
   try {
     body = await response.json();
@@ -72,10 +77,6 @@ async function requestData<T>(
     throw new DashboardRequestError("invalid_response");
   }
 
-  if (response.status === 401) {
-    onUnauthorized();
-    throw new DashboardRequestError("session_required");
-  }
   if (!response.ok) {
     throw new DashboardRequestError(safeResponseCode(body));
   }
@@ -290,7 +291,9 @@ export function useMemoryDashboard({
             : (data[0]?.id ?? null);
         selectedIdRef.current = next;
         setSelectedId(next);
-        setDetail(next ? loading() : idle());
+        if (next !== current) {
+          setDetail(next ? loading() : idle());
+        }
       })
       .catch((error: unknown) => {
         if (active && !controller.signal.aborted) {

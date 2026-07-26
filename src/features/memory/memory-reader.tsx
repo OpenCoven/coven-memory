@@ -5,13 +5,14 @@ import type { Ref } from "react";
 import type { MemoryDetail, MemoryOverview } from "@/lib/memory-types";
 import type { LoadState } from "./use-memory-dashboard";
 import { memoryRequiresReveal } from "./privacy";
-import { SimpleMarkdown } from "./simple-markdown";
+import { MemoryMarkdown } from "./memory-markdown";
 import { verificationLabel } from "./memory-list";
 
 type MemoryReaderProps = {
   state: LoadState<MemoryDetail>;
   selectedId: string | null;
   capabilities?: MemoryOverview["capabilities"];
+  focusRef?: Ref<HTMLElement>;
   titleRef?: Ref<HTMLHeadingElement>;
   onBack: () => void;
   onRetry: () => void;
@@ -30,16 +31,23 @@ function MemoryReaderSelection({
   state,
   selectedId,
   capabilities,
+  focusRef,
   titleRef,
   onBack,
   onRetry
 }: MemoryReaderProps) {
   const [revealedId, setRevealedId] = useState<string | null>(null);
   const [view, setView] = useState<"rendered" | "raw">("rendered");
+  const shellProps = {
+    ref: focusRef,
+    className: "memory-reader-pane",
+    tabIndex: -1,
+    "aria-label": "Memory reader"
+  } as const;
 
   if (!selectedId || state.status === "idle") {
     return (
-      <section className="memory-reader-pane" aria-label="Memory reader">
+      <section {...shellProps}>
         <ReaderBack onBack={onBack} />
         <div className="memory-reader-state">
           <span className="memory-reader-state-mark" aria-hidden="true">
@@ -48,7 +56,7 @@ function MemoryReaderSelection({
           <p className="cv-eyebrow">Reader</p>
           <h2>Select a memory to read</h2>
           <p>
-            Choose an entry from the index. Content stays hidden when privacy
+            Choose an entry from the index. Content remains hidden when privacy
             metadata is unknown.
           </p>
         </div>
@@ -59,8 +67,7 @@ function MemoryReaderSelection({
   if (state.status === "loading") {
     return (
       <section
-        className="memory-reader-pane"
-        aria-label="Memory reader"
+        {...shellProps}
         aria-busy="true"
         aria-live="polite"
       >
@@ -76,7 +83,7 @@ function MemoryReaderSelection({
 
   if (state.status === "error") {
     return (
-      <section className="memory-reader-pane" aria-label="Memory reader">
+      <section {...shellProps}>
         <ReaderBack onBack={onBack} />
         <div className="memory-reader-state">
           <span className="memory-reader-state-mark" aria-hidden="true">
@@ -103,7 +110,10 @@ function MemoryReaderSelection({
   const verification = verificationLabel(detail.verification.state);
 
   return (
-    <section className="memory-reader-pane" aria-label="Memory reader">
+    <section
+      {...shellProps}
+      aria-labelledby="reader-title"
+    >
       <ReaderBack onBack={onBack} />
       <header className="memory-reader-header">
         <div className="memory-reader-title">
@@ -117,30 +127,12 @@ function MemoryReaderSelection({
             Updated {formatDate(detail.updatedAt)}
           </p>
         </div>
-        <div className="memory-reader-tools">
-          <div className="memory-view-toggle" aria-label="Content view">
-            <button
-              type="button"
-              aria-pressed={view === "rendered"}
-              onClick={() => setView("rendered")}
-            >
-              Read
-            </button>
-            <button
-              type="button"
-              aria-pressed={view === "raw"}
-              onClick={() => setView("raw")}
-            >
-              Raw
-            </button>
-          </div>
-          <span
-            className={`memory-verification-badge memory-verification-${detail.verification.state}`}
-          >
-            <span className="memory-status-mark" aria-hidden="true" />
-            {verification}
-          </span>
-        </div>
+        <span
+          className={`memory-verification-badge memory-verification-${detail.verification.state}`}
+        >
+          <span className="memory-status-mark" aria-hidden="true" />
+          {verification}
+        </span>
       </header>
 
       <div className="memory-reader-layout">
@@ -167,16 +159,47 @@ function MemoryReaderSelection({
               >
                 Reveal memory content
               </button>
-              <small>Reveal applies only to this memory in this session.</small>
+              <small>
+                Reveal applies only to this memory in this session.
+              </small>
             </div>
-          ) : view === "rendered" ? (
-            <article className="memory-document">
-              <SimpleMarkdown content={detail.content} />
-            </article>
           ) : (
-            <pre className="memory-raw">
-              <code>{detail.content}</code>
-            </pre>
+            <div className="memory-document">
+              <div
+                className="cv-segmented memory-view-toggle"
+                role="group"
+                aria-label="Content view"
+              >
+                <button
+                  type="button"
+                  className="cv-segmented-item memory-view-button"
+                  data-active={view === "rendered"}
+                  aria-pressed={view === "rendered"}
+                  onClick={() => setView("rendered")}
+                >
+                  Rendered
+                </button>
+                <button
+                  type="button"
+                  className="cv-segmented-item memory-view-button"
+                  data-active={view === "raw"}
+                  aria-pressed={view === "raw"}
+                  onClick={() => setView("raw")}
+                >
+                  Raw
+                </button>
+              </div>
+              {view === "rendered" ? (
+                <MemoryMarkdown
+                  content={detail.content}
+                  title={detail.title}
+                />
+              ) : (
+                <pre className="memory-raw">
+                  <code>{detail.content}</code>
+                </pre>
+              )}
+            </div>
           )}
         </div>
 
@@ -210,7 +233,7 @@ function MemoryReaderSelection({
             <p>
               {capabilities?.attestationMetadata
                 ? detail.attestationMetadata
-                  ? `${detail.attestationMetadata.fieldCount} metadata fields available`
+                  ? metadataFieldLabel(detail.attestationMetadata.fieldCount)
                   : "No attestation metadata"
                 : "Attestation unavailable"}
             </p>
@@ -242,7 +265,7 @@ function ReaderBack({ onBack }: { onBack: () => void }) {
   return (
     <button
       type="button"
-      className="memory-reader-back"
+      className="cv-action cv-action-ghost memory-reader-back"
       onClick={onBack}
     >
       <span aria-hidden="true">←</span>
@@ -269,6 +292,12 @@ function supersessionLabel(detail: MemoryDetail) {
     return `Supersedes ${detail.supersession.supersedes}`;
   }
   return "No supersession links";
+}
+
+function metadataFieldLabel(fieldCount: number) {
+  return `${fieldCount} metadata ${
+    fieldCount === 1 ? "field" : "fields"
+  } available`;
 }
 
 function formatDate(value: string) {
