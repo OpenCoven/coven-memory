@@ -155,6 +155,59 @@ try {
   const token = fragment.get("launch");
   invariant(token, "launch token was not issued");
 
+  const documentResponse = await fetch(`${dashboardOrigin}/`, {
+    cache: "no-store"
+  });
+  const csp =
+    documentResponse.headers.get("content-security-policy") ?? "";
+  invariant(documentResponse.status === 200, "dashboard document failed");
+  invariant(csp.includes("'strict-dynamic'"), "strict CSP missing");
+  invariant(!csp.includes("'unsafe-inline'"), "unsafe inline CSP remained");
+  invariant(!csp.includes("'unsafe-eval'"), "production eval CSP remained");
+  invariant(
+    documentResponse.headers.get("cache-control")?.includes("no-store"),
+    "protected document was cacheable"
+  );
+  const html = await documentResponse.text();
+  const nonce = /script-src[^;]*'nonce-([^']+)'/.exec(csp)?.[1];
+  invariant(
+    nonce && html.includes(`nonce="${nonce}"`),
+    "Next nonce propagation failed"
+  );
+
+  const prefetchedDocument = await fetch(`${dashboardOrigin}/`, {
+    cache: "no-store",
+    headers: {
+      accept: "text/html",
+      purpose: "prefetch"
+    }
+  });
+  const prefetchCsp =
+    prefetchedDocument.headers.get("content-security-policy") ?? "";
+  invariant(
+    prefetchedDocument.status === 200 &&
+      prefetchedDocument.headers
+        .get("content-type")
+        ?.includes("text/html"),
+    "prefetched dashboard document failed"
+  );
+  invariant(
+    prefetchCsp.includes("'strict-dynamic'"),
+    "prefetched HTML bypassed strict CSP"
+  );
+  invariant(
+    prefetchedDocument.headers.get("cache-control")?.includes("no-store"),
+    "prefetched dashboard document was cacheable"
+  );
+  const prefetchedHtml = await prefetchedDocument.text();
+  const prefetchNonce =
+    /script-src[^;]*'nonce-([^']+)'/.exec(prefetchCsp)?.[1];
+  invariant(
+    prefetchNonce &&
+      prefetchedHtml.includes(`nonce="${prefetchNonce}"`),
+    "prefetched HTML nonce propagation failed"
+  );
+
   const unauthenticated = await fetch(`${dashboardOrigin}/api/memory`, {
     cache: "no-store"
   });
