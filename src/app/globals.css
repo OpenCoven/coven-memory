@@ -289,6 +289,20 @@ select {
   flex: none;
 }
 
+.memory-update-required {
+  max-width: 44rem;
+  margin: var(--cv-space-8) auto;
+  padding: var(--cv-space-8);
+}
+
+.memory-update-required h2 {
+  margin-block: var(--cv-space-2) var(--cv-space-3);
+}
+
+.memory-update-required .cv-action {
+  margin-top: var(--cv-space-4);
+}
+
 .memory-workspace {
   display: grid;
   min-height: 0;

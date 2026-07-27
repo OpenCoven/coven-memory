@@ -6,6 +6,7 @@ import type {
   MemoryVerificationState
 } from "@/lib/memory-types";
 import {
+  legacyMemoryListSchema,
   memoryDetailSchema,
   memoryListSchema,
   memoryOverviewSchema
@@ -19,6 +20,7 @@ type Transport = {
 type MemoryGatewayErrorCode =
   | "invalid_id"
   | "invalid_payload"
+  | "daemon_incompatible"
   | "daemon_status";
 
 const COVEN_ORIGIN_SOURCE = {
@@ -36,25 +38,41 @@ export class MemoryGatewayError extends Error {
   }
 }
 
-function parsed<T>(schema: z.ZodType<T>, body: string): T {
+function decoded(body: string): unknown {
   try {
-    const result = schema.safeParse(JSON.parse(body));
-    if (!result.success) {
-      throw new MemoryGatewayError("invalid_payload");
-    }
-    return result.data;
-  } catch (error) {
-    if (error instanceof MemoryGatewayError) {
-      throw error;
-    }
+    return JSON.parse(body);
+  } catch {
     throw new MemoryGatewayError("invalid_payload");
   }
 }
 
-function requireSuccess(response: DaemonResponse) {
-  if (response.status !== 200) {
-    throw new MemoryGatewayError("daemon_status", response.status);
+function parsed<T>(
+  schema: z.ZodType<T>,
+  body: string,
+  incompatibleSchema?: z.ZodType
+): T {
+  const value = decoded(body);
+  const result = schema.safeParse(value);
+  if (result.success) {
+    return result.data;
   }
+  if (incompatibleSchema?.safeParse(value).success) {
+    throw new MemoryGatewayError("daemon_incompatible");
+  }
+  throw new MemoryGatewayError("invalid_payload");
+}
+
+function requireSuccess(
+  response: DaemonResponse,
+  options: { missingMeansIncompatible?: boolean } = {}
+) {
+  if (response.status === 200) {
+    return;
+  }
+  if (response.status === 404 && options.missingMeansIncompatible) {
+    throw new MemoryGatewayError("daemon_incompatible");
+  }
+  throw new MemoryGatewayError("daemon_status", response.status);
 }
 
 function browserVerificationState(
@@ -68,27 +86,31 @@ export function createMemoryGateway(transport: Transport) {
     async list(): Promise<MemorySummary[]> {
       const response = await transport.get("/api/v1/memory");
       requireSuccess(response);
-      return parsed(memoryListSchema, response.body).map((entry) => ({
-        id: entry.id,
-        familiarId: entry.familiar_id,
-        title: entry.title,
-        updatedAt: entry.updated_at_iso,
-        relativeUpdatedAt: entry.updated_at,
-        excerpt: entry.excerpt,
-        source: entry.source ?? COVEN_ORIGIN_SOURCE,
-        privacy: {
-          classification: entry.privacy_classification,
-          revealRequired: entry.reveal_required
-        },
-        verification: {
-          state: browserVerificationState(entry.verification_state)
-        }
-      }));
+      return parsed(
+        memoryListSchema,
+        response.body,
+        legacyMemoryListSchema
+      ).map((entry) => ({
+          id: entry.id,
+          familiarId: entry.familiar_id,
+          title: entry.title,
+          updatedAt: entry.updated_at_iso,
+          relativeUpdatedAt: entry.updated_at,
+          excerpt: entry.excerpt,
+          source: entry.source ?? COVEN_ORIGIN_SOURCE,
+          privacy: {
+            classification: entry.privacy_classification,
+            revealRequired: entry.reveal_required
+          },
+          verification: {
+            state: browserVerificationState(entry.verification_state)
+          }
+        }));
     },
 
     async overview(): Promise<MemoryOverview> {
       const response = await transport.get("/api/v1/memory/overview");
-      requireSuccess(response);
+      requireSuccess(response, { missingMeansIncompatible: true });
       const value = parsed(memoryOverviewSchema, response.body);
       return {
         generatedAt: value.generated_at,

@@ -89,6 +89,12 @@ export async function guardedMemoryJson<T>(
           { status: 400 }
         );
       }
+      if (error.code === "daemon_incompatible") {
+        return jsonNoStore(
+          { ok: false, code: "daemon_update_required" },
+          { status: 426 }
+        );
+      }
       if (error.code === "invalid_payload") {
         return jsonNoStore(
           { ok: false, code: "invalid_daemon_payload" },

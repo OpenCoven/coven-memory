@@ -165,6 +165,23 @@ describe("memory API routes", () => {
     });
   });
 
+  it("maps daemon incompatibility to an update-required response", async () => {
+    useRuntime({
+      overview: vi
+        .fn()
+        .mockRejectedValue(new MemoryGatewayError("daemon_incompatible"))
+    });
+
+    const response = await overview(request("/api/memory/overview"));
+
+    expect(response.status).toBe(426);
+    expect(await response.json()).toEqual({
+      ok: false,
+      code: "daemon_update_required"
+    });
+    expect(response.headers.get("cache-control")).toContain("no-store");
+  });
+
   it("returns safe diagnostic codes for invalid IDs and invalid daemon data", async () => {
     useRuntime({
       detail: vi.fn().mockRejectedValue(new MemoryGatewayError("invalid_id"))

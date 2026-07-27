@@ -206,6 +206,30 @@ describe("memory gateway", () => {
     expect(transport.get).not.toHaveBeenCalled();
   });
 
+  it("classifies the legacy list contract as an update requirement", async () => {
+    const legacy = transportResponse(200, [
+      {
+        id: "sage-notes",
+        familiar_id: "sage",
+        title: "notes",
+        path: "sage/notes.md",
+        updated_at: "4m ago",
+        excerpt: "Synthetic legacy excerpt."
+      }
+    ]);
+
+    await expect(createMemoryGateway(legacy).list()).rejects.toMatchObject({
+      code: "daemon_incompatible"
+    });
+  });
+
+  it("classifies a missing overview route as an update requirement", async () => {
+    await expect(
+      createMemoryGateway(transportResponse(404, { error: "not_found" }))
+        .overview()
+    ).rejects.toMatchObject({ code: "daemon_incompatible" });
+  });
+
   it("collapses invalid JSON and schema failures into a safe error code", async () => {
     for (const value of ["local path and private body", { unexpected: true }]) {
       const error = await createMemoryGateway(

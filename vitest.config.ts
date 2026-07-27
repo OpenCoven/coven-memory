@@ -12,6 +12,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
     restoreMocks: true,
-    exclude: [...configDefaults.exclude, "**/.worktrees/**"]
+    exclude: [
+      ...configDefaults.exclude,
+      "**/.worktrees/**",
+      "scripts/dashboard-bin.test.mjs",
+      "scripts/sanitize-build-artifact.test.mjs"
+    ]
   }
 });

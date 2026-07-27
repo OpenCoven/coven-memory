@@ -26,6 +26,26 @@ intentionally absent until their authority contracts are available.
 - pnpm 10
 - a Coven daemon that exposes the Phase 1 memory reads
 
+## Install and launch
+
+Install the local dashboard executable from npm:
+
+```bash
+npm install -g @opencoven/coven-memory-dashboard
+coven-memory-dashboard
+```
+
+The executable starts the packaged production server, validates the emitted
+bare loopback URL, opens it with a shell-free platform browser command, and
+stays attached to the server process. When the dashboard is installed as the
+optional companion to the Coven npm CLI, `coven memory open` launches the same
+entrypoint.
+
+The npm artifact contains the application build and runtime code only. It
+contains no memory, daemon credential, launch token, or machine-specific build
+root. Genuine data is requested at runtime from the local Coven daemon and
+never becomes part of the package.
+
 ## Development
 
 ```bash

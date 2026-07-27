@@ -1,15 +1,49 @@
 {
   "name": "@opencoven/coven-memory-dashboard",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "type": "module",
   "engines": {
     "node": ">=24.0.0"
   },
   "packageManager": "pnpm@10.34.0",
+  "bin": {
+    "coven-memory-dashboard": "bin/coven-memory-dashboard.mjs"
+  },
+  "files": [
+    ".next/BUILD_ID",
+    ".next/app-path-routes-manifest.json",
+    ".next/build-manifest.json",
+    ".next/package.json",
+    ".next/prerender-manifest.json",
+    ".next/required-server-files.json",
+    ".next/routes-manifest.json",
+    ".next/server",
+    ".next/static",
+    "bin/coven-memory-dashboard.mjs",
+    "src/lib/memory-types.ts",
+    "src/server/api-response.ts",
+    "src/server/daemon-transport.ts",
+    "src/server/listen-options.ts",
+    "src/server/local-transport.ts",
+    "src/server/memory-contract.ts",
+    "src/server/memory-gateway.ts",
+    "src/server/request-guard.ts",
+    "src/server/runtime.ts",
+    "src/server/security-headers.ts",
+    "README.md",
+    "next-env.d.ts",
+    "next.config.ts",
+    "server.ts",
+    "tsconfig.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "tsx server.ts",
     "build": "next build",
+    "build:package": "pnpm build && node scripts/sanitize-build-artifact.mjs",
     "start": "NODE_ENV=production tsx server.ts",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
@@ -19,6 +53,8 @@
     "audit:prod": "pnpm audit --prod --audit-level high",
     "fake-daemon": "node scripts/fake-memory-daemon.mjs",
     "test:smoke": "node scripts/smoke-dashboard.mjs",
+    "test:package": "pnpm build:package && node --test scripts/dashboard-bin.test.mjs scripts/sanitize-build-artifact.test.mjs && node scripts/package-contents-test.mjs",
+    "prepack": "pnpm build:package",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:smoke && ./scripts/guard-scan.sh"
   },
   "dependencies": {
@@ -27,6 +63,7 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-markdown": "10.1.0",
+    "tsx": "4.20.6",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -39,7 +76,6 @@
     "eslint-config-next": "16.2.11",
     "jsdom": "^27.4.0",
     "playwright": "1.62.0",
-    "tsx": "^4.20.6",
     "typescript": "6.0.3",
     "vitest": "4.1.9"
   },

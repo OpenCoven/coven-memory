@@ -487,6 +487,28 @@ describe("MemoryDashboard", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("replaces memory panes with an update-required gate", async () => {
+    installMatchMedia(false);
+    installApi({
+      list: "daemon_update_required",
+      listStatus: 426,
+      overview: "daemon_update_required",
+      overviewStatus: 426
+    });
+
+    render(<MemoryDashboard />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Update Coven to open this version of Memory"
+      })
+    ).toBeVisible();
+    expect(screen.queryByText("No memories yet")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Reveal memory content" })
+    ).not.toBeInTheDocument();
+  });
+
   it("exposes a state-aware daemon status when narrow copy is visually compact", async () => {
     installMatchMedia(true);
     installApi({ list: "memory_unavailable", listStatus: 503 });
