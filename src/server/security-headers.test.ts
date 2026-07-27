@@ -36,9 +36,13 @@ describe("security headers", () => {
     expect(csp).not.toContain("'unsafe-eval'");
   });
 
-  it("adds only the Next development eval allowance", () => {
+  it("uses the script and style allowances Next development requires", () => {
     const csp = buildContentSecurityPolicy("synthetic-nonce", "development");
+    const styleDirective = csp
+      .split("; ")
+      .find((directive) => directive.startsWith("style-src"));
+
     expect(csp).toContain("'unsafe-eval'");
-    expect(csp).not.toContain("'unsafe-inline'");
+    expect(styleDirective).toBe("style-src 'self' 'unsafe-inline'");
   });
 });
