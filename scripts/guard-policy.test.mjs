@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const syntheticPrivacyPattern = ["agent", "example", "telegram", "direct", "123456"].join(":");
+const expectedGitleaksVersion = "8.30.1";
 
 async function createGuardFixture() {
   const directory = await mkdtemp(join(tmpdir(), "coven-memory-guard-"));
@@ -24,10 +25,12 @@ async function createGuardFixture() {
   );
   await copyFile(join(repositoryRoot, ".gitleaks.toml"), join(directory, ".gitleaks.toml"));
   await copyFile(join(repositoryRoot, ".gitleaks-default.toml"), join(directory, ".gitleaks-default.toml"));
+  await copyFile(join(repositoryRoot, ".gitleaks-version"), join(directory, ".gitleaks-version"));
+  await copyFile(join(repositoryRoot, "scripts/privacy-patterns.sh"), join(scriptsDirectory, "privacy-patterns.sh"));
   await writeFile(join(directory, ".gitleaks-baseline.json"), "[]\n");
   await writeFile(
     join(binDirectory, "gitleaks"),
-    "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"$GITLEAKS_LOG\"\n"
+    "#!/usr/bin/env bash\nif [ \"$1\" = version ]; then\n  printf '%s\\n' \"${GITLEAKS_VERSION}\"\nelse\n  printf '%s\\n' \"$*\" >> \"$GITLEAKS_LOG\"\nfi\n"
   );
   await chmod(join(binDirectory, "gitleaks"), 0o755);
 
@@ -35,7 +38,7 @@ async function createGuardFixture() {
   runOk("git", ["config", "user.email", "guard@example.invalid"], directory);
   runOk("git", ["config", "user.name", "Guard Test"], directory);
   runOk("git", ["config", "commit.gpgsign", "false"], directory);
-  runOk("git", ["add", "scripts/guard-scan.sh", ".gitleaks.toml"], directory);
+  runOk("git", ["add", "scripts/guard-scan.sh", "scripts/privacy-patterns.sh", ".gitleaks.toml"], directory);
   runOk("git", ["commit", "-qm", "guard fixture"], directory);
 
   return { binDirectory, directory, invocationLog };
@@ -55,10 +58,12 @@ function runOk(command, args, cwd, environment = {}) {
   return result;
 }
 
-function runGuard(fixture) {
+function runGuard(fixture, environment = {}) {
   return run("bash", ["scripts/guard-scan.sh"], fixture.directory, {
     GITLEAKS_LOG: fixture.invocationLog,
-    PATH: `${fixture.binDirectory}:${process.env.PATH}`
+    GITLEAKS_VERSION: expectedGitleaksVersion,
+    PATH: `${fixture.binDirectory}:${process.env.PATH}`,
+    ...environment
   });
 }
 
@@ -86,6 +91,39 @@ test("runs both baseline-aware gitleaks configurations", async () => {
     assert.match(invocations[1], /--baseline-path .gitleaks-baseline\.json/);
     assert.match(invocations[1], /--ignore-gitleaks-allow/);
   });
+});
+
+test("pins the gitleaks version across local guard and CI", async () => {
+  const version = (await readFile(join(repositoryRoot, ".gitleaks-version"), "utf8")).trim();
+  const workflow = await readFile(join(repositoryRoot, ".github/workflows/privacy-guard.yml"), "utf8");
+  assert.equal(version, expectedGitleaksVersion);
+  assert.match(workflow, /GITLEAKS_VERSION="\$\(tr -d '\[:space:\]' < \.gitleaks-version\)"/);
+  assert.match(workflow, /gitleaks_\$\{GITLEAKS_VERSION\}_linux_x64\.tar\.gz/);
+
+  await withGuardFixture(async (fixture) => {
+    const result = runGuard(fixture, { GITLEAKS_VERSION: "8.21.2" });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /expected gitleaks 8\.30\.1, found 8\.21\.2/);
+  });
+});
+
+test("shares shell patterns and enforces gitleaks privacy categories", async () => {
+  const patterns = await readFile(join(repositoryRoot, "scripts/privacy-patterns.sh"), "utf8");
+  const guard = await readFile(join(repositoryRoot, "scripts/guard-scan.sh"), "utf8");
+  const workflow = await readFile(join(repositoryRoot, ".github/workflows/privacy-guard.yml"), "utf8");
+  const gitleaks = await readFile(join(repositoryRoot, ".gitleaks.toml"), "utf8");
+
+  assert.match(patterns, /^PATTERNS='/m);
+  assert.match(patterns, /^PLACEHOLDERS='/m);
+  assert.match(patterns, /^ALLOW_MARKERS='/m);
+  const expectedIds = patterns.match(/^GITLEAKS_RULE_IDS='([^']+)'$/m)?.[1].split(" ");
+  assert.ok(expectedIds);
+  assert.match(guard, /source scripts\/privacy-patterns\.sh/);
+  assert.doesNotMatch(guard, /^PATTERNS=/m);
+  assert.match(workflow, /source scripts\/privacy-patterns\.sh/);
+  assert.doesNotMatch(workflow, /^\s+PATTERNS=/m);
+  const actualIds = [...gitleaks.matchAll(/^id = "([^"]+)"$/gm)].map((match) => match[1]);
+  assert.deepEqual(actualIds, expectedIds);
 });
 
 test("accepts the documented marker in the plain-pattern scan", async () => {

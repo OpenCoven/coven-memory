@@ -84,6 +84,12 @@ memory must never be copied into tests, screenshots, traces, or issue notes.
 4. **Review discipline** — PR reviewers treat any privacy hit as a blocker,
    never a warn-and-proceed. Same fail-closed principle as the promotion gate.
 
+All gitleaks invocations must use the exact version in `.gitleaks-version`.
+The local guard fails on version drift, and CI downloads that same tracked
+release. Shell-based local and PR-diff patterns live in
+`scripts/privacy-patterns.sh`; its privacy categories are checked against
+`.gitleaks.toml` by the guard-policy test.
+
 ## Contributor setup (one time, after clone)
 
 ```bash

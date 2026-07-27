@@ -18,6 +18,17 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ ! -f .gitleaks-version ]; then
+  echo "guard-scan: .gitleaks-version is missing. Fail-closed." >&2
+  exit 1
+fi
+EXPECTED_GITLEAKS_VERSION="$(tr -d '\r\n' < .gitleaks-version)"
+ACTUAL_GITLEAKS_VERSION="$(gitleaks version)"
+if [ "$ACTUAL_GITLEAKS_VERSION" != "$EXPECTED_GITLEAKS_VERSION" ]; then
+  echo "guard-scan: expected gitleaks $EXPECTED_GITLEAKS_VERSION, found $ACTUAL_GITLEAKS_VERSION. Fail-closed." >&2
+  exit 1
+fi
+
 # Optional baseline of pre-existing HISTORICAL findings (see the repo's
 # security notes). Only suppresses findings already recorded in the baseline —
 # any NEW finding still fails. Absent in repos with clean history.
@@ -35,14 +46,8 @@ else
 fi
 
 # Belt-and-suspenders plain-pattern pass over tracked text files
-# (catches what regex-tuned tools miss; patterns mirror .gitleaks.toml)
-PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[A-Za-z0-9._-]+|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
-# Mirrors the [rules.allowlist] regexes in .gitleaks.toml so both passes agree
-# on what counts as an obvious placeholder rather than a real home directory.
-PLACEHOLDERS='(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|placeholder|you)\b'
-# `gitleaks:allow` is the documented marker for reviewed custom Coven-rule
-# false positives. Keep the older guard marker for already-reviewed history.
-ALLOW_MARKERS='guard-scan-allow|gitleaks:allow'
+# (catches what regex-tuned tools miss; categories are verified against .gitleaks.toml)
+source scripts/privacy-patterns.sh
 if [ "$MODE" = "--staged" ]; then
   LIST=(git diff --cached --name-only --diff-filter=ACM -z)
 else
