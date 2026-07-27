@@ -40,7 +40,7 @@ describe("security headers", () => {
     const csp = buildContentSecurityPolicy("synthetic-nonce", "development");
     const styleDirective = csp
       .split("; ")
-      .find((directive) => directive.startsWith("style-src"));
+      .find((directive) => directive.startsWith("style-src "));
 
     expect(csp).toContain("'unsafe-eval'");
     expect(styleDirective).toBe("style-src 'self' 'unsafe-inline'");
