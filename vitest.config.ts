@@ -16,7 +16,8 @@ export default defineConfig({
       ...configDefaults.exclude,
       "**/.worktrees/**",
       "scripts/dashboard-bin.test.mjs",
-      "scripts/sanitize-build-artifact.test.mjs"
+      "scripts/sanitize-build-artifact.test.mjs",
+      "scripts/guard-policy.test.mjs"
     ]
   }
 });

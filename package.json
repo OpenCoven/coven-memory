@@ -50,12 +50,14 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:browser": "node scripts/verify-dashboard-ui.mjs",
+    "test:guard": "node --test scripts/guard-policy.test.mjs",
+    "check:instruction-sync": "bash scripts/check-instruction-sync.sh",
     "audit:prod": "pnpm audit --prod --audit-level high",
     "fake-daemon": "node scripts/fake-memory-daemon.mjs",
     "test:smoke": "node scripts/smoke-dashboard.mjs",
     "test:package": "pnpm build:package && node --test scripts/dashboard-bin.test.mjs scripts/sanitize-build-artifact.test.mjs && node scripts/package-contents-test.mjs",
     "prepack": "pnpm build:package",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:smoke && ./scripts/guard-scan.sh"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:guard && pnpm build && pnpm test:smoke && pnpm check:instruction-sync && ./scripts/guard-scan.sh"
   },
   "dependencies": {
     "@opencoven/coven-design-system": "git+https://github.com/OpenCoven/coven-design-system.git#6032f9f407982379e39ed1a40eec7a2e8b24e5c6",

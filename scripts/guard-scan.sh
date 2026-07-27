@@ -28,8 +28,10 @@ fi
 
 if [ "$MODE" = "--staged" ]; then
   gitleaks protect --staged --config .gitleaks.toml --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
+  gitleaks protect --staged --config .gitleaks-default.toml --ignore-gitleaks-allow --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
 else
   gitleaks detect --config .gitleaks.toml --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
+  gitleaks detect --config .gitleaks-default.toml --ignore-gitleaks-allow --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
 fi
 
 # Belt-and-suspenders plain-pattern pass over tracked text files
@@ -38,6 +40,9 @@ PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):
 # Mirrors the [rules.allowlist] regexes in .gitleaks.toml so both passes agree
 # on what counts as an obvious placeholder rather than a real home directory.
 PLACEHOLDERS='(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|placeholder|you)\b'
+# `gitleaks:allow` is the documented marker for reviewed custom Coven-rule
+# false positives. Keep the older guard marker for already-reviewed history.
+ALLOW_MARKERS='guard-scan-allow|gitleaks:allow'
 if [ "$MODE" = "--staged" ]; then
   LIST=(git diff --cached --name-only --diff-filter=ACM -z)
 else
@@ -53,7 +58,7 @@ while IFS= read -r -d '' f; do
     [ -f "$f" ] || continue
     CONTENT=$(cat "$f")
   fi
-  HITS=$(printf '%s' "$CONTENT" | grep -EnI "$PATTERNS" | grep -vE "$PLACEHOLDERS" | grep -v "guard-scan-allow" || true)
+  HITS=$(printf '%s' "$CONTENT" | grep -EnI "$PATTERNS" | grep -vE "$PLACEHOLDERS" | grep -vE "$ALLOW_MARKERS" || true)
   if [ -n "$HITS" ]; then
     echo "guard-scan: PRIVACY PATTERN in $f:" >&2
     echo "$HITS" | head -5 >&2
@@ -74,7 +79,7 @@ if [ "${2:-}" = "--beads" ] || [ "$MODE" = "--beads" ]; then
     echo "guard-scan: bd export FAILED — bead notes cannot be verified. Fail-closed." >&2
     exit 1
   fi
-  BEAD_HITS=$(grep -EnI "$PATTERNS" "$TMP" | grep -vE "$PLACEHOLDERS" | grep -v "guard-scan-allow" || true)
+  BEAD_HITS=$(grep -EnI "$PATTERNS" "$TMP" | grep -vE "$PLACEHOLDERS" | grep -vE "$ALLOW_MARKERS" || true)
   if [ -n "$BEAD_HITS" ]; then
     echo "guard-scan: PRIVACY PATTERN in beads database (bd export). Clean bead notes before any dolt push." >&2
     echo "$BEAD_HITS" | head -5 >&2
@@ -87,7 +92,7 @@ if [ "$FAIL" -ne 0 ]; then
   echo "" >&2
   echo "guard-scan: BLOCKED. This is a public memory-layer repo — nothing local," >&2
   echo "personal, or session-identifying may be committed. See SECURITY.md." >&2
-  echo "False positive? Add inline marker: guard-scan-allow (reviewed in PR)." >&2
+  echo "False positive for a Coven privacy rule? Add inline marker: gitleaks:allow (reviewed in PR). This never suppresses default secret rules." >&2
   exit 1
 fi
 echo "guard-scan: clean ($MODE)"

@@ -1,0 +1,5 @@
+# Default gitleaks rules only. This pass ignores inline `gitleaks:allow`
+# annotations so a custom Coven privacy-rule exception can never suppress a
+# standard secret finding.
+[extend]
+useDefault = true
