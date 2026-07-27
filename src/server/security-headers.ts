@@ -24,6 +24,10 @@ export function buildContentSecurityPolicy(
     "'strict-dynamic'",
     ...(mode === "development" ? ["'unsafe-eval'"] : [])
   ].join(" ");
+  const styleSources =
+    mode === "development"
+      ? "'self' 'unsafe-inline'"
+      : `'self' 'nonce-${nonce}'`;
 
   return [
     "default-src 'self'",
@@ -34,7 +38,7 @@ export function buildContentSecurityPolicy(
     "form-action 'self'",
     `script-src ${scriptSources}`,
     "script-src-attr 'none'",
-    `style-src 'self' 'nonce-${nonce}'`,
+    `style-src ${styleSources}`,
     "img-src 'self'",
     "font-src 'self'",
     "connect-src 'self'",
