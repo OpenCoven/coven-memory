@@ -20,6 +20,7 @@ import {
 import { MemoryList, type MemoryListHandle } from "./memory-list";
 import { MemoryDiagnostics, MemoryOverview } from "./memory-overview";
 import { MemoryReader } from "./memory-reader";
+import { MemoryUpdateRequired } from "./memory-update-required";
 import { useMemoryDashboard } from "./use-memory-dashboard";
 
 const NARROW_LAYOUT_QUERY = "(max-width: 56rem)";
@@ -199,75 +200,81 @@ export function MemoryDashboard() {
         </div>
       ) : null}
 
-      <div className="memory-mobile-filter-slot">
-        <MemoryFiltersBar
-          entries={allEntries}
-          filters={dashboard.filters}
-          onChange={setFilter}
-          onClear={clearFilters}
-        />
-      </div>
-
-      <div className="memory-workspace">
-        <aside className="memory-library-slot">
-          <MemoryLibrary
-            entries={libraryEntries}
-            filters={dashboard.filters}
-            onChange={setFilter}
-            onClear={clearFilters}
-          />
-          <MemoryOverview
-            state={dashboard.overview}
-            sourceCount={sourceCount}
-          />
-          {dashboard.overview.status === "ready" ? (
-            <MemoryDiagnostics
-              overview={dashboard.overview.data}
-              sourceCount={sourceCount}
+      {dashboard.updateRequired ? (
+        <MemoryUpdateRequired onRetry={dashboard.reload} />
+      ) : (
+        <>
+          <div className="memory-mobile-filter-slot">
+            <MemoryFiltersBar
+              entries={allEntries}
+              filters={dashboard.filters}
+              onChange={setFilter}
+              onClear={clearFilters}
             />
-          ) : null}
-        </aside>
+          </div>
 
-        <div className="memory-list-slot">
-          <MemoryList
-            ref={listRef}
-            state={dashboard.list}
-            entries={dashboard.filteredEntries}
-            selectedId={dashboard.selectedId}
-            hasActiveFilters={hasActiveFilters}
-            onSelect={dashboard.setSelectedId}
-            onOpen={(id) => {
-              cancelFocusReturn();
-              readerFocusIntentRef.current = isNarrowLayout;
-              dashboard.setSelectedId(id);
-              setNarrowPane("reader");
-            }}
-            onRetry={dashboard.reload}
-            onClearFilters={clearFilters}
-          />
-        </div>
+          <div className="memory-workspace">
+            <aside className="memory-library-slot">
+              <MemoryLibrary
+                entries={libraryEntries}
+                filters={dashboard.filters}
+                onChange={setFilter}
+                onClear={clearFilters}
+              />
+              <MemoryOverview
+                state={dashboard.overview}
+                sourceCount={sourceCount}
+              />
+              {dashboard.overview.status === "ready" ? (
+                <MemoryDiagnostics
+                  overview={dashboard.overview.data}
+                  sourceCount={sourceCount}
+                />
+              ) : null}
+            </aside>
 
-        <div ref={readerSlotRef} className="memory-reader-slot">
-          <MemoryReader
-            state={dashboard.detail}
-            selectedId={dashboard.selectedId}
-            capabilities={capabilities}
-            focusRef={readerFocusRef}
-            titleRef={readerTitleRef}
-            onBack={() => {
-              readerFocusIntentRef.current = false;
-              cancelFocusReturn();
-              setNarrowPane("list");
-              focusReturnFrameRef.current =
-                window.requestAnimationFrame(() => {
-                  focusReturnFrameRef.current = null;
-                  listRef.current?.focusSelected();
-                });
-            }}
-            onRetry={dashboard.retryDetail}
-          />
-        </div>
-      </div>
+            <div className="memory-list-slot">
+              <MemoryList
+                ref={listRef}
+                state={dashboard.list}
+                entries={dashboard.filteredEntries}
+                selectedId={dashboard.selectedId}
+                hasActiveFilters={hasActiveFilters}
+                onSelect={dashboard.setSelectedId}
+                onOpen={(id) => {
+                  cancelFocusReturn();
+                  readerFocusIntentRef.current = isNarrowLayout;
+                  dashboard.setSelectedId(id);
+                  setNarrowPane("reader");
+                }}
+                onRetry={dashboard.reload}
+                onClearFilters={clearFilters}
+              />
+            </div>
+
+            <div ref={readerSlotRef} className="memory-reader-slot">
+              <MemoryReader
+                state={dashboard.detail}
+                selectedId={dashboard.selectedId}
+                capabilities={capabilities}
+                focusRef={readerFocusRef}
+                titleRef={readerTitleRef}
+                onBack={() => {
+                  readerFocusIntentRef.current = false;
+                  cancelFocusReturn();
+                  setNarrowPane("list");
+                  focusReturnFrameRef.current =
+                    window.requestAnimationFrame(() => {
+                      focusReturnFrameRef.current = null;
+                      listRef.current?.focusSelected();
+                    });
+                }}
+                onRetry={dashboard.retryDetail}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </main>
   );
 }

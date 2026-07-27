@@ -453,11 +453,17 @@ export function useMemoryDashboard(
       setDetailVersion((value) => value + 1);
     }
   }, []);
+  const updateRequired =
+    (overview.status === "error" &&
+      overview.error === "daemon_update_required") ||
+    (list.status === "error" &&
+      list.error === "daemon_update_required");
 
   return {
     overview,
     list,
     detail,
+    updateRequired,
     selectedId,
     setSelectedId: selectMemory,
     filters,

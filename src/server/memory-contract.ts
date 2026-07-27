@@ -56,6 +56,17 @@ export const memoryListSchema = z.array(
   })
 );
 
+export const legacyMemoryListSchema = z.array(
+  z.strictObject({
+    id: z.string().min(1).max(1_024),
+    familiar_id: z.string().min(1).max(256),
+    title: z.string().min(1).max(1_024),
+    path: relativeMemoryPath,
+    updated_at: z.string().min(1).max(128),
+    excerpt: shortText
+  })
+);
+
 export const memoryOverviewSchema = z
   .strictObject({
     generated_at: isoTimestamp,

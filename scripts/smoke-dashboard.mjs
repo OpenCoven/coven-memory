@@ -182,17 +182,24 @@ try {
     "stock Next.js hosting did not fail closed"
   );
 
-  const dashboard = start(
-    process.execPath,
-    ["--import", "tsx", "server.ts"],
-    {
+  const installedDashboardEntry =
+    process.env.COVEN_MEMORY_SMOKE_DASHBOARD_ENTRY;
+  const dashboard = installedDashboardEntry
+    ? start(process.execPath, [installedDashboardEntry], {
+        NODE_ENV: "production",
+        HOST: host,
+        PORT: String(dashboardPort),
+        COVEN_MEMORY_NO_BROWSER: "1",
+        COVEN_DAEMON_URL: fakeOrigin,
+        COVEN_DAEMON_SOCKET: absentSocketPath
+      })
+    : start(process.execPath, ["--import", "tsx", "server.ts"], {
       NODE_ENV: "production",
       HOST: host,
       PORT: String(dashboardPort),
       COVEN_DAEMON_URL: fakeOrigin,
       COVEN_DAEMON_SOCKET: absentSocketPath
-    }
-  );
+    });
   const launched = await launchUrl(dashboard);
   invariant(launched.origin === dashboardOrigin, "unexpected dashboard origin");
   invariant(launched.hash === "", "dashboard URL contained a launch fragment");

@@ -100,6 +100,17 @@ describe("useMemoryDashboard", () => {
     vi.unstubAllGlobals();
   });
 
+  it("derives updateRequired from a daemon compatibility response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => json("daemon_update_required", 426))
+    );
+
+    const { result } = renderHook(() => useMemoryDashboard());
+
+    await waitFor(() => expect(result.current.updateRequired).toBe(true));
+  });
+
   it("keeps list failure distinct from a successful empty list", async () => {
     vi.stubGlobal(
       "fetch",
