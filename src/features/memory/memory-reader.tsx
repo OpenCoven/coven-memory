@@ -14,6 +14,15 @@ type MemoryReaderProps = {
   capabilities?: MemoryOverview["capabilities"];
   focusRef?: Ref<HTMLElement>;
   titleRef?: Ref<HTMLHeadingElement>;
+  inspectorCollapsed?: boolean;
+  inspectorWidth?: number;
+  inspectorWidthLimits?: { min: number; max: number };
+  desktopLayout?: boolean;
+  onToggleInspector?: () => void;
+  onInspectorKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  onInspectorPointerDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onInspectorPointerMove?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onInspectorPointerUp?: (event: React.PointerEvent<HTMLDivElement>) => void;
   onBack: () => void;
   onRetry: () => void;
 };
@@ -33,6 +42,15 @@ function MemoryReaderSelection({
   capabilities,
   focusRef,
   titleRef,
+  inspectorCollapsed = false,
+  inspectorWidth = 288,
+  inspectorWidthLimits = { min: 224, max: 384 },
+  desktopLayout = true,
+  onToggleInspector = () => undefined,
+  onInspectorKeyDown,
+  onInspectorPointerDown,
+  onInspectorPointerMove,
+  onInspectorPointerUp,
   onBack,
   onRetry
 }: MemoryReaderProps) {
@@ -108,6 +126,7 @@ function MemoryReaderSelection({
   const requiresReveal = memoryRequiresReveal(detail.privacy);
   const revealed = !requiresReveal || revealedId === detail.id;
   const verification = verificationLabel(detail.verification.state);
+  const collapsedInspector = desktopLayout && inspectorCollapsed;
 
   return (
     <section
@@ -135,7 +154,11 @@ function MemoryReaderSelection({
         </span>
       </header>
 
-      <div className="memory-reader-layout">
+      <div
+        className="memory-reader-layout"
+        data-inspector-collapsed={collapsedInspector}
+        data-inspector-width={collapsedInspector ? 44 : inspectorWidth}
+      >
         <div className="memory-reader-content">
           {!revealed ? (
             <div
@@ -203,49 +226,85 @@ function MemoryReaderSelection({
           )}
         </div>
 
-        <aside className="memory-inspector" aria-label="Memory provenance">
+        {desktopLayout && !collapsedInspector ? (
+          <div
+            className="memory-inspector-separator"
+            role="separator"
+            tabIndex={0}
+            aria-label="Resize provenance"
+            aria-orientation="vertical"
+            aria-valuemin={inspectorWidthLimits.min}
+            aria-valuemax={inspectorWidthLimits.max}
+            aria-valuenow={inspectorWidth}
+            onKeyDown={onInspectorKeyDown}
+            onPointerDown={onInspectorPointerDown}
+            onPointerMove={onInspectorPointerMove}
+            onPointerUp={onInspectorPointerUp}
+          />
+        ) : null}
+
+        <aside
+          className="memory-inspector"
+          data-collapsed={collapsedInspector}
+          aria-label="Memory provenance"
+        >
           <div className="memory-inspector-heading">
-            <span>Provenance</span>
-            <span
-              className={`memory-status-mark memory-status-${detail.verification.state}`}
-              aria-hidden="true"
-            />
+            <button
+              type="button"
+              className="memory-inspector-toggle"
+              aria-label={
+                collapsedInspector ? "Show provenance" : "Collapse provenance"
+              }
+              aria-expanded={!collapsedInspector}
+              aria-controls="memory-inspector-content"
+              onClick={onToggleInspector}
+            >
+              {collapsedInspector ? "Show provenance" : "Provenance"}
+            </button>
+            {!collapsedInspector ? (
+              <span
+                className={`memory-status-mark memory-status-${detail.verification.state}`}
+                aria-hidden="true"
+              />
+            ) : null}
           </div>
 
-          <dl className="memory-provenance-list">
-            <MetadataRow label="Source" value={detail.source.label} />
-            <MetadataRow label="Familiar" value={detail.familiarId} />
-            <MetadataRow
-              label="Privacy"
-              value={privacyLabel(detail.privacy.classification)}
-            />
-            <MetadataRow label="Verification" value={verification} />
-          </dl>
+          <div id="memory-inspector-content" hidden={collapsedInspector}>
+            <dl className="memory-provenance-list">
+              <MetadataRow label="Source" value={detail.source.label} />
+              <MetadataRow label="Familiar" value={detail.familiarId} />
+              <MetadataRow
+                label="Privacy"
+                value={privacyLabel(detail.privacy.classification)}
+              />
+              <MetadataRow label="Verification" value={verification} />
+            </dl>
 
-          <section className="memory-inspector-section">
-            <h3>Verification</h3>
-            <p>
-              <strong>{verification}.</strong> {detail.verification.reason}
-            </p>
-          </section>
-          <section className="memory-inspector-section">
-            <h3>Attestation</h3>
-            <p>
-              {capabilities?.attestationMetadata
-                ? detail.attestationMetadata
-                  ? metadataFieldLabel(detail.attestationMetadata.fieldCount)
-                  : "No attestation metadata"
-                : "Attestation unavailable"}
-            </p>
-          </section>
-          <section className="memory-inspector-section">
-            <h3>Supersession</h3>
-            <p>
-              {capabilities?.supersessionHistory
-                ? supersessionLabel(detail)
-                : "Supersession unavailable"}
-            </p>
-          </section>
+            <section className="memory-inspector-section">
+              <h3>Verification</h3>
+              <p>
+                <strong>{verification}.</strong> {detail.verification.reason}
+              </p>
+            </section>
+            <section className="memory-inspector-section">
+              <h3>Attestation</h3>
+              <p>
+                {capabilities?.attestationMetadata
+                  ? detail.attestationMetadata
+                    ? metadataFieldLabel(detail.attestationMetadata.fieldCount)
+                    : "No attestation metadata"
+                  : "Attestation unavailable"}
+              </p>
+            </section>
+            <section className="memory-inspector-section">
+              <h3>Supersession</h3>
+              <p>
+                {capabilities?.supersessionHistory
+                  ? supersessionLabel(detail)
+                  : "Supersession unavailable"}
+              </p>
+            </section>
+          </div>
         </aside>
       </div>
     </section>
