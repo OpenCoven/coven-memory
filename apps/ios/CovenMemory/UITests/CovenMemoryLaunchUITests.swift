@@ -8,6 +8,7 @@ final class CovenMemoryLaunchUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Coven Memory"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Unlock"].exists)
         XCTAssertFalse(app.staticTexts["Synthetic architecture note"].exists)
     }
 }

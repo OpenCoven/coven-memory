@@ -38,6 +38,19 @@ struct CanonicalSignatureTests {
             _ = try CanonicalRequest(method: .delete, pathAndQuery: "/api/v1/mobile/memory/overview", timestamp: 1_785_326_400, nonce: String(repeating: "A", count: 43), body: Data())
         }
     }
+
+    @Test("Accepts an opaque memory detail route")
+    func acceptsOpaqueMemoryDetailRoute() throws {
+        let request = try CanonicalRequest(
+            method: .get,
+            pathAndQuery: "/api/v1/mobile/memory/00000000-0000-0000-0000-000000000001",
+            timestamp: 1_785_326_400,
+            nonce: String(repeating: "A", count: 43),
+            body: Data()
+        )
+
+        #expect(request.pathAndQuery.hasSuffix("000000000001"))
+    }
 }
 
 private struct SignatureVector: Decodable {

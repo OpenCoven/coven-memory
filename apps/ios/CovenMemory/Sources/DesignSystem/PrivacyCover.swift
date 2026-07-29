@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct PrivacyCover: View {
+    let unlock: () -> Void
+
     var body: some View {
         ZStack {
             Color(.systemBackground)
@@ -15,6 +17,8 @@ struct PrivacyCover: View {
                 Text("Memory is shown only while this app is unlocked.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                Button("Unlock", action: unlock)
+                    .buttonStyle(.borderedProminent)
             }
             .multilineTextAlignment(.center)
             .padding(CovenTheme.regularMargin)
@@ -25,5 +29,5 @@ struct PrivacyCover: View {
 }
 
 #Preview {
-    PrivacyCover()
+    PrivacyCover(unlock: {})
 }

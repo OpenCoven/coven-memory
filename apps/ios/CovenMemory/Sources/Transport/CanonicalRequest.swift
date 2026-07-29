@@ -47,6 +47,9 @@ struct CanonicalRequest: Sendable, Equatable {
         switch path {
         case "/api/v1/mobile/capabilities", "/api/v1/mobile/memory", "/api/v1/mobile/memory/overview":
             return value == path
+        case let detailPath where detailPath.hasPrefix("/api/v1/mobile/memory/"):
+            let id = String(detailPath.dropFirst("/api/v1/mobile/memory/".count))
+            return value == path && UUID(uuidString: id) != nil
         default:
             return false
         }
