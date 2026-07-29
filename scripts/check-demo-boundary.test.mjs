@@ -42,6 +42,51 @@ test("accepts framework URL-parser vocabulary but rejects a loopback URL", async
   }
 });
 
+test("rejects network code copied into a public asset", async () => {
+  const root = await mkdtemp(join(tmpdir(), "coven-demo-public-"));
+  await mkdir(join(root, "public"));
+  await writeFile(
+    join(root, "public", "client.js"),
+    'fetch("https://example.invalid/demo.json");'
+  );
+  try {
+    await assert.rejects(
+      () => scanDemoTree(root, { source: true }),
+      /forbidden demo boundary pattern \(network request\)/
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects persistence that survives into exported output", async () => {
+  const root = await fixtureTree('localStorage.setItem("demo", "true");');
+  try {
+    await assert.rejects(
+      () => scanDemoTree(root),
+      /forbidden demo boundary pattern \(browser persistence\)/
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects binary assets instead of skipping their contents", async () => {
+  const root = await mkdtemp(join(tmpdir(), "coven-demo-binary-"));
+  await writeFile(
+    join(root, "fixture.bin"),
+    Buffer.from([0, 47, 97, 112, 105, 47, 109, 101, 109, 111, 114, 121])
+  );
+  try {
+    await assert.rejects(
+      () => scanDemoTree(root),
+      /demo boundary rejects binary asset/
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 for (const [name, contents] of [
   ["memory endpoint", 'const endpoint = "/api/memory";'],
   ["private-network URL", 'const target = "http://192.168.1.8";'],

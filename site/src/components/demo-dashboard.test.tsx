@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within
+} from "@testing-library/react";
 import { DemoDashboard } from "./demo-dashboard";
 
 describe("DemoDashboard", () => {
@@ -51,5 +57,25 @@ describe("DemoDashboard", () => {
       screen.getByRole("button", { name: /Protected example/ })
     );
     expect(screen.getByText("Content hidden in the demo")).toBeVisible();
+  });
+
+  it("moves focus into the narrow reader and restores the selected row", async () => {
+    render(<DemoDashboard />);
+
+    const selectedRow = screen.getByRole("button", {
+      name: /Protected example/
+    });
+    selectedRow.focus();
+    fireEvent.click(selectedRow);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", { name: "Protected example" })
+      ).toHaveFocus()
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Back to index/ }));
+
+    await waitFor(() => expect(selectedRow).toHaveFocus());
   });
 });

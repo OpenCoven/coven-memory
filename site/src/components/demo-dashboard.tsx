@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEMO_MEMORIES,
   DEMO_OVERVIEW,
@@ -16,6 +16,9 @@ export function DemoDashboard() {
   );
   const [revealed, setRevealed] = useState(false);
   const [narrowPane, setNarrowPane] = useState<"index" | "reader">("index");
+  const focusIntent = useRef<"index" | "reader" | null>(null);
+  const readerHeadingRef = useRef<HTMLHeadingElement>(null);
+  const rowRefs = useRef(new Map<DemoMemory["id"], HTMLButtonElement>());
   const entries = useMemo(
     () => filterDemoMemories(DEMO_MEMORIES, query),
     [query]
@@ -24,10 +27,26 @@ export function DemoDashboard() {
     DEMO_MEMORIES.find((memory) => memory.id === selectedId) ??
     DEMO_MEMORIES[0];
 
+  useEffect(() => {
+    if (focusIntent.current === "reader" && narrowPane === "reader") {
+      readerHeadingRef.current?.focus();
+      focusIntent.current = null;
+    } else if (focusIntent.current === "index" && narrowPane === "index") {
+      rowRefs.current.get(selectedId)?.focus();
+      focusIntent.current = null;
+    }
+  }, [narrowPane, selectedId]);
+
   const select = (memory: DemoMemory) => {
+    focusIntent.current = "reader";
     setSelectedId(memory.id);
     setRevealed(false);
     setNarrowPane("reader");
+  };
+
+  const showIndex = () => {
+    focusIntent.current = "index";
+    setNarrowPane("index");
   };
 
   return (
@@ -114,6 +133,13 @@ export function DemoDashboard() {
                 <li key={memory.id}>
                   <button
                     type="button"
+                    ref={(node) => {
+                      if (node) {
+                        rowRefs.current.set(memory.id, node);
+                      } else {
+                        rowRefs.current.delete(memory.id);
+                      }
+                    }}
                     aria-current={
                       memory.id === selected.id ? "true" : undefined
                     }
@@ -159,7 +185,7 @@ export function DemoDashboard() {
           <button
             type="button"
             className="demo-back"
-            onClick={() => setNarrowPane("index")}
+            onClick={showIndex}
           >
             ← Back to index
           </button>
@@ -168,7 +194,9 @@ export function DemoDashboard() {
             <span aria-hidden="true">·</span>
             <span>{verificationLabel(selected.verification)}</span>
           </div>
-          <h2>{selected.title}</h2>
+          <h2 ref={readerHeadingRef} tabIndex={-1}>
+            {selected.title}
+          </h2>
           <p className="demo-reader-meta">
             Familiar {selected.familiar} · Updated {selected.relativeUpdatedAt}
           </p>

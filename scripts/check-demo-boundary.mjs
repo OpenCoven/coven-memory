@@ -41,6 +41,9 @@ const OUTPUT_PATTERNS = [
   SOURCE_PATTERNS[4],
   SOURCE_PATTERNS[5],
   SOURCE_PATTERNS[6],
+  SOURCE_PATTERNS[9],
+  SOURCE_PATTERNS[10],
+  SOURCE_PATTERNS[11],
   SOURCE_PATTERNS[12]
 ];
 
@@ -59,7 +62,12 @@ async function regularFiles(path) {
   const entries = await readdir(path, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
-    if (entry.name === "node_modules" || entry.name === ".next") {
+    if (
+      entry.name === "node_modules" ||
+      entry.name === ".next" ||
+      entry.name === "out" ||
+      entry.name.endsWith(".tsbuildinfo")
+    ) {
       continue;
     }
     const child = resolve(path, entry.name);
@@ -82,7 +90,7 @@ export async function scanDemoTree(path, { source = false } = {}) {
   for (const file of files) {
     const bytes = await readFile(file);
     if (bytes.includes(0)) {
-      continue;
+      throw new Error(`demo boundary rejects binary asset: ${file}`);
     }
     const content = bytes.toString("utf8");
     for (const [label, pattern] of patterns) {
@@ -100,16 +108,7 @@ export async function scanDemoTree(path, { source = false } = {}) {
 async function main() {
   const root = dirname(dirname(fileURLToPath(import.meta.url)));
   const site = resolve(root, "site");
-  const sourceFiles = [
-    resolve(site, "package.json"),
-    resolve(site, "next.config.ts"),
-    resolve(site, "vercel.json"),
-    resolve(site, "src")
-  ];
-
-  for (const source of sourceFiles) {
-    await scanDemoTree(source, { source: true });
-  }
+  await scanDemoTree(site, { source: true });
   const outputFiles = await scanDemoTree(resolve(site, "out"));
   const html = await readFile(resolve(site, "out", "index.html"), "utf8");
   if (!html.includes("Synthetic demo data")) {
