@@ -18,6 +18,17 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ ! -f .gitleaks-version ]; then
+  echo "guard-scan: .gitleaks-version is missing. Fail-closed." >&2
+  exit 1
+fi
+EXPECTED_GITLEAKS_VERSION="$(tr -d '\r\n' < .gitleaks-version)"
+ACTUAL_GITLEAKS_VERSION="$(gitleaks version | tr -d '\r' | awk '{print $NF}')"
+if [ "$ACTUAL_GITLEAKS_VERSION" != "$EXPECTED_GITLEAKS_VERSION" ]; then
+  echo "guard-scan: expected gitleaks $EXPECTED_GITLEAKS_VERSION, found $ACTUAL_GITLEAKS_VERSION. Fail-closed." >&2
+  exit 1
+fi
+
 # Optional baseline of pre-existing HISTORICAL findings (see the repo's
 # security notes). Only suppresses findings already recorded in the baseline —
 # any NEW finding still fails. Absent in repos with clean history.
@@ -28,16 +39,15 @@ fi
 
 if [ "$MODE" = "--staged" ]; then
   gitleaks protect --staged --config .gitleaks.toml --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
+  gitleaks protect --staged --config .gitleaks-default.toml --ignore-gitleaks-allow --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
 else
   gitleaks detect --config .gitleaks.toml --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
+  gitleaks detect --config .gitleaks-default.toml --ignore-gitleaks-allow --no-banner --redact ${BASELINE_ARGS[@]+"${BASELINE_ARGS[@]}"} || FAIL=1
 fi
 
 # Belt-and-suspenders plain-pattern pass over tracked text files
-# (catches what regex-tuned tools miss; patterns mirror .gitleaks.toml)
-PATTERNS='agent:[a-z0-9_-]+:(telegram|imessage|discord|whatsapp|signal|webchat):|telegram:direct:[0-9]|(/Users/|/home/)[A-Za-z0-9._-]+|~/\.(openclaw|coven)/(agents|workspaces|credentials|sessions)|\+1[0-9]{10}'
-# Mirrors the [rules.allowlist] regexes in .gitleaks.toml so both passes agree
-# on what counts as an obvious placeholder rather than a real home directory.
-PLACEHOLDERS='(/Users/|/home/)(<[a-z-]+>|\$USER|USERNAME|example|placeholder|you)\b'
+# (catches what regex-tuned tools miss; categories are verified against .gitleaks.toml)
+source scripts/privacy-patterns.sh
 if [ "$MODE" = "--staged" ]; then
   LIST=(git diff --cached --name-only --diff-filter=ACM -z)
 else
@@ -53,7 +63,7 @@ while IFS= read -r -d '' f; do
     [ -f "$f" ] || continue
     CONTENT=$(cat "$f")
   fi
-  HITS=$(printf '%s' "$CONTENT" | grep -EnI "$PATTERNS" | grep -vE "$PLACEHOLDERS" | grep -v "guard-scan-allow" || true)
+  HITS=$(printf '%s' "$CONTENT" | grep -EnI "$PATTERNS" | grep -vE "$PLACEHOLDERS" | grep -vE "$ALLOW_MARKERS" || true)
   if [ -n "$HITS" ]; then
     echo "guard-scan: PRIVACY PATTERN in $f:" >&2
     echo "$HITS" | head -5 >&2
@@ -74,7 +84,7 @@ if [ "${2:-}" = "--beads" ] || [ "$MODE" = "--beads" ]; then
     echo "guard-scan: bd export FAILED — bead notes cannot be verified. Fail-closed." >&2
     exit 1
   fi
-  BEAD_HITS=$(grep -EnI "$PATTERNS" "$TMP" | grep -vE "$PLACEHOLDERS" | grep -v "guard-scan-allow" || true)
+  BEAD_HITS=$(grep -EnI "$PATTERNS" "$TMP" | grep -vE "$PLACEHOLDERS" | grep -vE "$ALLOW_MARKERS" || true)
   if [ -n "$BEAD_HITS" ]; then
     echo "guard-scan: PRIVACY PATTERN in beads database (bd export). Clean bead notes before any dolt push." >&2
     echo "$BEAD_HITS" | head -5 >&2
@@ -87,7 +97,7 @@ if [ "$FAIL" -ne 0 ]; then
   echo "" >&2
   echo "guard-scan: BLOCKED. This is a public memory-layer repo — nothing local," >&2
   echo "personal, or session-identifying may be committed. See SECURITY.md." >&2
-  echo "False positive? Add inline marker: guard-scan-allow (reviewed in PR)." >&2
+  echo "False positive for a Coven privacy rule? Add inline marker: gitleaks:allow (reviewed in PR). This never suppresses default secret rules." >&2
   exit 1
 fi
 echo "guard-scan: clean ($MODE)"

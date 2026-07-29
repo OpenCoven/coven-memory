@@ -24,7 +24,7 @@ intentionally absent until their authority contracts are available.
 
 - Node.js 24 or newer
 - pnpm 10
-- a Coven daemon that exposes the Phase 1 memory reads
+- a current Coven daemon that exposes the Phase 1 memory read contract
 
 ## Install and launch
 
@@ -68,6 +68,30 @@ COVEN_DAEMON_URL=http://127.0.0.1:43117 pnpm dev
 ```
 
 The fake daemon is loopback-only and contains no real memory.
+
+## Static demo
+
+Launch the public, synthetic-only experience in one command:
+
+```bash
+pnpm demo
+```
+
+Choose **Open demo** to browse deterministic fictional memories, or copy
+`coven memory open` to launch genuine memory beside your local daemon. The
+static demo has no server routes, daemon connection, browser persistence, or
+telemetry. It never falls back to genuine memory.
+
+Verify the exported demo boundary with:
+
+```bash
+pnpm test:demo
+pnpm demo:check
+```
+
+The Vercel project must use `site/` as its Root Directory. Root-level Vercel
+builds fail closed so the genuine local dashboard cannot be deployed in place
+of the static demo.
 
 ## Genuine local data and Tailscale
 
@@ -116,6 +140,13 @@ Runtime configuration:
 The Unix socket is always attempted first. Named hosts, wildcard addresses,
 remote addresses, credentials, HTTPS fallback, and fallback base paths are
 rejected.
+
+The dashboard reads only the current daemon API contract: the memory list,
+overview, and detail endpoints. It never reads memory files or databases
+directly, and it does not update the daemon automatically. If the daemon has
+the older list contract or no overview endpoint, the dashboard returns
+`daemon_update_required` instead of rendering legacy data. Recover by updating
+Coven, restarting the daemon, then retrying the dashboard.
 
 ## Verification
 

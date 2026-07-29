@@ -66,13 +66,15 @@ memory must never be copied into tests, screenshots, traces, or issue notes.
 ## Enforcement layers (defense in depth)
 
 1. **Pre-commit hook** — `scripts/guard-scan.sh --staged`: gitleaks (with
-   `.gitleaks.toml` Coven rules) + plain-pattern scan on staged content.
+   `.gitleaks.toml` Coven rules and a separate default-rules-only pass) +
+   plain-pattern scan on staged content.
    Fail-closed: if gitleaks is missing, the commit is blocked.
 2. **Pre-push hook** — full-tree scan **plus a fresh `bd export` scan of the
    beads database**, because bead notes sync via dolt refs to this remote too.
    Fail-closed: if `bd export` fails, the push is blocked.
-3. **CI (`privacy-guard.yml`)** — runs on every push and PR: full-history
-   gitleaks scan, tracked-tree scan, and a changed-files scan on PRs.
+3. **CI (`privacy-guard.yml`)** — runs on every push and PR: the same
+   baseline-aware full-history gitleaks and tracked-tree scan as local hooks,
+   plus a changed-files scan on PRs.
    Local hooks can be skipped; **CI cannot**. CI is the authority for
    everything that reaches a branch.
    **Known limit:** bead notes sync via `bd dolt push` (refs/dolt/data), which
@@ -81,6 +83,12 @@ memory must never be copied into tests, screenshots, traces, or issue notes.
    (fail-closed) before pushing. Never run a bare `bd dolt push`.
 4. **Review discipline** — PR reviewers treat any privacy hit as a blocker,
    never a warn-and-proceed. Same fail-closed principle as the promotion gate.
+
+All gitleaks invocations must use the exact version in `.gitleaks-version`.
+The local guard fails on version drift, and CI downloads that same tracked
+release. Shell-based local and PR-diff patterns live in
+`scripts/privacy-patterns.sh`; its privacy categories are checked against
+`.gitleaks.toml` by the guard-policy test.
 
 ## Contributor setup (one time, after clone)
 
@@ -93,12 +101,17 @@ Sync bead notes with `scripts/bd-dolt-push.sh` (guarded), not bare `bd dolt push
 
 ## False positives
 
-For the plain-pattern scan, add the inline marker `guard-scan-allow` on the
-flagged line. For a hit from a **custom Coven gitleaks rule**, use gitleaks'
-own inline marker `gitleaks:allow` on the flagged line. Either way, justify it
-in the PR description and reviewers must confirm the marker is legitimate.
-Neither marker excuses a hit from the gitleaks **default** rules — real
-secrets are never allowed, anywhere, including the guard files themselves.
+For a reviewed false positive from a **custom Coven privacy rule**, add
+`gitleaks:allow` on the flagged line. The gitleaks and plain-pattern tiers both
+honour that marker; `guard-scan-allow` remains accepted only for existing,
+reviewed annotations. Justify every marker in the PR description and have a
+reviewer confirm it is legitimate. A separate `.gitleaks-default.toml` pass
+uses `--ignore-gitleaks-allow`, so neither marker suppresses gitleaks default
+rules: real secrets are never allowed, including in the guard files.
+
+`.gitleaks-baseline.json` is optional and suppresses only recorded historical
+findings. When present, every local and CI gitleaks pass uses it; new findings
+still fail every pass.
 
 ## Bead-notes discipline (contributors and familiars)
 
