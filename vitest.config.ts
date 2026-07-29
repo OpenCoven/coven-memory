@@ -25,7 +25,8 @@ export default defineConfig({
       "scripts/demo-command.test.mjs",
       "scripts/refuse-root-vercel-build.test.mjs",
       "scripts/sanitize-build-artifact.test.mjs",
-      "scripts/guard-policy.test.mjs"
+      "scripts/guard-policy.test.mjs",
+      "scripts/check-mobile-contract.test.mjs"
     ]
   }
 });
