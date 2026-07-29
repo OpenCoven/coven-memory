@@ -17,6 +17,8 @@ type MemoryFilterProps = {
 
 type MemoryLibraryProps = Omit<MemoryFilterProps, "entries"> & {
   entries: readonly MemorySummary[] | null;
+  collapsed?: boolean;
+  onToggle?: () => void;
 };
 
 export function MemorySearch({
@@ -64,7 +66,9 @@ export function MemoryLibrary({
   entries,
   filters,
   onChange,
-  onClear
+  onClear,
+  collapsed = false,
+  onToggle = () => undefined
 }: MemoryLibraryProps) {
   const availableEntries = entries ?? [];
   const familiars = countBy(availableEntries, (entry) => entry.familiarId);
@@ -83,11 +87,20 @@ export function MemoryLibrary({
   return (
     <nav className="memory-library" aria-label="Memory library">
       <div className="memory-library-heading">
-        <span>Library</span>
-        <span>{entries?.length ?? "—"}</span>
+        <button
+          type="button"
+          className="memory-library-toggle"
+          aria-label={collapsed ? "Show Library" : "Collapse Library"}
+          aria-expanded={!collapsed}
+          aria-controls="memory-library-content"
+          onClick={onToggle}
+        >
+          {collapsed ? "Show Library" : "Library"}
+        </button>
+        {!collapsed ? <span>{entries?.length ?? "—"}</span> : null}
       </div>
 
-      <div className="memory-library-scroll">
+      <div id="memory-library-content" className="memory-library-scroll" hidden={collapsed}>
         <div className="memory-scope-group">
           <ScopeButton
             label="All memories"
@@ -168,14 +181,16 @@ export function MemoryLibrary({
         </LibrarySection>
       </div>
 
-      <button
-        type="button"
-        className="memory-library-clear"
-        onClick={onClear}
-        disabled={!hasFilters}
-      >
-        Clear filters
-      </button>
+      {!collapsed ? (
+        <button
+          type="button"
+          className="memory-library-clear"
+          onClick={onClear}
+          disabled={!hasFilters}
+        >
+          Clear filters
+        </button>
+      ) : null}
     </nav>
   );
 }

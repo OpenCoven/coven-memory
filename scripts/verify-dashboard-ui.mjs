@@ -437,6 +437,33 @@ async function assertSplitGeometry(page, label) {
   );
 }
 
+async function assertStackedReaderGeometry(page, label) {
+  const geometry = await page.evaluate(() => {
+    const content = document.querySelector(".memory-reader-content");
+    const inspector = document.querySelector(".memory-inspector");
+    const separator = document.querySelector(".memory-inspector-separator");
+    if (!content || !inspector) {
+      return null;
+    }
+    const contentRect = content.getBoundingClientRect();
+    const inspectorRect = inspector.getBoundingClientRect();
+    return {
+      contentBottom: contentRect.bottom,
+      inspectorTop: inspectorRect.top,
+      inspectorVisible:
+        inspector.getClientRects().length > 0 &&
+        getComputedStyle(inspector).display !== "none",
+      separatorVisible: Boolean(separator && separator.getClientRects().length > 0)
+    };
+  });
+  invariant(geometry, `${label} reader panes were missing`);
+  invariant(
+    geometry.inspectorVisible && geometry.inspectorTop >= geometry.contentBottom - 1,
+    `${label} provenance sidecar was not stacked after reader content`
+  );
+  invariant(!geometry.separatorVisible, `${label} exposed a desktop provenance separator`);
+}
+
 async function assertComposedFocusShadow(
   locator,
   label,
@@ -751,6 +778,111 @@ async function verifyDashboard() {
   await assertNoOverflow(page, "desktop");
   await assertSplitGeometry(page, "desktop");
 
+  await page.getByRole("button", { name: "Collapse Library" }).click();
+  invariant(
+    (await page.getByRole("button", { name: "Show Library" }).count()) === 1,
+    "Library did not collapse"
+  );
+  invariant(
+    (await page.getByRole("region", { name: "Memory index" }).count()) === 1,
+    "Memory Index disappeared when Library collapsed"
+  );
+  await assertNoOverflow(page, "collapsed Library");
+
+  await page.getByRole("button", { name: "Collapse provenance" }).click();
+  invariant(
+    (await page.getByRole("button", { name: "Show provenance" }).count()) === 1,
+    "Provenance did not collapse"
+  );
+  invariant(
+    (await page.locator(".memory-inspector").getAttribute("data-collapsed")) ===
+      "true",
+    "Provenance collapse state was not exposed"
+  );
+  invariant(
+    (await page.getByRole("button", { name: "Show Library" }).count()) === 1,
+    "Library collapse state changed while Provenance collapsed"
+  );
+  await assertNoOverflow(page, "collapsed Library and Provenance");
+
+  await page.getByRole("button", { name: "Show Library" }).click();
+  await page.getByRole("button", { name: "Show provenance" }).click();
+  invariant(
+    (await page.getByRole("button", { name: "Collapse Library" }).count()) === 1 &&
+      (await page.getByRole("button", { name: "Collapse provenance" }).count()) === 1,
+    "Library and Provenance did not restore independently"
+  );
+
+  const librarySeparator = page.getByRole("separator", {
+    name: "Resize Library"
+  });
+  await librarySeparator.focus();
+  await librarySeparator.press("ArrowLeft");
+  invariant(
+    (await librarySeparator.getAttribute("aria-valuenow")) === "200",
+    "Library separator ArrowLeft did not resize by one keyboard step"
+  );
+  await librarySeparator.press("Home");
+  invariant(
+    (await librarySeparator.getAttribute("aria-valuenow")) === "144",
+    "Library separator Home did not reach its minimum"
+  );
+  await librarySeparator.press("End");
+  invariant(
+    (await librarySeparator.getAttribute("aria-valuenow")) === "360",
+    "Library separator End did not reach its maximum"
+  );
+  await librarySeparator.press("Home");
+  for (let index = 0; index < 6; index += 1) {
+    await librarySeparator.press("ArrowRight");
+  }
+  invariant(
+    (await librarySeparator.getAttribute("aria-valuenow")) === "240",
+    "Library separator did not retain its committed keyboard width"
+  );
+
+  const provenanceSeparator = page.getByRole("separator", {
+    name: "Resize provenance"
+  });
+  await provenanceSeparator.focus();
+  await provenanceSeparator.press("ArrowLeft");
+  invariant(
+    (await provenanceSeparator.getAttribute("aria-valuenow")) === "304",
+    "Provenance separator ArrowLeft did not resize by one keyboard step"
+  );
+  await provenanceSeparator.press("Home");
+  invariant(
+    (await provenanceSeparator.getAttribute("aria-valuenow")) === "224",
+    "Provenance separator Home did not reach its minimum"
+  );
+  await provenanceSeparator.press("End");
+  invariant(
+    (await provenanceSeparator.getAttribute("aria-valuenow")) === "384",
+    "Provenance separator End did not reach its maximum"
+  );
+  await provenanceSeparator.press("Home");
+  await provenanceSeparator.press("ArrowLeft");
+  await provenanceSeparator.press("ArrowLeft");
+  invariant(
+    (await provenanceSeparator.getAttribute("aria-valuenow")) === "256",
+    "Provenance separator did not retain its committed keyboard width"
+  );
+  await assertNoOverflow(page, "keyboard-resized desktop");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Architecture decisions" }).waitFor();
+  await page.getByRole("separator", { name: "Resize Library" }).waitFor();
+  invariant(
+    (await page.getByRole("separator", { name: "Resize Library" }).getAttribute("aria-valuenow")) ===
+      "240",
+    "Library width did not persist across reload"
+  );
+  invariant(
+    (await page.getByRole("separator", { name: "Resize provenance" }).getAttribute("aria-valuenow")) ===
+      "256",
+    "Provenance width did not persist across reload"
+  );
+  await assertNoOverflow(page, "reloaded desktop");
+
   const rows = page.locator(".memory-list-row");
   const firstRow = rows.nth(0);
   const secondRow = rows.nth(1);
@@ -924,7 +1056,7 @@ async function verifyDashboard() {
 
   await page.setViewportSize({ width: 1024, height: 900 });
   await assertNoOverflow(page, "intermediate layout");
-  await assertSplitGeometry(page, "intermediate layout");
+  await assertStackedReaderGeometry(page, "intermediate layout");
   await assertRovingTabStop(page, "intermediate layout");
   const intermediateFilters = page.getByRole("button", {
     name: /^Filters/
@@ -935,8 +1067,11 @@ async function verifyDashboard() {
     (await intermediateFilters.getAttribute("aria-expanded")) === "true",
     "intermediate filter disclosure did not expand"
   );
+  const intermediateFilterRegion = page.getByRole("region", {
+    name: "Memory filters"
+  });
   for (const name of ["Familiar", "Source", "Verification", "Freshness"]) {
-    await page.getByRole("combobox", { name }).waitFor();
+    await intermediateFilterRegion.getByRole("combobox", { name }).waitFor();
   }
   await captureThemedScreenshot(
     page,
@@ -969,6 +1104,14 @@ async function verifyDashboard() {
   invariant(narrowLayout.overflow <= 1, "narrow layout overflowed horizontally");
   invariant(narrowLayout.listVisible, "narrow memory index was not visible");
   invariant(narrowLayout.readerHidden, "narrow reader preceded the memory index");
+  invariant(
+    (await page.getByRole("separator", { name: "Resize Library" }).count()) ===
+      0 &&
+      (await page
+        .getByRole("separator", { name: "Resize provenance" })
+        .count()) === 0,
+    "desktop resize separators leaked into the mobile layout"
+  );
   invariant(
     typeof narrowLayout.listTop === "number" &&
       narrowLayout.listTop < 844 * 1.35,
