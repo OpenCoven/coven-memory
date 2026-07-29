@@ -42,6 +42,9 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
+    "demo": "pnpm --dir site dev",
+    "demo:build": "pnpm --dir site build",
+    "demo:check": "pnpm demo:build && node scripts/check-demo-boundary.mjs",
     "build": "next build",
     "build:package": "pnpm build && node scripts/sanitize-build-artifact.mjs",
     "start": "NODE_ENV=production tsx server.ts",
