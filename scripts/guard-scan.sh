@@ -23,7 +23,7 @@ if [ ! -f .gitleaks-version ]; then
   exit 1
 fi
 EXPECTED_GITLEAKS_VERSION="$(tr -d '\r\n' < .gitleaks-version)"
-ACTUAL_GITLEAKS_VERSION="$(gitleaks version)"
+ACTUAL_GITLEAKS_VERSION="$(gitleaks version | tr -d '\r' | awk '{print $NF}')"
 if [ "$ACTUAL_GITLEAKS_VERSION" != "$EXPECTED_GITLEAKS_VERSION" ]; then
   echo "guard-scan: expected gitleaks $EXPECTED_GITLEAKS_VERSION, found $ACTUAL_GITLEAKS_VERSION. Fail-closed." >&2
   exit 1

@@ -30,7 +30,7 @@ async function createGuardFixture() {
   await writeFile(join(directory, ".gitleaks-baseline.json"), "[]\n");
   await writeFile(
     join(binDirectory, "gitleaks"),
-    "#!/usr/bin/env bash\nif [ \"$1\" = version ]; then\n  printf '%s\\n' \"${GITLEAKS_VERSION}\"\nelse\n  printf '%s\\n' \"$*\" >> \"$GITLEAKS_LOG\"\nfi\n"
+    "#!/usr/bin/env bash\nif [ \"$1\" = version ]; then\n  printf 'gitleaks version %s\\n' \"${GITLEAKS_VERSION}\"\nelse\n  printf '%s\\n' \"$*\" >> \"$GITLEAKS_LOG\"\nfi\n"
   );
   await chmod(join(binDirectory, "gitleaks"), 0o755);
 
@@ -134,6 +134,27 @@ test("accepts the documented marker in the plain-pattern scan", async () => {
     );
     runOk("git", ["add", "custom-rule-example.md"], fixture.directory);
     runOk("git", ["commit", "-qm", "marker fixture"], fixture.directory);
+
+    const result = runGuard(fixture);
+    assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+test("accepts documented placeholder home paths portably", async () => {
+  await withGuardFixture(async (fixture) => {
+    const placeholderHomePath = [
+      "/Users",
+      "example",
+      ".coven",
+      "workspaces",
+      "demo"
+    ].join("/");
+    await writeFile(
+      join(fixture.directory, "placeholder-example.md"),
+      `${placeholderHomePath}\n`
+    );
+    runOk("git", ["add", "placeholder-example.md"], fixture.directory);
+    runOk("git", ["commit", "-qm", "placeholder fixture"], fixture.directory);
 
     const result = runGuard(fixture);
     assert.equal(result.status, 0, result.stderr);
