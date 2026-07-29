@@ -24,7 +24,7 @@ intentionally absent until their authority contracts are available.
 
 - Node.js 24 or newer
 - pnpm 10
-- a Coven daemon that exposes the Phase 1 memory reads
+- a current Coven daemon that exposes the Phase 1 memory read contract
 
 ## Install and launch
 
@@ -116,6 +116,13 @@ Runtime configuration:
 The Unix socket is always attempted first. Named hosts, wildcard addresses,
 remote addresses, credentials, HTTPS fallback, and fallback base paths are
 rejected.
+
+The dashboard reads only the current daemon API contract: the memory list,
+overview, and detail endpoints. It never reads memory files or databases
+directly, and it does not update the daemon automatically. If the daemon has
+the older list contract or no overview endpoint, the dashboard returns
+`daemon_update_required` instead of rendering legacy data. Recover by updating
+Coven, restarting the daemon, then retrying the dashboard.
 
 ## Verification
 

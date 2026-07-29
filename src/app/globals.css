@@ -4,6 +4,15 @@ body {
   min-height: 100%;
 }
 
+html[data-cv-theme="dark"] {
+  --cv-bg-page: #111113;
+  --cv-bg-surface: #0d0d0f;
+  --cv-bg-recessed: #17171a;
+  --cv-bg-elevated: #17171a;
+  --cv-surface-interactive: #17171a;
+  --cv-border-subtle: #29282e;
+}
+
 body {
   margin: 0;
   overflow: hidden;
@@ -24,13 +33,7 @@ select {
   justify-items: start;
   gap: var(--cv-space-3);
   padding: var(--cv-space-6);
-  background:
-    radial-gradient(
-      circle at 8% -10%,
-      var(--cv-surface-accent-soft),
-      transparent 42rem
-    ),
-    var(--cv-bg-page);
+  background: var(--cv-bg-page);
   text-wrap: balance;
 }
 
@@ -949,13 +952,7 @@ select {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  background:
-    radial-gradient(
-      circle at 15% 0%,
-      var(--cv-surface-accent-soft),
-      transparent 28rem
-    ),
-    var(--cv-bg-page);
+  background: var(--cv-bg-page);
 }
 
 .memory-document {
