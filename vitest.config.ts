@@ -20,7 +20,10 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       ...excludeNestedWorktrees,
+      "scripts/check-demo-boundary.test.mjs",
       "scripts/dashboard-bin.test.mjs",
+      "scripts/demo-command.test.mjs",
+      "scripts/refuse-root-vercel-build.test.mjs",
       "scripts/sanitize-build-artifact.test.mjs"
     ]
   }

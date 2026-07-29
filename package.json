@@ -42,6 +42,10 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
+    "demo": "pnpm --dir site dev",
+    "demo:build": "pnpm --dir site build",
+    "demo:check": "pnpm demo:build && node scripts/check-demo-boundary.mjs",
+    "test:demo": "node --test scripts/demo-command.test.mjs scripts/check-demo-boundary.test.mjs scripts/refuse-root-vercel-build.test.mjs",
     "build": "next build",
     "build:package": "pnpm build && node scripts/sanitize-build-artifact.mjs",
     "start": "NODE_ENV=production tsx server.ts",
@@ -55,7 +59,7 @@
     "test:smoke": "node scripts/smoke-dashboard.mjs",
     "test:package": "pnpm build:package && node --test scripts/dashboard-bin.test.mjs scripts/sanitize-build-artifact.test.mjs && node scripts/package-contents-test.mjs",
     "prepack": "pnpm build:package",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:smoke && ./scripts/guard-scan.sh"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:demo && pnpm build && pnpm test:smoke && pnpm demo:check && ./scripts/guard-scan.sh"
   },
   "dependencies": {
     "@opencoven/coven-design-system": "git+https://github.com/OpenCoven/coven-design-system.git#6032f9f407982379e39ed1a40eec7a2e8b24e5c6",

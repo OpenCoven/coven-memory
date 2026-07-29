@@ -69,6 +69,30 @@ COVEN_DAEMON_URL=http://127.0.0.1:43117 pnpm dev
 
 The fake daemon is loopback-only and contains no real memory.
 
+## Static demo
+
+Launch the public, synthetic-only experience in one command:
+
+```bash
+pnpm demo
+```
+
+Choose **Open demo** to browse deterministic fictional memories, or copy
+`coven memory open` to launch genuine memory beside your local daemon. The
+static demo has no server routes, daemon connection, browser persistence, or
+telemetry. It never falls back to genuine memory.
+
+Verify the exported demo boundary with:
+
+```bash
+pnpm test:demo
+pnpm demo:check
+```
+
+The Vercel project must use `site/` as its Root Directory. Root-level Vercel
+builds fail closed so the genuine local dashboard cannot be deployed in place
+of the static demo.
+
 ## Genuine local data and Tailscale
 
 Each dashboard process reads only the Coven daemon on that same machine. The
