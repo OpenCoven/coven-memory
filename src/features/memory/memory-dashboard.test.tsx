@@ -164,9 +164,49 @@ function installApi(options: {
   return fetchMock;
 }
 
+function installLayoutStorage() {
+  const values = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return values.size;
+    },
+    clear: () => values.clear(),
+    getItem: (key) => values.get(key) ?? null,
+    key: (index) => [...values.keys()][index] ?? null,
+    removeItem: (key) => values.delete(key),
+    setItem: (key, value) => values.set(key, value)
+  };
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: storage
+  });
+  return storage;
+}
+
 describe("MemoryDashboard", () => {
+  const layoutStorage = new Map<string, string>();
+  const storageAdapter: Storage = {
+    get length() {
+      return layoutStorage.size;
+    },
+    clear: () => layoutStorage.clear(),
+    getItem: (key) => layoutStorage.get(key) ?? null,
+    key: (index) => [...layoutStorage.keys()][index] ?? null,
+    removeItem: (key) => layoutStorage.delete(key),
+    setItem: (key, value) => layoutStorage.set(key, value)
+  };
+
+  beforeEach(() => {
+    layoutStorage.clear();
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: storageAdapter
+    });
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
+    Reflect.deleteProperty(window, "localStorage");
     window.history.replaceState(null, "", "/");
   });
 
@@ -264,6 +304,199 @@ describe("MemoryDashboard", () => {
       })
     ).toBeInTheDocument();
     expect(screen.getByText("Protected by default")).toBeVisible();
+  });
+
+  it("collapses the Library rail without collapsing the Memory Index", async () => {
+    installMatchMedia(false);
+    installLayoutStorage();
+    installApi();
+    const { container } = render(<MemoryDashboard />);
+
+    await screen.findByRole("navigation", { name: "Memory library" });
+    const workspace = container.querySelector<HTMLElement>(".memory-workspace");
+    expect(workspace).toHaveAttribute("data-library-width", "216");
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Library" }));
+
+    expect(screen.getByRole("button", { name: "Show Library" })).toBeVisible();
+    expect(screen.getByRole("region", { name: "Memory index" })).toBeVisible();
+    expect(workspace).toHaveAttribute("data-library-width", "44");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Library" }));
+    expect(screen.getByRole("button", { name: "Collapse Library" })).toBeVisible();
+    expect(workspace).toHaveAttribute("data-library-width", "216");
+  });
+
+  it("collapses and restores Library and Provenance independently", async () => {
+    installMatchMedia(false);
+    installApi();
+    const { container } = render(<MemoryDashboard />);
+
+    await screen.findByRole("heading", { name: "Architecture decisions" });
+    const workspace = container.querySelector<HTMLElement>(".memory-workspace");
+    const inspector = screen.getByRole("complementary", {
+      name: "Memory provenance"
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Library" }));
+    expect(screen.getByRole("button", { name: "Show Library" })).toBeVisible();
+    expect(inspector).toHaveAttribute("data-collapsed", "false");
+    expect(screen.getByRole("button", { name: "Collapse provenance" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse provenance" }));
+    expect(screen.getByRole("button", { name: "Show provenance" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Show Library" })).toBeVisible();
+    expect(inspector).toHaveAttribute("data-collapsed", "true");
+    expect(workspace).toHaveAttribute("data-library-width", "44");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Library" }));
+    expect(screen.getByRole("button", { name: "Collapse Library" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Show provenance" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show provenance" }));
+    expect(screen.getByRole("button", { name: "Collapse provenance" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Collapse Library" })).toBeVisible();
+    expect(inspector).toHaveAttribute("data-collapsed", "false");
+  });
+
+  it("resizes the Library rail with keyboard steps and bounds", async () => {
+    installMatchMedia(false);
+    installLayoutStorage();
+    installApi();
+    const { container } = render(<MemoryDashboard />);
+
+    const separator = await screen.findByRole("separator", {
+      name: "Resize Library"
+    });
+    const workspace = container.querySelector<HTMLElement>(".memory-workspace");
+    expect(separator).toHaveAttribute("aria-orientation", "vertical");
+    expect(separator).toHaveAttribute("aria-valuemin", "144");
+    expect(separator).toHaveAttribute("aria-valuemax", "360");
+    expect(separator).toHaveAttribute("aria-valuenow", "216");
+
+    fireEvent.keyDown(separator, { key: "ArrowLeft" });
+    expect(separator).toHaveAttribute("aria-valuenow", "200");
+    expect(workspace).toHaveAttribute("data-library-width", "200");
+    fireEvent.keyDown(separator, { key: "ArrowRight" });
+    expect(separator).toHaveAttribute("aria-valuenow", "216");
+    fireEvent.keyDown(separator, { key: "Home" });
+    expect(separator).toHaveAttribute("aria-valuenow", "144");
+    fireEvent.keyDown(separator, { key: "End" });
+    expect(separator).toHaveAttribute("aria-valuenow", "360");
+  });
+
+  it("resizes the Provenance rail with keyboard steps and bounds", async () => {
+    installMatchMedia(false);
+    installLayoutStorage();
+    installApi();
+    const { container } = render(<MemoryDashboard />);
+
+    const separator = await screen.findByRole("separator", {
+      name: "Resize provenance"
+    });
+    const readerLayout = container.querySelector<HTMLElement>(
+      ".memory-reader-layout"
+    );
+    expect(separator).toHaveAttribute("aria-orientation", "vertical");
+    expect(separator).toHaveAttribute("aria-valuemin", "224");
+    expect(separator).toHaveAttribute("aria-valuemax", "384");
+    expect(separator).toHaveAttribute("aria-valuenow", "288");
+
+    fireEvent.keyDown(separator, { key: "ArrowLeft" });
+    expect(separator).toHaveAttribute("aria-valuenow", "304");
+    expect(readerLayout).toHaveAttribute("data-inspector-width", "304");
+    fireEvent.keyDown(separator, { key: "ArrowRight" });
+    expect(separator).toHaveAttribute("aria-valuenow", "288");
+    fireEvent.keyDown(separator, { key: "Home" });
+    expect(separator).toHaveAttribute("aria-valuenow", "224");
+    fireEvent.keyDown(separator, { key: "End" });
+    expect(separator).toHaveAttribute("aria-valuenow", "384");
+  });
+
+  it("restores collapsed rails and committed widths from storage", async () => {
+    installMatchMedia(false);
+    installLayoutStorage();
+    installApi();
+    const first = render(<MemoryDashboard />);
+    await screen.findByRole("heading", { name: "Architecture decisions" });
+
+    fireEvent.keyDown(
+      screen.getByRole("separator", { name: "Resize Library" }),
+      { key: "ArrowRight" }
+    );
+    fireEvent.keyDown(
+      screen.getByRole("separator", { name: "Resize Library" }),
+      { key: "ArrowRight" }
+    );
+    fireEvent.keyDown(
+      screen.getByRole("separator", { name: "Resize provenance" }),
+      { key: "ArrowRight" }
+    );
+    fireEvent.keyDown(
+      screen.getByRole("separator", { name: "Resize provenance" }),
+      { key: "ArrowRight" }
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Collapse Library" }));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse provenance" }));
+    first.unmount();
+
+    const second = render(<MemoryDashboard />);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Show Library" })).toBeVisible();
+      expect(screen.getByRole("button", { name: "Show provenance" })).toBeVisible();
+    });
+    expect(window.localStorage.getItem("coven-memory:layout:v1")).toContain(
+      '"collapsed":true'
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Show Library" }));
+    fireEvent.click(screen.getByRole("button", { name: "Show provenance" }));
+    expect(
+      screen.getByRole("separator", { name: "Resize Library" })
+    ).toHaveAttribute("aria-valuenow", "248");
+    expect(
+      screen.getByRole("separator", { name: "Resize provenance" })
+    ).toHaveAttribute("aria-valuenow", "256");
+    second.unmount();
+  });
+
+  it("commits Library pointer resizing only on pointerup", async () => {
+    installMatchMedia(false);
+    installLayoutStorage();
+    installApi();
+    const { container } = render(<MemoryDashboard />);
+
+    const separator = await screen.findByRole("separator", {
+      name: "Resize Library"
+    });
+    const workspace = container.querySelector<HTMLElement>(".memory-workspace");
+    const persistedBefore = window.localStorage.getItem("coven-memory:layout:v1");
+
+    fireEvent.pointerDown(separator, { pointerId: 7, clientX: 280 });
+    fireEvent.pointerMove(separator, { pointerId: 7, clientX: 300 });
+    expect(workspace).toHaveAttribute("data-library-width", "300");
+    expect(window.localStorage.getItem("coven-memory:layout:v1")).toBe(
+      persistedBefore
+    );
+
+    fireEvent.pointerUp(separator, { pointerId: 7, clientX: 300 });
+    expect(window.localStorage.getItem("coven-memory:layout:v1")).toContain(
+      '"width":300'
+    );
+  });
+
+  it("does not render the desktop Library separator in the narrow single-pane layout", async () => {
+    installMatchMedia(true);
+    installLayoutStorage();
+    installApi();
+    render(<MemoryDashboard />);
+
+    await screen.findByRole("heading", { name: "Memory" });
+    expect(
+      screen.queryByRole("separator", { name: "Resize Library" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("separator", { name: "Resize provenance" })
+    ).not.toBeInTheDocument();
   });
 
   it("does not steal focus when a row opens in the wide master-detail layout", async () => {

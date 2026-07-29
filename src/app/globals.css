@@ -307,10 +307,11 @@ select {
 }
 
 .memory-workspace {
+  position: relative;
   display: grid;
   min-height: 0;
   flex: 1 1 auto;
-  grid-template-columns: 13.5rem minmax(18rem, 21.25rem) minmax(0, 1fr);
+  grid-template-columns: calc(attr(data-library-width type(<number>), 216) * 1px) minmax(18rem, 21.25rem) minmax(0, 1fr);
   overflow: hidden;
 }
 
@@ -322,6 +323,7 @@ select {
 }
 
 .memory-library-slot {
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -369,6 +371,76 @@ select {
 .memory-pane-title > span:last-child {
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+}
+
+.memory-library-toggle {
+  min-width: 0;
+  min-height: 2.2rem;
+  margin-inline: calc(-1 * var(--cv-space-3));
+  padding-inline: var(--cv-space-3);
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  text-overflow: ellipsis;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+
+.memory-library-toggle:hover {
+  background: var(--cv-surface-interactive);
+  color: var(--cv-text-primary);
+}
+
+.memory-library-slot[data-collapsed="true"] .memory-library-heading {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.memory-library-slot[data-collapsed="true"] .memory-overview,
+.memory-library-slot[data-collapsed="true"] .memory-overview-details {
+  display: none;
+}
+
+.memory-library-slot[data-collapsed="true"] .memory-library-toggle,
+.memory-inspector[data-collapsed="true"] .memory-inspector-toggle {
+  width: 100%;
+  min-height: 8rem;
+  margin-inline: 0;
+  padding: var(--cv-space-3) var(--cv-space-2);
+  overflow: visible;
+  text-align: center;
+  text-overflow: clip;
+  white-space: normal;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.memory-library-separator {
+  position: absolute;
+  z-index: 3;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 0.5rem;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.memory-library-separator::after {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0.2rem;
+  background: transparent;
+  content: "";
+}
+
+.memory-library-separator:hover::after,
+.memory-library-separator:focus-visible::after {
+  background: var(--cv-border-focus);
 }
 
 .memory-library-scroll {
@@ -944,8 +1016,32 @@ select {
   display: grid;
   min-height: 0;
   flex: 1;
-  grid-template-columns: minmax(20rem, 1fr) minmax(14rem, 18rem);
+  grid-template-columns: minmax(20rem, 1fr) 0.5rem calc(attr(data-inspector-width type(<number>), 18) * 1px);
   overflow: hidden;
+}
+
+.memory-reader-layout[data-inspector-collapsed="true"] {
+  grid-template-columns: minmax(20rem, 1fr) calc(attr(data-inspector-width type(<number>), 18) * 1px);
+}
+
+.memory-inspector-separator {
+  position: relative;
+  z-index: 3;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.memory-inspector-separator::after {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0.2rem;
+  background: transparent;
+  content: "";
+}
+
+.memory-inspector-separator:hover::after,
+.memory-inspector-separator:focus-visible::after {
+  background: var(--cv-border-focus);
 }
 
 .memory-reader-content {
@@ -1142,6 +1238,34 @@ select {
   background: var(--cv-bg-recessed);
 }
 
+.memory-inspector-toggle {
+  min-width: 0;
+  min-height: 2.2rem;
+  margin-inline: calc(-1 * var(--cv-space-3));
+  padding-inline: var(--cv-space-3);
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: start;
+  text-overflow: ellipsis;
+  text-transform: inherit;
+  white-space: nowrap;
+}
+
+.memory-inspector-toggle:hover {
+  background: var(--cv-surface-interactive);
+  color: var(--cv-text-primary);
+}
+
+.memory-inspector[data-collapsed="true"] .memory-inspector-heading {
+  justify-content: center;
+  padding-inline: 0;
+}
+
 .memory-provenance-list {
   display: grid;
   margin: 0;
@@ -1199,38 +1323,12 @@ select {
     display: block;
   }
 
-  .memory-workspace {
-    grid-template-columns: 2.9rem minmax(17rem, 19rem) minmax(0, 1fr);
-  }
-
-  .memory-library-heading {
-    justify-content: center;
-    padding: 0;
-  }
-
-  .memory-library-heading > span:first-child,
-  .memory-library-section,
-  .memory-scope-button > span:nth-child(2),
-  .memory-scope-count,
-  .memory-library-clear,
-  .memory-overview,
-  .memory-overview-details {
-    display: none;
-  }
-
-  .memory-library-scroll {
-    padding: var(--cv-space-2);
-  }
-
-  .memory-scope-button {
-    width: 1.9rem;
-    min-height: 1.9rem;
-    justify-content: center;
-    padding: 0;
-  }
-
   .memory-reader-layout {
-    grid-template-columns: minmax(18rem, 1fr) minmax(12rem, 15rem);
+    grid-template-columns: minmax(18rem, 1fr) 0.5rem calc(attr(data-inspector-width type(<number>), 15) * 1px);
+  }
+
+  .memory-reader-layout[data-inspector-collapsed="true"] {
+    grid-template-columns: minmax(18rem, 1fr) calc(attr(data-inspector-width type(<number>), 15) * 1px);
   }
 
   .memory-protection-status {
@@ -1242,6 +1340,30 @@ select {
   .memory-header-updated,
   .memory-status-divider {
     display: none;
+  }
+
+  .memory-reader-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow-y: auto;
+  }
+
+  .memory-inspector-separator {
+    display: none;
+  }
+
+  .memory-reader-content {
+    min-height: 28rem;
+    overflow: visible;
+  }
+
+  .memory-inspector {
+    overflow: visible;
+    border-block-start: 1px solid var(--cv-border-subtle);
+    border-inline-start: 0;
+  }
+
+  .memory-inspector-heading {
+    position: static;
   }
 }
 
