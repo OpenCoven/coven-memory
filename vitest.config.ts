@@ -24,7 +24,8 @@ export default defineConfig({
       "scripts/dashboard-bin.test.mjs",
       "scripts/demo-command.test.mjs",
       "scripts/refuse-root-vercel-build.test.mjs",
-      "scripts/sanitize-build-artifact.test.mjs"
+      "scripts/sanitize-build-artifact.test.mjs",
+      "scripts/guard-policy.test.mjs"
     ]
   }
 });
