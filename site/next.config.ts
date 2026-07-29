@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { resolve } from "node:path";
 
 const nextConfig: NextConfig = {
   output: "export",
@@ -7,7 +8,7 @@ const nextConfig: NextConfig = {
     unoptimized: true
   },
   turbopack: {
-    root: process.cwd()
+    root: resolve(process.cwd(), "..")
   }
 };
 
