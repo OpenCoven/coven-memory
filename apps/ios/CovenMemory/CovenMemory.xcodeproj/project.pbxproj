@@ -1,0 +1,720 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		010C35759C2095B3DA2A1462 /* MemoryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A8356306DD6D3F069E9900D /* MemoryModels.swift */; };
+		063E3A31FA276C27614CC258 /* detail-protected.json in Resources */ = {isa = PBXBuildFile; fileRef = CAD243670749032EA3FCE458 /* detail-protected.json */; };
+		0BA11C03F23F03E3478455DF /* CredentialVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB62383EEAA7F56CBADCBAB /* CredentialVault.swift */; };
+		180BF5B0786324E5B0CB0855 /* CovenThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF65F52751EDC5341B690A37 /* CovenThemeTests.swift */; };
+		24D7674659E6747122576AE5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C6703A8B7A48791FA0E2B425 /* Assets.xcassets */; };
+		2F1521113F8A719F2233B6D8 /* detail-public.json in Resources */ = {isa = PBXBuildFile; fileRef = 2CC161183FBBF5530F4F0673 /* detail-public.json */; };
+		3DFFF9D105CEF4688254797D /* AppEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC88FD3387FD6F02A1A96313 /* AppEnvironment.swift */; };
+		4A37530637506032798B5232 /* list-success.json in Resources */ = {isa = PBXBuildFile; fileRef = 5E6AC8B919C7B1EA20648B6A /* list-success.json */; };
+		5CFC6CB467CBA736996B4D56 /* CanonicalRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE598D33298B34FBB27D7588 /* CanonicalRequest.swift */; };
+		5D95EFEB8339B30A58EA5C52 /* capabilities-success.json in Resources */ = {isa = PBXBuildFile; fileRef = 329E0F6F3588CF867692E2FD /* capabilities-success.json */; };
+		6B1371A0708D6132D0550E36 /* error-cases.json in Resources */ = {isa = PBXBuildFile; fileRef = 80B9B9BECEFDADFC3C549F1B /* error-cases.json */; };
+		6DA87FCD740726B5702462D2 /* MemoryPrivacyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4296EAA63914269FAEB75F6D /* MemoryPrivacyPolicy.swift */; };
+		764410F5A067294DC104F7CA /* CredentialVaultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C533FFBF5F5AFB81E7CCCAF0 /* CredentialVaultTests.swift */; };
+		77764231900FE195EE9531B5 /* CanonicalSignatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70D86C5792160504F9FB7393 /* CanonicalSignatureTests.swift */; };
+		7A16C96FA6B87E614AB41FD4 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93468BFBD005399D3B853D44 /* KeychainStore.swift */; };
+		899CA8A93A175A512FD6B58D /* MobileContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A270006FDF5C369D0BFE7AB /* MobileContractTests.swift */; };
+		9E154215C6E6F038E2DD9A8D /* Fixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B762A333F484DB7460EFCA /* Fixture.swift */; };
+		A266937367A6A4D3593DFDC8 /* CovenMemoryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30725A732F69B8755B6EC78A /* CovenMemoryApp.swift */; };
+		A2C0BFD368AE25693F4F47E0 /* MemoryCapabilities.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5813149F3F23A3DEC39C1B5 /* MemoryCapabilities.swift */; };
+		A5976CF2CC0E776EEDE09A6D /* NetworkError.swift in Sources */ = {isa = PBXBuildFile; fileRef = E70B8AEF02F415711BEC8DB8 /* NetworkError.swift */; };
+		A6300B98ADF006255344E77A /* signature-vector.json in Resources */ = {isa = PBXBuildFile; fileRef = 645A43B798CA6B522BABF1E1 /* signature-vector.json */; };
+		B0D2336497008531D4992B0D /* MemoryPrivacyPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D806DED6D9B4CB8F8D26C522 /* MemoryPrivacyPolicyTests.swift */; };
+		B7E5331BF6F3EF291327C32C /* DeviceSigningKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C3935CE9B5D16EEF100948 /* DeviceSigningKey.swift */; };
+		B9F7346269A76875505FA89B /* ExceptionNotice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BE2BA0D3CA4E404D14D47BB /* ExceptionNotice.swift */; };
+		BF0D5C4C90EC02DBA3EE81E6 /* CovenMemoryLaunchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61BFD93FE933570FFE8E641D /* CovenMemoryLaunchUITests.swift */; };
+		BF8FDF800D77F129813E3F58 /* APIEnvelope.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54EF138C5A78E66AD762B8E9 /* APIEnvelope.swift */; };
+		CF546EC8670A4B46914569DB /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 49D2C54125AD93C6E60A458D /* Localizable.xcstrings */; };
+		D7BB266E7101A56BCAD29661 /* MemoryFilters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C04D61EAA7CBF7F3C897510 /* MemoryFilters.swift */; };
+		D8A71C05DA210DBA372A551E /* PrivacyCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBCC823369F587134B881F54 /* PrivacyCover.swift */; };
+		DF7A2DAD367569586D600060 /* LocalAuthenticator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74379F42C886221F499BC3FD /* LocalAuthenticator.swift */; };
+		E285531EDFF3CB50515E19E3 /* MemoryFiltersTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BFFCBAEE024EE9F7FE932E0E /* MemoryFiltersTests.swift */; };
+		F56747223DDE1FF1B3CFFDA1 /* CovenTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 341916BE7E59DF787AE0BA62 /* CovenTheme.swift */; };
+		FBAF9D48576088CEA42124FB /* overview-success.json in Resources */ = {isa = PBXBuildFile; fileRef = 6D086602BF102280C1D50991 /* overview-success.json */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		5901BB8BB10DA3FAE1AB5650 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E792C5C45F460578296B0880 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9CF83052600BB4098E66EC0F;
+			remoteInfo = CovenMemory;
+		};
+		822DC822741DBF8D650E2BB2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E792C5C45F460578296B0880 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9CF83052600BB4098E66EC0F;
+			remoteInfo = CovenMemory;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		2CC161183FBBF5530F4F0673 /* detail-public.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "detail-public.json"; sourceTree = "<group>"; };
+		30725A732F69B8755B6EC78A /* CovenMemoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CovenMemoryApp.swift; sourceTree = "<group>"; };
+		329E0F6F3588CF867692E2FD /* capabilities-success.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "capabilities-success.json"; sourceTree = "<group>"; };
+		341916BE7E59DF787AE0BA62 /* CovenTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CovenTheme.swift; sourceTree = "<group>"; };
+		3A270006FDF5C369D0BFE7AB /* MobileContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileContractTests.swift; sourceTree = "<group>"; };
+		3EE8C7CD909A662B45F70735 /* CovenMemory.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CovenMemory.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4296EAA63914269FAEB75F6D /* MemoryPrivacyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryPrivacyPolicy.swift; sourceTree = "<group>"; };
+		49D2C54125AD93C6E60A458D /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		54EF138C5A78E66AD762B8E9 /* APIEnvelope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIEnvelope.swift; sourceTree = "<group>"; };
+		5E6AC8B919C7B1EA20648B6A /* list-success.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "list-success.json"; sourceTree = "<group>"; };
+		6052233DAD6ED8BD0BF08B9E /* CovenMemoryUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CovenMemoryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		61BFD93FE933570FFE8E641D /* CovenMemoryLaunchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CovenMemoryLaunchUITests.swift; sourceTree = "<group>"; };
+		645A43B798CA6B522BABF1E1 /* signature-vector.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "signature-vector.json"; sourceTree = "<group>"; };
+		6D086602BF102280C1D50991 /* overview-success.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "overview-success.json"; sourceTree = "<group>"; };
+		70D86C5792160504F9FB7393 /* CanonicalSignatureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonicalSignatureTests.swift; sourceTree = "<group>"; };
+		74379F42C886221F499BC3FD /* LocalAuthenticator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAuthenticator.swift; sourceTree = "<group>"; };
+		7BE2BA0D3CA4E404D14D47BB /* ExceptionNotice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExceptionNotice.swift; sourceTree = "<group>"; };
+		80B9B9BECEFDADFC3C549F1B /* error-cases.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "error-cases.json"; sourceTree = "<group>"; };
+		8C04D61EAA7CBF7F3C897510 /* MemoryFilters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryFilters.swift; sourceTree = "<group>"; };
+		93468BFBD005399D3B853D44 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		9A8356306DD6D3F069E9900D /* MemoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryModels.swift; sourceTree = "<group>"; };
+		AFB62383EEAA7F56CBADCBAB /* CredentialVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialVault.swift; sourceTree = "<group>"; };
+		B5813149F3F23A3DEC39C1B5 /* MemoryCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryCapabilities.swift; sourceTree = "<group>"; };
+		BFFCBAEE024EE9F7FE932E0E /* MemoryFiltersTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryFiltersTests.swift; sourceTree = "<group>"; };
+		C0C3935CE9B5D16EEF100948 /* DeviceSigningKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceSigningKey.swift; sourceTree = "<group>"; };
+		C533FFBF5F5AFB81E7CCCAF0 /* CredentialVaultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialVaultTests.swift; sourceTree = "<group>"; };
+		C6703A8B7A48791FA0E2B425 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CAD243670749032EA3FCE458 /* detail-protected.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "detail-protected.json"; sourceTree = "<group>"; };
+		CBCC823369F587134B881F54 /* PrivacyCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyCover.swift; sourceTree = "<group>"; };
+		CC88FD3387FD6F02A1A96313 /* AppEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppEnvironment.swift; sourceTree = "<group>"; };
+		CF65F52751EDC5341B690A37 /* CovenThemeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CovenThemeTests.swift; sourceTree = "<group>"; };
+		D806DED6D9B4CB8F8D26C522 /* MemoryPrivacyPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryPrivacyPolicyTests.swift; sourceTree = "<group>"; };
+		E70B8AEF02F415711BEC8DB8 /* NetworkError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkError.swift; sourceTree = "<group>"; };
+		F4B762A333F484DB7460EFCA /* Fixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fixture.swift; sourceTree = "<group>"; };
+		FE293857ABE0D050475A2924 /* CovenMemoryTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = CovenMemoryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE598D33298B34FBB27D7588 /* CanonicalRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CanonicalRequest.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0855E0997BD65B4718964060 /* Transport */ = {
+			isa = PBXGroup;
+			children = (
+				54EF138C5A78E66AD762B8E9 /* APIEnvelope.swift */,
+				FE598D33298B34FBB27D7588 /* CanonicalRequest.swift */,
+				E70B8AEF02F415711BEC8DB8 /* NetworkError.swift */,
+			);
+			path = Transport;
+			sourceTree = "<group>";
+		};
+		0978D2A7323EF622D4A70908 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				61BFD93FE933570FFE8E641D /* CovenMemoryLaunchUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+		1B2C5811B96E2358BAF9239F /* DeviceSecurity */ = {
+			isa = PBXGroup;
+			children = (
+				AFB62383EEAA7F56CBADCBAB /* CredentialVault.swift */,
+				C0C3935CE9B5D16EEF100948 /* DeviceSigningKey.swift */,
+				93468BFBD005399D3B853D44 /* KeychainStore.swift */,
+				74379F42C886221F499BC3FD /* LocalAuthenticator.swift */,
+			);
+			path = DeviceSecurity;
+			sourceTree = "<group>";
+		};
+		31EDDC095A7ED40D7E6E7A8C /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C6703A8B7A48791FA0E2B425 /* Assets.xcassets */,
+				49D2C54125AD93C6E60A458D /* Localizable.xcstrings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		64351DC1DDFF511767256D04 = {
+			isa = PBXGroup;
+			children = (
+				31EDDC095A7ED40D7E6E7A8C /* Resources */,
+				F7421060F154C7613122A9B7 /* Sources */,
+				AB709F28E176C98B2C30ACA7 /* Tests */,
+				0978D2A7323EF622D4A70908 /* UITests */,
+				E154D11E3A0E1777DB07C4E8 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		68E35EEDD969083D90810491 /* Contract */ = {
+			isa = PBXGroup;
+			children = (
+				3A270006FDF5C369D0BFE7AB /* MobileContractTests.swift */,
+			);
+			path = Contract;
+			sourceTree = "<group>";
+		};
+		6D0CCEB747B5116796C2AE59 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				341916BE7E59DF787AE0BA62 /* CovenTheme.swift */,
+				7BE2BA0D3CA4E404D14D47BB /* ExceptionNotice.swift */,
+				CBCC823369F587134B881F54 /* PrivacyCover.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		8029443252897F0B8F8494D3 /* Fixtures */ = {
+			isa = PBXGroup;
+			children = (
+				B8C0CE3CB9A05B245E2EB0AD /* mobile-memory-v1 */,
+			);
+			path = Fixtures;
+			sourceTree = "<group>";
+		};
+		90BDE365CE30C29CE5C77CC8 /* Unit */ = {
+			isa = PBXGroup;
+			children = (
+				70D86C5792160504F9FB7393 /* CanonicalSignatureTests.swift */,
+				CF65F52751EDC5341B690A37 /* CovenThemeTests.swift */,
+				C533FFBF5F5AFB81E7CCCAF0 /* CredentialVaultTests.swift */,
+				BFFCBAEE024EE9F7FE932E0E /* MemoryFiltersTests.swift */,
+				D806DED6D9B4CB8F8D26C522 /* MemoryPrivacyPolicyTests.swift */,
+			);
+			path = Unit;
+			sourceTree = "<group>";
+		};
+		AB709F28E176C98B2C30ACA7 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				68E35EEDD969083D90810491 /* Contract */,
+				8029443252897F0B8F8494D3 /* Fixtures */,
+				D1B02BEC7F41234DA4C73351 /* Support */,
+				90BDE365CE30C29CE5C77CC8 /* Unit */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		B8C0CE3CB9A05B245E2EB0AD /* mobile-memory-v1 */ = {
+			isa = PBXGroup;
+			children = (
+				329E0F6F3588CF867692E2FD /* capabilities-success.json */,
+				CAD243670749032EA3FCE458 /* detail-protected.json */,
+				2CC161183FBBF5530F4F0673 /* detail-public.json */,
+				80B9B9BECEFDADFC3C549F1B /* error-cases.json */,
+				5E6AC8B919C7B1EA20648B6A /* list-success.json */,
+				6D086602BF102280C1D50991 /* overview-success.json */,
+				645A43B798CA6B522BABF1E1 /* signature-vector.json */,
+			);
+			path = "mobile-memory-v1";
+			sourceTree = "<group>";
+		};
+		D1B02BEC7F41234DA4C73351 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				F4B762A333F484DB7460EFCA /* Fixture.swift */,
+			);
+			path = Support;
+			sourceTree = "<group>";
+		};
+		DD9200FCD7F3468A304DB688 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				CC88FD3387FD6F02A1A96313 /* AppEnvironment.swift */,
+				30725A732F69B8755B6EC78A /* CovenMemoryApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E154D11E3A0E1777DB07C4E8 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3EE8C7CD909A662B45F70735 /* CovenMemory.app */,
+				FE293857ABE0D050475A2924 /* CovenMemoryTests.xctest */,
+				6052233DAD6ED8BD0BF08B9E /* CovenMemoryUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E7C0BC4FC4D0CE14FFEED51A /* MemoryDomain */ = {
+			isa = PBXGroup;
+			children = (
+				B5813149F3F23A3DEC39C1B5 /* MemoryCapabilities.swift */,
+				8C04D61EAA7CBF7F3C897510 /* MemoryFilters.swift */,
+				9A8356306DD6D3F069E9900D /* MemoryModels.swift */,
+				4296EAA63914269FAEB75F6D /* MemoryPrivacyPolicy.swift */,
+			);
+			path = MemoryDomain;
+			sourceTree = "<group>";
+		};
+		F7421060F154C7613122A9B7 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				DD9200FCD7F3468A304DB688 /* App */,
+				6D0CCEB747B5116796C2AE59 /* DesignSystem */,
+				1B2C5811B96E2358BAF9239F /* DeviceSecurity */,
+				E7C0BC4FC4D0CE14FFEED51A /* MemoryDomain */,
+				0855E0997BD65B4718964060 /* Transport */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		394C84A3CB14BAA481240569 /* CovenMemoryUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA65CCB0A7BBD481951D43F9 /* Build configuration list for PBXNativeTarget "CovenMemoryUITests" */;
+			buildPhases = (
+				8E9DEDB60D8DF78EB136A0DD /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DEF7D7315AD39F0158080A7D /* PBXTargetDependency */,
+			);
+			name = CovenMemoryUITests;
+			packageProductDependencies = (
+			);
+			productName = CovenMemoryUITests;
+			productReference = 6052233DAD6ED8BD0BF08B9E /* CovenMemoryUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		9CF83052600BB4098E66EC0F /* CovenMemory */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FBBA0738C65FB2AD8553828A /* Build configuration list for PBXNativeTarget "CovenMemory" */;
+			buildPhases = (
+				36F72306BEAAC493F69619A2 /* Sources */,
+				75B63848B659C54E33A38907 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CovenMemory;
+			packageProductDependencies = (
+			);
+			productName = CovenMemory;
+			productReference = 3EE8C7CD909A662B45F70735 /* CovenMemory.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C03E4E32AA8CB8C84A623B3F /* CovenMemoryTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1886F4D3CF1DA665D0357986 /* Build configuration list for PBXNativeTarget "CovenMemoryTests" */;
+			buildPhases = (
+				0DB920DF064565BEB357B5DF /* Sources */,
+				5E4494E4A88795538680AB96 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A9F441A687976A2F9B364563 /* PBXTargetDependency */,
+			);
+			name = CovenMemoryTests;
+			packageProductDependencies = (
+			);
+			productName = CovenMemoryTests;
+			productReference = FE293857ABE0D050475A2924 /* CovenMemoryTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E792C5C45F460578296B0880 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					394C84A3CB14BAA481240569 = {
+						TestTargetID = 9CF83052600BB4098E66EC0F;
+					};
+				};
+			};
+			buildConfigurationList = CAA2FD134EE1D2F43FF24973 /* Build configuration list for PBXProject "CovenMemory" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 64351DC1DDFF511767256D04;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = E154D11E3A0E1777DB07C4E8 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9CF83052600BB4098E66EC0F /* CovenMemory */,
+				C03E4E32AA8CB8C84A623B3F /* CovenMemoryTests */,
+				394C84A3CB14BAA481240569 /* CovenMemoryUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5E4494E4A88795538680AB96 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5D95EFEB8339B30A58EA5C52 /* capabilities-success.json in Resources */,
+				063E3A31FA276C27614CC258 /* detail-protected.json in Resources */,
+				2F1521113F8A719F2233B6D8 /* detail-public.json in Resources */,
+				6B1371A0708D6132D0550E36 /* error-cases.json in Resources */,
+				4A37530637506032798B5232 /* list-success.json in Resources */,
+				FBAF9D48576088CEA42124FB /* overview-success.json in Resources */,
+				A6300B98ADF006255344E77A /* signature-vector.json in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		75B63848B659C54E33A38907 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24D7674659E6747122576AE5 /* Assets.xcassets in Resources */,
+				CF546EC8670A4B46914569DB /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0DB920DF064565BEB357B5DF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				77764231900FE195EE9531B5 /* CanonicalSignatureTests.swift in Sources */,
+				180BF5B0786324E5B0CB0855 /* CovenThemeTests.swift in Sources */,
+				764410F5A067294DC104F7CA /* CredentialVaultTests.swift in Sources */,
+				9E154215C6E6F038E2DD9A8D /* Fixture.swift in Sources */,
+				E285531EDFF3CB50515E19E3 /* MemoryFiltersTests.swift in Sources */,
+				B0D2336497008531D4992B0D /* MemoryPrivacyPolicyTests.swift in Sources */,
+				899CA8A93A175A512FD6B58D /* MobileContractTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		36F72306BEAAC493F69619A2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF8FDF800D77F129813E3F58 /* APIEnvelope.swift in Sources */,
+				3DFFF9D105CEF4688254797D /* AppEnvironment.swift in Sources */,
+				5CFC6CB467CBA736996B4D56 /* CanonicalRequest.swift in Sources */,
+				A266937367A6A4D3593DFDC8 /* CovenMemoryApp.swift in Sources */,
+				F56747223DDE1FF1B3CFFDA1 /* CovenTheme.swift in Sources */,
+				0BA11C03F23F03E3478455DF /* CredentialVault.swift in Sources */,
+				B7E5331BF6F3EF291327C32C /* DeviceSigningKey.swift in Sources */,
+				B9F7346269A76875505FA89B /* ExceptionNotice.swift in Sources */,
+				7A16C96FA6B87E614AB41FD4 /* KeychainStore.swift in Sources */,
+				DF7A2DAD367569586D600060 /* LocalAuthenticator.swift in Sources */,
+				A2C0BFD368AE25693F4F47E0 /* MemoryCapabilities.swift in Sources */,
+				D7BB266E7101A56BCAD29661 /* MemoryFilters.swift in Sources */,
+				010C35759C2095B3DA2A1462 /* MemoryModels.swift in Sources */,
+				6DA87FCD740726B5702462D2 /* MemoryPrivacyPolicy.swift in Sources */,
+				A5976CF2CC0E776EEDE09A6D /* NetworkError.swift in Sources */,
+				D8A71C05DA210DBA372A551E /* PrivacyCover.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8E9DEDB60D8DF78EB136A0DD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF0D5C4C90EC02DBA3EE81E6 /* CovenMemoryLaunchUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A9F441A687976A2F9B364563 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9CF83052600BB4098E66EC0F /* CovenMemory */;
+			targetProxy = 5901BB8BB10DA3FAE1AB5650 /* PBXContainerItemProxy */;
+		};
+		DEF7D7315AD39F0158080A7D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9CF83052600BB4098E66EC0F /* CovenMemory */;
+			targetProxy = 822DC822741DBF8D650E2BB2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0E9800C3EBDA51004B5C3133 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = CovenMemory;
+				PRODUCT_NAME = CovenMemory;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4C5F7E9E69F93F4300EE2131 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.opencoven.memory.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CovenMemory;
+			};
+			name = Debug;
+		};
+		74B3474258BCE116408E18BA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.opencoven.memory.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = CovenMemory;
+			};
+			name = Release;
+		};
+		9BF434657B25A50662081684 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_MODULE_NAME = CovenMemory;
+				PRODUCT_NAME = CovenMemory;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B32CA8B12E7BF6A6C201A305 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.opencoven.memory.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CovenMemory.app/CovenMemory";
+			};
+			name = Debug;
+		};
+		B85BDEB352672396E8BE81DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = CovenAccent;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/CovenMemory.entitlements;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.opencoven.memory;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C1CBD6EBBC5621F7F9D8FDD4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = ai.opencoven.memory.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CovenMemory.app/CovenMemory";
+			};
+			name = Release;
+		};
+		C3A5331EBE052932AD5C6C49 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = CovenAccent;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_ENTITLEMENTS = Config/CovenMemory.entitlements;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.opencoven.memory;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1886F4D3CF1DA665D0357986 /* Build configuration list for PBXNativeTarget "CovenMemoryTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B32CA8B12E7BF6A6C201A305 /* Debug */,
+				C1CBD6EBBC5621F7F9D8FDD4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BA65CCB0A7BBD481951D43F9 /* Build configuration list for PBXNativeTarget "CovenMemoryUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4C5F7E9E69F93F4300EE2131 /* Debug */,
+				74B3474258BCE116408E18BA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CAA2FD134EE1D2F43FF24973 /* Build configuration list for PBXProject "CovenMemory" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B85BDEB352672396E8BE81DE /* Debug */,
+				C3A5331EBE052932AD5C6C49 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		FBBA0738C65FB2AD8553828A /* Build configuration list for PBXNativeTarget "CovenMemory" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0E9800C3EBDA51004B5C3133 /* Debug */,
+				9BF434657B25A50662081684 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E792C5C45F460578296B0880 /* Project object */;
+}
