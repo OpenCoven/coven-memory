@@ -4,10 +4,13 @@ import { fileURLToPath } from "node:url";
 
 const SOURCE_PATTERNS = [
   ["memory or session API path", /\/api\/(?:memory|session)\b/i],
-  ["loopback host", /\b(?:localhost|127\.0\.0\.1|0\.0\.0\.0)\b/i],
+  [
+    "loopback host",
+    /(?:\blocalhost\b|\b127(?:\.\d{1,3}){3}\b|\b0\.0\.0\.0\b|\[::1\])/i
+  ],
   [
     "private-network URL",
-    /https?:\/\/(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/i
+    /https?:\/\/(?:10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|169\.254\.|\[(?:f[cd][0-9a-f:]*|fe[89ab][0-9a-f:]*)\])/i
   ],
   ["Tailscale MagicDNS host", /\.ts\.net\b/i],
   ["genuine daemon configuration", /\bCOVEN_(?:HOME|DAEMON)[A-Z_]*\b/],
@@ -34,7 +37,7 @@ const OUTPUT_PATTERNS = [
   SOURCE_PATTERNS[0],
   [
     "loopback URL",
-    /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::|\/|["'])/i
+    /https?:\/\/(?:localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1\])(?::|\/|["'])/i
   ],
   SOURCE_PATTERNS[2],
   SOURCE_PATTERNS[3],

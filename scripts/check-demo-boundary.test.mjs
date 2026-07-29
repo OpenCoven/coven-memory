@@ -42,6 +42,31 @@ test("accepts framework URL-parser vocabulary but rejects a loopback URL", async
   }
 });
 
+for (const [name, target] of [
+  ["IPv4 loopback range", "http://127.4.3.2:43117"],
+  ["IPv6 loopback", "http://[::1]:43117"],
+  ["Tailscale CGNAT", "https://100.100.100.100/fixture"],
+  ["link-local metadata", "http://169.254.169.254/latest/meta-data"],
+  ["IPv6 unique-local", "https://[fd7a:115c:a1e0::1]/fixture"],
+  ["IPv6 link-local", "http://[fe80::1]/fixture"]
+]) {
+  test(`rejects ${name} links in source and output`, async () => {
+    const root = await fixtureTree(`<a href="${target}">fixture</a>`);
+    try {
+      await assert.rejects(
+        () => scanDemoTree(root, { source: true }),
+        /forbidden demo boundary pattern/
+      );
+      await assert.rejects(
+        () => scanDemoTree(root),
+        /forbidden demo boundary pattern/
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
 test("rejects network code copied into a public asset", async () => {
   const root = await mkdtemp(join(tmpdir(), "coven-demo-public-"));
   await mkdir(join(root, "public"));
