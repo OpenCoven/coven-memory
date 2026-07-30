@@ -1,0 +1,10 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Coven Memory" : {},
+    "Your memories stay on your Coven host." : {},
+    "Memory is shown only while this app is unlocked." : {},
+    "Preparing your private library…" : {}
+  },
+  "version" : "1.0"
+}
