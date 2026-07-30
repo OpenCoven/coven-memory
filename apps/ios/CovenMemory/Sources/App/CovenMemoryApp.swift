@@ -2,9 +2,18 @@ import SwiftUI
 
 @main
 struct CovenMemoryApp: App {
-    private let environment = AppEnvironment.live
+    private let environment: AppEnvironment
     @Environment(\.scenePhase) private var scenePhase
     @State private var privacyLock = PrivacyLockModel()
+    @State private var coordinator: LaunchCoordinator
+
+    init() {
+        let environment = AppEnvironment.live
+        self.environment = environment
+        _coordinator = State(
+            initialValue: environment.makeLaunchCoordinator()
+        )
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -14,12 +23,18 @@ struct CovenMemoryApp: App {
                         Task { await unlock() }
                     }
                 } else {
-                    LaunchView(environment: environment)
+                    LaunchRootView(
+                        coordinator: coordinator,
+                        lock: lock
+                    )
                 }
             }
-                .tint(CovenTheme.accent)
+            .tint(CovenTheme.accent)
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase != .active {
+                coordinator.lock()
+            }
             privacyLock.handle(scenePhase: phase)
         }
     }
@@ -31,40 +46,15 @@ struct CovenMemoryApp: App {
                 reason: "Unlock your private Coven memory."
             )
             privacyLock.unlock()
+            await coordinator.start()
         } catch {
             // Keep the privacy cover visible after cancellation or failure.
         }
     }
-}
 
-private struct LaunchView: View {
-    let environment: AppEnvironment
-
-    var body: some View {
-        VStack(spacing: CovenTheme.Spacing.large) {
-            Image(systemName: "sparkles")
-                .font(.title2)
-                .foregroundStyle(CovenTheme.accent)
-                .accessibilityHidden(true)
-            Text("Coven Memory")
-                .font(.title.bold())
-            Text("Preparing your private library…")
-                .font(.body)
-                .foregroundStyle(.secondary)
-        }
-        .multilineTextAlignment(.center)
-        .padding(CovenTheme.regularMargin)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+    @MainActor
+    private func lock() {
+        coordinator.lock()
+        privacyLock.lock()
     }
-}
-
-#Preview("Light") {
-    LaunchView(environment: .live)
-}
-
-#Preview("Dark, accessibility text") {
-    LaunchView(environment: .live)
-        .preferredColorScheme(.dark)
-        .environment(\.dynamicTypeSize, .accessibility5)
 }

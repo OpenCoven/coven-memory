@@ -19,6 +19,7 @@ actor KeychainStore: CredentialDataStoring {
     private let account = "paired-host"
 
     func read() async throws -> Data? {
+        try Task.checkCancellation()
         var query = baseQuery
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -37,20 +38,24 @@ actor KeychainStore: CredentialDataStoring {
     }
 
     func add(_ data: Data) async throws {
+        try Task.checkCancellation()
         var query = baseQuery
         query[kSecValueData as String] = data
         query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         query[kSecAttrSynchronizable as String] = false
+        try Task.checkCancellation()
         let status = SecItemAdd(query as CFDictionary, nil)
         guard status == errSecSuccess else { throw map(status) }
     }
 
     func update(_ data: Data) async throws {
+        try Task.checkCancellation()
         let status = SecItemUpdate(baseQuery as CFDictionary, [kSecValueData as String: data] as CFDictionary)
         guard status == errSecSuccess else { throw map(status) }
     }
 
     func delete() async throws {
+        try Task.checkCancellation()
         let status = SecItemDelete(baseQuery as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw map(status) }
     }

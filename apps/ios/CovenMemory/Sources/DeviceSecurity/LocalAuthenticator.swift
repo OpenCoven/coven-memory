@@ -1,6 +1,21 @@
 import Foundation
 import LocalAuthentication
 
+struct AuthenticationGrant: @unchecked Sendable, Equatable {
+    fileprivate let identifier: UUID
+    fileprivate let context: LAContext?
+
+    init() {
+        identifier = UUID()
+        context = nil
+    }
+
+    init(context: LAContext) {
+        identifier = UUID()
+        self.context = context
+    }
+}
+
 protocol LocalAuthenticating: Sendable {
     func authenticate(reason: String) async throws -> AuthenticationGrant
 }

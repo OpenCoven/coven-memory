@@ -3,7 +3,7 @@ import Foundation
 struct MemoryOverview: Codable, Sendable, Hashable {
     let generatedAt: Date
     let totals: MemoryTotals
-    let lastUpdatedAt: Date
+    let lastUpdatedAt: Date?
     let capabilities: MemoryCapabilities
     let verification: OverviewVerification
 
@@ -14,7 +14,16 @@ struct MemoryOverview: Codable, Sendable, Hashable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         generatedAt = try container.decode(Date.self, forKey: .generatedAt)
         totals = try container.decode(MemoryTotals.self, forKey: .totals)
-        lastUpdatedAt = try container.decode(Date.self, forKey: .lastUpdatedAt)
+        guard container.contains(.lastUpdatedAt) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.lastUpdatedAt,
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "lastUpdatedAt is required but may be null"
+                )
+            )
+        }
+        lastUpdatedAt = try container.decodeIfPresent(Date.self, forKey: .lastUpdatedAt)
         capabilities = try container.decode(MemoryCapabilities.self, forKey: .capabilities)
         verification = try container.decode(OverviewVerification.self, forKey: .verification)
     }
@@ -68,8 +77,8 @@ struct MemoryCapabilities: Codable, Sendable, Hashable {
 struct OverviewVerification: Codable, Sendable, Hashable {
     let state: MemoryVerificationState
     let checkedAt: Date
-    let manifest: String
-    let index: String
+    let manifest: String?
+    let index: String?
     let issues: [String]
 
     private enum CodingKeys: String, CodingKey { case state, checkedAt, manifest, index, issues }
@@ -83,10 +92,28 @@ struct OverviewVerification: Codable, Sendable, Hashable {
         }
         self.state = state
         checkedAt = try container.decode(Date.self, forKey: .checkedAt)
-        manifest = try Validated.decodeString(container, key: .manifest, field: "verification.manifest", maximum: 64)
-        index = try Validated.decodeString(container, key: .index, field: "verification.index", maximum: 64)
+        guard container.contains(.manifest) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.manifest,
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "verification.manifest is required but may be null"
+                )
+            )
+        }
+        manifest = try Validated.optionalString(container, key: .manifest, field: "verification.manifest", maximum: 4_096)
+        guard container.contains(.index) else {
+            throw DecodingError.keyNotFound(
+                CodingKeys.index,
+                DecodingError.Context(
+                    codingPath: container.codingPath,
+                    debugDescription: "verification.index is required but may be null"
+                )
+            )
+        }
+        index = try Validated.optionalString(container, key: .index, field: "verification.index", maximum: 4_096)
         issues = try container.decode([String].self, forKey: .issues)
-        guard issues.count <= 128, issues.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 512 }) else {
+        guard issues.count <= 1_000, issues.allSatisfy({ $0.utf8.count <= 4_096 }) else {
             throw DecodingError.dataCorruptedError(forKey: .issues, in: container, debugDescription: "invalid overview issues")
         }
     }

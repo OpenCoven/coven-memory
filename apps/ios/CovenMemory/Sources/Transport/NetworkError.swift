@@ -18,8 +18,8 @@ extension NetworkError: LocalizedError {
         case .invalidResponse: "Coven returned an invalid response."
         case .protocolUnsupported: "This Coven host needs an update."
         case .responseTooLarge: "The response exceeded the safe limit."
-        case .authenticationRequired: "Unlock Coven to continue."
-        case .connectionFailed: "Coven could not be reached."
+        case .authenticationRequired: "Pair with Cave again."
+        case .connectionFailed: "Cave could not be reached."
         }
     }
 }

@@ -53,9 +53,23 @@ struct MemoryFiltersTests {
 
 private extension Fixture {
     static func summaries() throws -> [MemorySummary] {
-        try JSONDecoder.mobile.decode(
-            APIEnvelope<[MemorySummary]>.self,
-            from: data("list-success.json")
-        ).data ?? []
+        guard let root = try JSONSerialization.jsonObject(
+            with: data("list-success.json")
+        ) as? [String: Any],
+        let payload = root["data"] else {
+            throw FixturePayloadError.invalidShape
+        }
+        let payloadData = try JSONSerialization.data(
+            withJSONObject: payload,
+            options: [.sortedKeys]
+        )
+        return try JSONDecoder.mobile.decode(
+            [MemorySummary].self,
+            from: payloadData
+        )
     }
+}
+
+private enum FixturePayloadError: Error {
+    case invalidShape
 }

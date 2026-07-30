@@ -184,7 +184,7 @@ struct AttestationMetadata: Codable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         try Validated.rejectUnknownKeys(container, allowed: ["fieldCount"])
         fieldCount = try container.decode(Int.self, forKey: .fieldCount)
-        guard (0...64).contains(fieldCount) else {
+        guard (0...100).contains(fieldCount) else {
             throw DecodingError.dataCorruptedError(forKey: .fieldCount, in: container, debugDescription: "invalid attestation field count")
         }
     }
