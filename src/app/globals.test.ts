@@ -25,4 +25,20 @@ describe("standalone dashboard theme", () => {
       /\.memory-reader-content\s*\{[^}]*background:\s*var\(--cv-bg-page\);/
     );
   });
+
+  it("uses cross-browser custom properties for resizable rail widths", () => {
+    expect(stylesheet).not.toMatch(/attr\(data-(?:library|inspector)-width/);
+    expect(stylesheet).toContain(
+      "var(--memory-library-width, 216px)"
+    );
+    expect(stylesheet).toContain(
+      "var(--memory-inspector-width, 288px)"
+    );
+    expect(stylesheet).toContain('[data-library-width="216"]');
+    expect(stylesheet).toContain('[data-inspector-width="288"]');
+    expect(stylesheet).toMatch(
+      /\.memory-list-row\[aria-current="true"\]:focus\s*\{/
+    );
+    expect(stylesheet).toMatch(/\.memory-reader-pane:focus\s*\{/);
+  });
 });

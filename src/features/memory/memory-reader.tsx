@@ -127,6 +127,7 @@ function MemoryReaderSelection({
   const revealed = !requiresReveal || revealedId === detail.id;
   const verification = verificationLabel(detail.verification.state);
   const collapsedInspector = desktopLayout && inspectorCollapsed;
+  const resolvedInspectorWidth = collapsedInspector ? 44 : inspectorWidth;
 
   return (
     <section
@@ -157,7 +158,7 @@ function MemoryReaderSelection({
       <div
         className="memory-reader-layout"
         data-inspector-collapsed={collapsedInspector}
-        data-inspector-width={collapsedInspector ? 44 : inspectorWidth}
+        data-inspector-width={resolvedInspectorWidth}
       >
         <div className="memory-reader-content">
           {!revealed ? (

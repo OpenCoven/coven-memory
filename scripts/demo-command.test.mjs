@@ -13,6 +13,19 @@ test("root package delegates demo commands to the static site", async () => {
   );
 });
 
+test("browser verification builds the exact source before testing", async () => {
+  const pkg = JSON.parse(await readFile("package.json", "utf8"));
+
+  assert.match(pkg.scripts["test:browser"], /^pnpm build && /);
+  assert.match(pkg.scripts["test:browser:all"], /^pnpm build && /);
+  for (const browser of ["chromium", "firefox", "webkit"]) {
+    assert.match(
+      pkg.scripts["test:browser:all"],
+      new RegExp(`PLAYWRIGHT_BROWSER=${browser} node `)
+    );
+  }
+});
+
 test("Vercel serves the demo as a static export", async () => {
   const config = JSON.parse(await readFile("site/vercel.json", "utf8"));
 
