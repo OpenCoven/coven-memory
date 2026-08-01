@@ -10,6 +10,14 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const syntheticPrivacyPattern = ["agent", "example", "telegram", "direct", "123456"].join(":");
 const expectedGitleaksVersion = "8.30.1";
 
+function supportsNpmTrustedPublishing(version) {
+  const [major, minor, patch] = version.split(".").map(Number);
+  return (
+    major > 11 ||
+    (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)))
+  );
+}
+
 async function createGuardFixture() {
   const directory = await mkdtemp(join(tmpdir(), "coven-memory-guard-"));
   const scriptsDirectory = join(directory, "scripts");
@@ -177,6 +185,59 @@ test("CI delegates history scanning to the baseline-aware guard script", async (
   const workflow = await readFile(join(repositoryRoot, ".github/workflows/privacy-guard.yml"), "utf8");
   assert.doesNotMatch(workflow, /run: gitleaks detect/);
   assert.match(workflow, /run: bash scripts\/guard-scan\.sh/);
+});
+
+test("npm releases require signed tags and OIDC trusted publishing", async () => {
+  const workflow = await readFile(
+    join(repositoryRoot, ".github/workflows/release-npm.yml"),
+    "utf8"
+  );
+  const packageManifest = JSON.parse(
+    await readFile(join(repositoryRoot, "package.json"), "utf8")
+  );
+
+  assert.match(workflow, /tags:\s*\n\s+- ["']v\*["']/);
+  assert.match(workflow, /NPM_RELEASE_ALLOWED_SIGNERS/);
+  assert.match(workflow, /git verify-tag "\$TAG_NAME"/);
+  assert.match(workflow, /git merge-base --is-ancestor "\$TAGGED_COMMIT_SHA" origin\/main/);
+  assert.match(workflow, /id-token: write/);
+  const npmVersion = workflow.match(/npm install --global npm@(\d+\.\d+\.\d+)/)?.[1];
+  assert.ok(npmVersion, "release workflow must pin a Trusted Publishing-compatible npm");
+  assert.ok(
+    supportsNpmTrustedPublishing(npmVersion),
+    `npm ${npmVersion} is too old for Trusted Publishing`
+  );
+  assert.match(workflow, /npm publish --access public --provenance/);
+  assert.doesNotMatch(workflow, /NPM_TOKEN|NODE_AUTH_TOKEN/);
+  assert.deepEqual(packageManifest.repository, {
+    type: "git",
+    url: "git+https://github.com/OpenCoven/coven-memory.git"
+  });
+});
+
+test("npm Trusted Publishing version guard enforces the patch-level minimum", () => {
+  assert.equal(supportsNpmTrustedPublishing("11.5.0"), false);
+  assert.equal(supportsNpmTrustedPublishing("11.5.1"), true);
+  assert.equal(supportsNpmTrustedPublishing("11.19.0"), true);
+  assert.equal(supportsNpmTrustedPublishing("12.0.0"), true);
+});
+
+test("npm release documentation preserves setup and recovery procedures", async () => {
+  const documentation = await readFile(join(repositoryRoot, "docs/releasing.md"), "utf8");
+
+  assert.match(documentation, /Organization:\s*`OpenCoven`/);
+  assert.match(documentation, /Repository:\s*`coven-memory`/);
+  assert.match(documentation, /Workflow filename:\s*`release-npm\.yml`/);
+  assert.match(documentation, /Environment:\s*leave blank/);
+  assert.match(documentation, /Allowed actions:\s*`npm publish` only/);
+  assert.match(documentation, /NPM_RELEASE_ALLOWED_SIGNERS/);
+  assert.match(documentation, /register that public key with GitHub as a\s+\*\*signing key\*\*/);
+  assert.match(documentation, /git config --global gpg\.format ssh/);
+  assert.match(documentation, /gpg\.ssh\.allowedSignersFile/);
+  assert.match(documentation, /git tag -s "v\$version"/);
+  assert.match(documentation, /Invalid or unsigned tag/);
+  assert.match(documentation, /Version conflict/);
+  assert.match(documentation, /OIDC or provenance failure/);
 });
 
 test("instruction policy rejects executable bare Beads sync commands", async () => {

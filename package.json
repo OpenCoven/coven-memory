@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": false,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenCoven/coven-memory.git"
+  },
   "engines": {
     "node": ">=24.0.0"
   },

@@ -161,6 +161,10 @@ privacy guard. `pnpm audit:prod` checks the production dependency graph for
 high-severity advisories. Browser smoke artifacts belong under ignored
 `output/playwright/`; only deterministic synthetic fixtures may be used.
 
+npm releases use signed tags and OIDC Trusted Publishing. See
+[`docs/releasing.md`](docs/releasing.md) for setup, release, verification, and
+recovery procedures.
+
 Task state is tracked in Beads:
 
 ```bash
