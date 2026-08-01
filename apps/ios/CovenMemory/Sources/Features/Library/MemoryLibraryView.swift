@@ -25,17 +25,21 @@ struct MemoryLibraryView: View {
     self.pairAgain = pairAgain
     self.lock = lock
     #if DEBUG
-      let stateNow =
-        Self.uiScenario == "recency-boundary"
-        ? Date(timeIntervalSince1970: 1_785_326_400)
-        : Date()
+      let stateNow: @Sendable () -> Date
+      if Self.uiScenario == "recency-boundary" {
+        stateNow = {
+          Date(timeIntervalSince1970: 1_785_326_400)
+        }
+      } else {
+        stateNow = Date.init
+      }
     #else
-      let stateNow = Date()
+      let stateNow: @Sendable () -> Date = Date.init
     #endif
     _state = State(
       initialValue: MemoryLibraryState(
         service: service,
-        now: { stateNow }
+        now: stateNow
       )
     )
   }

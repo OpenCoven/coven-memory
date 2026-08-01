@@ -355,6 +355,8 @@ private struct LaunchFailureView: View {
             "Host unavailable"
         case .memoryUnavailable:
             "Memory unavailable"
+        case .memoryUnsupported:
+            "Memory Library unsupported"
         case .incompatibleHost:
             "Host incompatible"
         case .credentialFailure:
@@ -372,6 +374,8 @@ private struct LaunchFailureView: View {
             "Check that Cave is online and privately reachable."
         case .memoryUnavailable:
             "Cave is reachable, but canonical memory is unavailable."
+        case .memoryUnsupported:
+            "This Cave does not support Memory Library."
         case .incompatibleHost:
             "Update Cave before pairing this device again."
         case .credentialFailure:

@@ -48,10 +48,14 @@ struct MemoryRow: View {
   }
 
   private var accessibilityValue: String {
-    if needsAttention {
-      return "\(summary.relativeUpdatedAt), needs attention"
+    var values = [summary.relativeUpdatedAt]
+    if let matchingContext {
+      values.append(matchingContext)
     }
-    return summary.relativeUpdatedAt
+    if needsAttention {
+      values.append("needs attention")
+    }
+    return values.joined(separator: ", ")
   }
 
   private var matchingContext: String? {

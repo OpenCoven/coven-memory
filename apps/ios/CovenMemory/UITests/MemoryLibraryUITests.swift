@@ -131,6 +131,43 @@ final class MemoryLibraryUITests: XCTestCase {
   }
 
   @MainActor
+  func testProductionRecencyUsesALiveClock() {
+    let app = launch(scenario: "live-recency")
+    XCTAssertTrue(
+      app.staticTexts["Live recency boundary"]
+        .waitForExistence(timeout: 5)
+    )
+    XCTAssertTrue(app.staticTexts["Previous 7 Days"].exists)
+
+    Thread.sleep(forTimeInterval: 4)
+    let search = app.searchFields["Search memories"]
+    search.tap()
+    search.typeText("Live recency")
+
+    XCTAssertTrue(app.staticTexts["Older"].waitForExistence(timeout: 2))
+    XCTAssertFalse(app.staticTexts["Previous 7 Days"].exists)
+  }
+
+  @MainActor
+  func testExcerptMatchIsIncludedInRowAccessibility() {
+    let app = launch(scenario: "healthy")
+    XCTAssertTrue(
+      app.staticTexts["Architecture decisions"]
+        .waitForExistence(timeout: 5)
+    )
+    let search = app.searchFields["Search memories"]
+    search.tap()
+    search.typeText("appears only")
+
+    let row = app.buttons["Architecture decisions, sage"]
+    XCTAssertTrue(row.waitForExistence(timeout: 5))
+    XCTAssertEqual(
+      row.value as? String,
+      "today, Architecture context appears only while searching."
+    )
+  }
+
+  @MainActor
   func testCompactNavigationRestoresFilteredScrollPosition() throws {
     let app = launch(scenario: "navigation")
     try XCTSkipIf(

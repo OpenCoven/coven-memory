@@ -109,6 +109,8 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             return []
         case .recencyBoundary:
             return Self.recencyBoundarySummaries
+        case .liveRecency:
+            return Self.liveRecencySummaries
         case .navigation:
             return Self.navigationSummaries
         case .filteredEmpty, .healthy, .overviewFailure,
@@ -272,6 +274,30 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         ]
     }
 
+    private static var liveRecencySummaries: [MemorySummary] {
+        let calendar = Calendar(identifier: .gregorian)
+        let boundary = calendar.date(
+            byAdding: .day,
+            value: -7,
+            to: Date()
+        )!
+        return [
+            summary(
+                id: "00000000-0000-0000-0000-000000000043",
+                familiar: "sage",
+                title: "Live recency boundary",
+                updatedAt: boundary.addingTimeInterval(2),
+                relative: "7 days ago",
+                excerpt: "Crosses the recency boundary while visible.",
+                source: MemorySource(
+                    kind: "coven-origin",
+                    label: "Coven origin"
+                ),
+                verification: .verified
+            )
+        ]
+    }
+
     private static var navigationSummaries: [MemorySummary] {
         let archives = (1...30).map { index in
             summary(
@@ -384,6 +410,8 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             []
         case .recencyBoundary:
             recencyBoundarySummaries
+        case .liveRecency:
+            liveRecencySummaries
         case .navigation:
             navigationSummaries
         case .healthy, .loading, .filteredEmpty, .overviewFailure,
@@ -405,6 +433,7 @@ private enum UITestLibraryScenario: String, Sendable {
     case overviewFailure = "overview-failure"
     case healthDegraded = "health-degraded"
     case recencyBoundary = "recency-boundary"
+    case liveRecency = "live-recency"
     case navigation
     case offline
     case unavailable

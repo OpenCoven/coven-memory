@@ -337,6 +337,43 @@ struct MemoryLibraryStateTests {
     #expect(state.sections.map { $0.summaries.count } == [1, 1, 1])
   }
 
+  @Test("Filtering and section grouping share one live clock snapshot")
+  @MainActor
+  func sectionsUseOneClockSnapshot() async {
+    let calendar = Calendar(identifier: .gregorian)
+    let boundary = calendar.date(
+      byAdding: .day,
+      value: -7,
+      to: now
+    )!
+    let clock = SequencedLibraryClock(
+      values: [
+        now,
+        now,
+        now,
+        now.addingTimeInterval(2),
+      ]
+    )
+    let state = MemoryLibraryState(
+      service: LibraryStubService(
+        list: [
+          .success([
+            summary(
+              id: 1,
+              updatedAt: boundary.addingTimeInterval(1)
+            )
+          ])
+        ],
+        overview: [.success(overview())]
+      ),
+      now: clock.now
+    )
+    await state.load()
+    state.filters.freshness = .older
+
+    #expect(state.sections.isEmpty)
+  }
+
   @MainActor
   private func makeState(
     list: Result<[MemorySummary], NetworkError>,
@@ -483,5 +520,23 @@ private actor LibraryGate {
     let pending = continuations
     continuations.removeAll()
     pending.forEach { $0.resume() }
+  }
+}
+
+private final class SequencedLibraryClock: @unchecked Sendable {
+  private let lock = NSLock()
+  private var values: [Date]
+
+  init(values: [Date]) {
+    self.values = values
+  }
+
+  func now() -> Date {
+    lock.withLock {
+      if values.count > 1 {
+        return values.removeFirst()
+      }
+      return values[0]
+    }
   }
 }

@@ -185,7 +185,7 @@ struct LaunchCoordinatorTests {
             (NetworkError.daemonUnavailable, LaunchFailure.memoryUnavailable),
             (
                 NetworkError.capabilityUnavailable,
-                LaunchFailure.memoryUnavailable
+                LaunchFailure.memoryUnsupported
             ),
             (NetworkError.cancelled, LaunchFailure.hostUnavailable),
         ]
@@ -345,7 +345,7 @@ struct LaunchCoordinatorTests {
             (NetworkError.daemonUnavailable, LaunchFailure.memoryUnavailable),
             (
                 NetworkError.capabilityUnavailable,
-                LaunchFailure.memoryUnavailable
+                LaunchFailure.memoryUnsupported
             ),
             (NetworkError.protocolUnsupported, LaunchFailure.incompatibleHost),
             (NetworkError.invalidResponse, LaunchFailure.incompatibleHost),
@@ -371,6 +371,40 @@ struct LaunchCoordinatorTests {
                 == (expected == .hostUnavailable
                     || expected == .memoryUnavailable)
         )
+    }
+
+    @Test("Unavailable overview capability does not enter a retry loop")
+    @MainActor
+    func unsupportedOverviewIsNotRetryable() async {
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: LaunchStubCaveService(
+                overviewError: .capabilityUnavailable
+            )
+        )
+
+        await coordinator.start()
+
+        #expect(coordinator.state == .failed(.memoryUnsupported))
+        #expect(!coordinator.canRetry)
+    }
+
+    @Test("Unavailable refresh capability does not enter a retry loop")
+    @MainActor
+    func unsupportedRefreshIsNotRetryable() async {
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(
+                pairing: Self.refreshableStored
+            ),
+            service: LaunchStubCaveService(
+                refreshError: .capabilityUnavailable
+            )
+        )
+
+        await coordinator.start()
+
+        #expect(coordinator.state == .failed(.memoryUnsupported))
+        #expect(!coordinator.canRetry)
     }
 
     @Test("Invalid stored connection requires pairing again")

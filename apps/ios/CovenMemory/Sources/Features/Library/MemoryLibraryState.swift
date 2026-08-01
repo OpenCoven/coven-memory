@@ -74,12 +74,12 @@ final class MemoryLibraryState {
   }
 
   var filteredSummaries: [MemorySummary] {
-    effectiveFilter.apply(to: summaries, now: now())
+    filteredSummaries(at: now())
   }
 
   var sections: [MemoryLibrarySection] {
     let current = now()
-    let grouped = Dictionary(grouping: filteredSummaries) {
+    let grouped = Dictionary(grouping: filteredSummaries(at: current)) {
       recency(for: $0.updatedAt, now: current)
     }
     return MemoryRecency.allCases.compactMap { recency in
@@ -142,6 +142,10 @@ extension MemoryLibraryState {
     )
     effective.query = trimmed.isEmpty ? nil : trimmed
     return effective
+  }
+
+  private func filteredSummaries(at current: Date) -> [MemorySummary] {
+    effectiveFilter.apply(to: summaries, now: current)
   }
 
   private func fetch(isRefresh: Bool) async {

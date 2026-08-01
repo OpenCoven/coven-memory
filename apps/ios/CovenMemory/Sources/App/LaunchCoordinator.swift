@@ -7,6 +7,7 @@ enum LaunchFailure: Error, Equatable, Sendable {
     case incompatibleHost
     case hostUnavailable
     case memoryUnavailable
+    case memoryUnsupported
     case credentialFailure
 }
 
@@ -288,9 +289,10 @@ final class LaunchCoordinator {
         case CredentialVaultError.pairingInvalidated,
              NetworkError.authenticationRequired:
             .pairingInvalidated
-        case NetworkError.daemonUnavailable,
-             NetworkError.capabilityUnavailable:
+        case NetworkError.daemonUnavailable:
             .memoryUnavailable
+        case NetworkError.capabilityUnavailable:
+            .memoryUnsupported
         case NetworkError.connectionFailed,
              NetworkError.cancelled:
             .hostUnavailable
