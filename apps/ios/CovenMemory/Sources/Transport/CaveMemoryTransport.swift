@@ -230,6 +230,8 @@ actor CaveMemoryTransport: CaveMemoryServicing {
         case "local_daemon_required",
              "canonical_memory_unavailable":
             return .daemonUnavailable
+        case "capability_unavailable":
+            return .capabilityUnavailable
         case "daemon_update_required",
              "invalid_daemon_payload":
             return .protocolUnsupported

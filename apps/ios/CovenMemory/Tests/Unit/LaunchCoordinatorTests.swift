@@ -183,6 +183,10 @@ struct LaunchCoordinatorTests {
             (NetworkError.invalidResponse, LaunchFailure.incompatibleHost),
             (NetworkError.responseTooLarge, LaunchFailure.incompatibleHost),
             (NetworkError.daemonUnavailable, LaunchFailure.memoryUnavailable),
+            (
+                NetworkError.capabilityUnavailable,
+                LaunchFailure.memoryUnavailable
+            ),
             (NetworkError.cancelled, LaunchFailure.hostUnavailable),
         ]
     )
@@ -339,6 +343,10 @@ struct LaunchCoordinatorTests {
         "Transport errors map to bounded launch failures",
         arguments: [
             (NetworkError.daemonUnavailable, LaunchFailure.memoryUnavailable),
+            (
+                NetworkError.capabilityUnavailable,
+                LaunchFailure.memoryUnavailable
+            ),
             (NetworkError.protocolUnsupported, LaunchFailure.incompatibleHost),
             (NetworkError.invalidResponse, LaunchFailure.incompatibleHost),
             (NetworkError.responseTooLarge, LaunchFailure.incompatibleHost),

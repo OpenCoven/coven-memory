@@ -224,6 +224,10 @@ struct CaveMemoryTransportTests {
                 "canonical_memory_unavailable",
                 NetworkError.daemonUnavailable
             ),
+            (
+                "capability_unavailable",
+                NetworkError.capabilityUnavailable
+            ),
             ("daemon_update_required", NetworkError.protocolUnsupported),
             ("invalid_daemon_payload", NetworkError.protocolUnsupported),
         ]

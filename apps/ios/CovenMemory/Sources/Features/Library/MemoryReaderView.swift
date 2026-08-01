@@ -73,8 +73,9 @@ final class MemoryReaderState {
     switch error {
     case .connectionFailed, .cancelled: .offline
     case .daemonUnavailable: .unavailable
+    case .capabilityUnavailable: .unsupported
     case .authenticationRequired: .revoked
-    case .protocolUnsupported: .unsupported
+    case .protocolUnsupported: .incompatible
     case .invalidResponse, .responseTooLarge: .malformed
     }
   }

@@ -288,7 +288,8 @@ final class LaunchCoordinator {
         case CredentialVaultError.pairingInvalidated,
              NetworkError.authenticationRequired:
             .pairingInvalidated
-        case NetworkError.daemonUnavailable:
+        case NetworkError.daemonUnavailable,
+             NetworkError.capabilityUnavailable:
             .memoryUnavailable
         case NetworkError.connectionFailed,
              NetworkError.cancelled:

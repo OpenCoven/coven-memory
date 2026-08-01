@@ -110,10 +110,10 @@ struct MemoryLibraryStateTests {
     #expect(state.phase == .failure(.offline))
   }
 
-  @Test("Unsupported protocol has a distinct unsupported issue")
+  @Test("Unavailable capability has a distinct unsupported issue")
   @MainActor
   func unsupported() async {
-    let state = makeState(list: .failure(.protocolUnsupported))
+    let state = makeState(list: .failure(.capabilityUnavailable))
 
     await state.load()
 
@@ -123,6 +123,21 @@ struct MemoryLibraryStateTests {
     }
     #expect(issue == .unsupported)
     #expect(issue != .incompatible)
+  }
+
+  @Test("Incompatible protocol has a distinct update-required issue")
+  @MainActor
+  func incompatible() async {
+    let state = makeState(list: .failure(.protocolUnsupported))
+
+    await state.load()
+
+    guard case .failure(let issue) = state.phase else {
+      Issue.record("Expected a typed failure state")
+      return
+    }
+    #expect(issue == .incompatible)
+    #expect(issue != .unsupported)
   }
 
   @Test("Needs-review overview preserves health data and requests attention")

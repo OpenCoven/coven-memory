@@ -240,6 +240,7 @@ final class MemoryLibraryUITests: XCTestCase {
       ("unavailable", "Memory is unavailable"),
       ("revoked", "Pairing expired"),
       ("unsupported", "Memory Library is unsupported"),
+      ("incompatible", "Update Cave to continue"),
       ("malformed", "Cave returned invalid memory data"),
     ]
 
@@ -266,6 +267,23 @@ final class MemoryLibraryUITests: XCTestCase {
     XCTAssertTrue(app.navigationBars["Memory Health"].exists)
     XCTAssertTrue(
       app.staticTexts["This Cave does not support Memory Library."]
+        .waitForExistence(timeout: 5)
+    )
+  }
+
+  @MainActor
+  func testIncompatibleStateRemainsDistinctInMemoryHealth() {
+    let app = launch(scenario: "incompatible")
+
+    XCTAssertTrue(
+      app.staticTexts["Update Cave to continue"]
+        .waitForExistence(timeout: 5)
+    )
+    app.buttons["View Memory Health"].tap()
+
+    XCTAssertTrue(app.navigationBars["Memory Health"].exists)
+    XCTAssertTrue(
+      app.staticTexts["Cave must be updated before health can be checked."]
         .waitForExistence(timeout: 5)
     )
   }

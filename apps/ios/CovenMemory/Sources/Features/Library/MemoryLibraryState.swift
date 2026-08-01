@@ -279,10 +279,12 @@ extension MemoryLibraryState {
       .offline
     case .daemonUnavailable:
       .unavailable
+    case .capabilityUnavailable:
+      .unsupported
     case .authenticationRequired:
       .revoked
     case .protocolUnsupported:
-      .unsupported
+      .incompatible
     case .invalidResponse, .responseTooLarge:
       .malformed
     }

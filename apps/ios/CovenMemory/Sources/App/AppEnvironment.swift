@@ -100,6 +100,8 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         case .revoked:
             throw NetworkError.authenticationRequired
         case .unsupported:
+            throw NetworkError.capabilityUnavailable
+        case .incompatible:
             throw NetworkError.protocolUnsupported
         case .malformed:
             throw NetworkError.invalidResponse
@@ -378,7 +380,7 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
     ) -> [MemorySummary] {
         switch scenario {
         case .empty, .offline, .unavailable, .revoked, .unsupported,
-            .malformed:
+            .incompatible, .malformed:
             []
         case .recencyBoundary:
             recencyBoundarySummaries
@@ -408,6 +410,7 @@ private enum UITestLibraryScenario: String, Sendable {
     case unavailable
     case revoked
     case unsupported
+    case incompatible
     case malformed
 
     static var current: Self? {
