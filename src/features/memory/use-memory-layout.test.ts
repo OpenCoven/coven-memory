@@ -97,6 +97,19 @@ describe("useMemoryLayout", () => {
     );
   });
 
+  it("snaps pointer widths to CSP-safe layout increments", async () => {
+    const { result } = renderHook(() =>
+      useMemoryLayout({ storage: storageAdapter })
+    );
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    act(() => result.current.setWidth("library", 300));
+    act(() => result.current.setWidth("inspector", 301));
+
+    expect(result.current.layout.library.width).toBe(304);
+    expect(result.current.layout.inspector.width).toBe(304);
+  });
+
   it("does not throw when storage is unavailable", async () => {
     const getItem = vi.fn(() => {
       throw new Error("storage unavailable");

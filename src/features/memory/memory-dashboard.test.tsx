@@ -289,6 +289,8 @@ describe("MemoryDashboard", () => {
     expect(workspace).not.toBeNull();
     expect(orderedSurface).not.toContain(null);
     expect(workspace?.children).toHaveLength(3);
+    expect(workspace).toHaveAttribute("data-library-width", "216");
+    expect(workspace).not.toHaveAttribute("style");
     orderedSurface.forEach((surface, index) => {
       expect(workspace?.children[index]).toBe(surface);
     });
@@ -303,6 +305,12 @@ describe("MemoryDashboard", () => {
         name: "Memory provenance"
       })
     ).toBeInTheDocument();
+    expect(
+      container.querySelector(".memory-reader-layout")
+    ).toHaveAttribute("data-inspector-width", "288");
+    expect(
+      container.querySelector(".memory-reader-layout")
+    ).not.toHaveAttribute("style");
     expect(screen.getByText("Protected by default")).toBeVisible();
   });
 
@@ -313,6 +321,7 @@ describe("MemoryDashboard", () => {
     const { container } = render(<MemoryDashboard />);
 
     await screen.findByRole("navigation", { name: "Memory library" });
+    await screen.findByRole("heading", { name: "Architecture decisions" });
     const workspace = container.querySelector<HTMLElement>(".memory-workspace");
     expect(workspace).toHaveAttribute("data-library-width", "216");
 
@@ -368,6 +377,7 @@ describe("MemoryDashboard", () => {
     const separator = await screen.findByRole("separator", {
       name: "Resize Library"
     });
+    await screen.findByRole("heading", { name: "Architecture decisions" });
     const workspace = container.querySelector<HTMLElement>(".memory-workspace");
     expect(separator).toHaveAttribute("aria-orientation", "vertical");
     expect(separator).toHaveAttribute("aria-valuemin", "144");
@@ -468,19 +478,20 @@ describe("MemoryDashboard", () => {
     const separator = await screen.findByRole("separator", {
       name: "Resize Library"
     });
+    await screen.findByRole("heading", { name: "Architecture decisions" });
     const workspace = container.querySelector<HTMLElement>(".memory-workspace");
     const persistedBefore = window.localStorage.getItem("coven-memory:layout:v1");
 
     fireEvent.pointerDown(separator, { pointerId: 7, clientX: 280 });
     fireEvent.pointerMove(separator, { pointerId: 7, clientX: 300 });
-    expect(workspace).toHaveAttribute("data-library-width", "300");
+    expect(workspace).toHaveAttribute("data-library-width", "304");
     expect(window.localStorage.getItem("coven-memory:layout:v1")).toBe(
       persistedBefore
     );
 
     fireEvent.pointerUp(separator, { pointerId: 7, clientX: 300 });
     expect(window.localStorage.getItem("coven-memory:layout:v1")).toContain(
-      '"width":300'
+      '"width":304'
     );
   });
 

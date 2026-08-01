@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export const MEMORY_LAYOUT_STORAGE_KEY = "coven-memory:layout:v1";
 export const MEMORY_LAYOUT_RAIL_WIDTH = 44;
+export const MEMORY_LAYOUT_WIDTH_STEP = 8;
 
 export type MemoryLayoutSection = "library" | "inspector";
 
@@ -64,7 +65,13 @@ function clampWidth(section: MemoryLayoutSection, width: number): number {
   if (!Number.isFinite(width)) {
     return DEFAULT_MEMORY_LAYOUT[section].width;
   }
-  return Math.min(limits.max, Math.max(limits.min, width));
+  const clamped = Math.min(limits.max, Math.max(limits.min, width));
+  return Math.min(
+    limits.max,
+    limits.min +
+      Math.round((clamped - limits.min) / MEMORY_LAYOUT_WIDTH_STEP) *
+        MEMORY_LAYOUT_WIDTH_STEP
+  );
 }
 
 function parseRail(

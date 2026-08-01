@@ -311,9 +311,39 @@ select {
   display: grid;
   min-height: 0;
   flex: 1 1 auto;
-  grid-template-columns: calc(attr(data-library-width type(<number>), 216) * 1px) minmax(18rem, 21.25rem) minmax(0, 1fr);
+  grid-template-columns: var(--memory-library-width, 216px) minmax(18rem, 21.25rem) minmax(0, 1fr);
   overflow: hidden;
 }
+
+.memory-workspace[data-library-width="44"] { --memory-library-width: 44px; }
+.memory-workspace[data-library-width="144"] { --memory-library-width: 144px; }
+.memory-workspace[data-library-width="152"] { --memory-library-width: 152px; }
+.memory-workspace[data-library-width="160"] { --memory-library-width: 160px; }
+.memory-workspace[data-library-width="168"] { --memory-library-width: 168px; }
+.memory-workspace[data-library-width="176"] { --memory-library-width: 176px; }
+.memory-workspace[data-library-width="184"] { --memory-library-width: 184px; }
+.memory-workspace[data-library-width="192"] { --memory-library-width: 192px; }
+.memory-workspace[data-library-width="200"] { --memory-library-width: 200px; }
+.memory-workspace[data-library-width="208"] { --memory-library-width: 208px; }
+.memory-workspace[data-library-width="216"] { --memory-library-width: 216px; }
+.memory-workspace[data-library-width="224"] { --memory-library-width: 224px; }
+.memory-workspace[data-library-width="232"] { --memory-library-width: 232px; }
+.memory-workspace[data-library-width="240"] { --memory-library-width: 240px; }
+.memory-workspace[data-library-width="248"] { --memory-library-width: 248px; }
+.memory-workspace[data-library-width="256"] { --memory-library-width: 256px; }
+.memory-workspace[data-library-width="264"] { --memory-library-width: 264px; }
+.memory-workspace[data-library-width="272"] { --memory-library-width: 272px; }
+.memory-workspace[data-library-width="280"] { --memory-library-width: 280px; }
+.memory-workspace[data-library-width="288"] { --memory-library-width: 288px; }
+.memory-workspace[data-library-width="296"] { --memory-library-width: 296px; }
+.memory-workspace[data-library-width="304"] { --memory-library-width: 304px; }
+.memory-workspace[data-library-width="312"] { --memory-library-width: 312px; }
+.memory-workspace[data-library-width="320"] { --memory-library-width: 320px; }
+.memory-workspace[data-library-width="328"] { --memory-library-width: 328px; }
+.memory-workspace[data-library-width="336"] { --memory-library-width: 336px; }
+.memory-workspace[data-library-width="344"] { --memory-library-width: 344px; }
+.memory-workspace[data-library-width="352"] { --memory-library-width: 352px; }
+.memory-workspace[data-library-width="360"] { --memory-library-width: 360px; }
 
 .memory-library-slot,
 .memory-list-slot,
@@ -755,7 +785,7 @@ select {
   flex-direction: column;
 }
 
-.memory-reader-pane:focus-visible {
+.memory-reader-pane:focus {
   box-shadow: inset var(--cv-focus-ring);
 }
 
@@ -801,7 +831,7 @@ select {
   box-shadow: inset 3px 0 0 var(--cv-accent-primary);
 }
 
-.memory-list-row[aria-current="true"]:focus-visible {
+.memory-list-row[aria-current="true"]:focus {
   box-shadow:
     inset 3px 0 0 var(--cv-accent-primary),
     var(--cv-focus-ring);
@@ -1016,13 +1046,36 @@ select {
   display: grid;
   min-height: 0;
   flex: 1;
-  grid-template-columns: minmax(20rem, 1fr) 0.5rem calc(attr(data-inspector-width type(<number>), 18) * 1px);
+  grid-template-columns: minmax(20rem, 1fr) 0.5rem var(--memory-inspector-width, 288px);
   overflow: hidden;
 }
 
 .memory-reader-layout[data-inspector-collapsed="true"] {
-  grid-template-columns: minmax(20rem, 1fr) calc(attr(data-inspector-width type(<number>), 18) * 1px);
+  grid-template-columns: minmax(20rem, 1fr) var(--memory-inspector-width, 288px);
 }
+
+.memory-reader-layout[data-inspector-width="44"] { --memory-inspector-width: 44px; }
+.memory-reader-layout[data-inspector-width="224"] { --memory-inspector-width: 224px; }
+.memory-reader-layout[data-inspector-width="232"] { --memory-inspector-width: 232px; }
+.memory-reader-layout[data-inspector-width="240"] { --memory-inspector-width: 240px; }
+.memory-reader-layout[data-inspector-width="248"] { --memory-inspector-width: 248px; }
+.memory-reader-layout[data-inspector-width="256"] { --memory-inspector-width: 256px; }
+.memory-reader-layout[data-inspector-width="264"] { --memory-inspector-width: 264px; }
+.memory-reader-layout[data-inspector-width="272"] { --memory-inspector-width: 272px; }
+.memory-reader-layout[data-inspector-width="280"] { --memory-inspector-width: 280px; }
+.memory-reader-layout[data-inspector-width="288"] { --memory-inspector-width: 288px; }
+.memory-reader-layout[data-inspector-width="296"] { --memory-inspector-width: 296px; }
+.memory-reader-layout[data-inspector-width="304"] { --memory-inspector-width: 304px; }
+.memory-reader-layout[data-inspector-width="312"] { --memory-inspector-width: 312px; }
+.memory-reader-layout[data-inspector-width="320"] { --memory-inspector-width: 320px; }
+.memory-reader-layout[data-inspector-width="328"] { --memory-inspector-width: 328px; }
+.memory-reader-layout[data-inspector-width="336"] { --memory-inspector-width: 336px; }
+.memory-reader-layout[data-inspector-width="344"] { --memory-inspector-width: 344px; }
+.memory-reader-layout[data-inspector-width="352"] { --memory-inspector-width: 352px; }
+.memory-reader-layout[data-inspector-width="360"] { --memory-inspector-width: 360px; }
+.memory-reader-layout[data-inspector-width="368"] { --memory-inspector-width: 368px; }
+.memory-reader-layout[data-inspector-width="376"] { --memory-inspector-width: 376px; }
+.memory-reader-layout[data-inspector-width="384"] { --memory-inspector-width: 384px; }
 
 .memory-inspector-separator {
   position: relative;
@@ -1324,11 +1377,11 @@ select {
   }
 
   .memory-reader-layout {
-    grid-template-columns: minmax(18rem, 1fr) 0.5rem calc(attr(data-inspector-width type(<number>), 15) * 1px);
+    grid-template-columns: minmax(18rem, 1fr) 0.5rem var(--memory-inspector-width, 288px);
   }
 
   .memory-reader-layout[data-inspector-collapsed="true"] {
-    grid-template-columns: minmax(18rem, 1fr) calc(attr(data-inspector-width type(<number>), 15) * 1px);
+    grid-template-columns: minmax(18rem, 1fr) var(--memory-inspector-width, 288px);
   }
 
   .memory-protection-status {
