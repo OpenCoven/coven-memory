@@ -21,6 +21,69 @@ struct MemoryReaderStateTests {
     #expect(state.presentedDetail?.content == "Public body")
   }
 
+  @Test("Public content stays fail closed while Markdown parses")
+  @MainActor
+  func publicContentWaitsForMarkdown() async {
+    let detail = makeDetail(id: 1, isPublic: true, content: "Public body")
+    let gate = ReaderGate()
+    let parser = ReaderMarkdownParser(gateOnCall: 1, gate: gate)
+    let state = MemoryReaderState(
+      id: detail.id,
+      service: ReaderStubService(results: [.success(detail)]),
+      authenticator: ReaderAuthenticator(),
+      markdownParser: parser.parse
+    )
+
+    let load = Task { await state.load() }
+    #expect(await gate.waitUntilEntered())
+    #expect(state.phase == .loading)
+    #expect(state.presentedDetail == nil)
+    #expect(state.presentedDocument == nil)
+
+    await gate.open()
+    await load.value
+
+    #expect(state.phase == .content)
+    #expect(state.presentedDetail?.content == "Public body")
+    #expect(
+      state.presentedDocument
+        == MemoryMarkdown.parse("Public body", title: "Memory 1")
+    )
+  }
+
+  @Test("A stale Markdown parse cannot cross a selection change")
+  @MainActor
+  func staleMarkdownCannotCrossSelection() async {
+    let first = makeDetail(id: 1, isPublic: true, content: "First public")
+    let second = makeDetail(id: 2, isPublic: true, content: "Second public")
+    let gate = ReaderGate()
+    let parser = ReaderMarkdownParser(gateOnCall: 1, gate: gate)
+    let state = MemoryReaderState(
+      id: first.id,
+      service: ReaderStubService(
+        results: [.success(first), .success(second)]
+      ),
+      authenticator: ReaderAuthenticator(),
+      markdownParser: parser.parse
+    )
+
+    let firstLoad = Task { await state.load() }
+    #expect(await gate.waitUntilEntered())
+
+    await state.select(second.id)
+    #expect(state.phase == .content)
+    #expect(state.presentedDetail?.content == "Second public")
+
+    await gate.open()
+    await firstLoad.value
+
+    #expect(state.presentedDetail?.content == "Second public")
+    #expect(
+      state.presentedDocument
+        == MemoryMarkdown.parse("Second public", title: "Memory 2")
+    )
+  }
+
   @Test("Protected detail body remains outside presented state until reveal")
   @MainActor
   func protectedReveal() async {
@@ -372,6 +435,32 @@ private actor ReaderAuthenticator: LocalAuthenticating {
   func authenticate(reason: String) async throws -> AuthenticationGrant {
     callCount += 1
     return AuthenticationGrant()
+  }
+}
+
+private actor ReaderMarkdownParser {
+  private let gateOnCall: Int?
+  private let gate: ReaderGate?
+  private var calls = 0
+
+  init(
+    gateOnCall: Int? = nil,
+    gate: ReaderGate? = nil
+  ) {
+    self.gateOnCall = gateOnCall
+    self.gate = gate
+  }
+
+  func parse(
+    _ source: String,
+    _ title: String
+  ) async throws -> MemoryMarkdownDocument {
+    calls += 1
+    if calls == gateOnCall {
+      await gate?.enter()
+    }
+    try Task.checkCancellation()
+    return MemoryMarkdown.parse(source, title: title)
   }
 }
 

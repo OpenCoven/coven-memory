@@ -43,10 +43,42 @@ struct MemoryMarkdownDocument: Sendable, Equatable {
 }
 
 enum MemoryMarkdown {
+  static func parseOffMain(
+    _ source: String,
+    title: String
+  ) async throws -> MemoryMarkdownDocument {
+    let parsingTask = Task.detached(priority: .userInitiated) {
+      guard let document = parse(
+        source,
+        title: title,
+        isCancelled: { Task.isCancelled }
+      ) else {
+        throw CancellationError()
+      }
+      return document
+    }
+
+    return try await withTaskCancellationHandler {
+      try await parsingTask.value
+    } onCancel: {
+      parsingTask.cancel()
+    }
+  }
+
   static func parse(
     _ source: String,
     title: String
   ) -> MemoryMarkdownDocument {
+    parse(source, title: title, isCancelled: { false })
+      ?? fallback(source)
+  }
+
+  private static func parse(
+    _ source: String,
+    title: String,
+    isCancelled: () -> Bool
+  ) -> MemoryMarkdownDocument? {
+    guard !isCancelled() else { return nil }
     guard !source.unicodeScalars.contains(where: { $0.value == 0 }) else {
       return fallback(source)
     }
@@ -58,25 +90,47 @@ enum MemoryMarkdown {
       .map(String.init)
 
     do {
+      let linesWithoutTitle = try removingLeadingTitle(
+        from: lines,
+        title: title,
+        isCancelled: isCancelled
+      )
       return MemoryMarkdownDocument(
         blocks: try parseBlocks(
-          removingLeadingTitle(from: lines, title: title)
+          linesWithoutTitle,
+          isCancelled: isCancelled
         ),
         usedEscapedFallback: false
       )
+    } catch is CancellationError {
+      return nil
     } catch {
       return fallback(source)
     }
   }
 
   private static func parseBlocks(
-    _ lines: [String]
+    _ lines: [String],
+    isCancelled: () -> Bool
   ) throws -> [MemoryMarkdownBlock] {
-    let shallowestHeading = lines.compactMap(heading).map(\.level).min() ?? 1
+    var shallowestHeading = 7
+    for (offset, line) in lines.enumerated() {
+      if offset.isMultiple(of: 256) {
+        try checkCancellation(isCancelled)
+      }
+      if let level = heading(line)?.level {
+        shallowestHeading = min(shallowestHeading, level)
+      }
+    }
+    if shallowestHeading == 7 {
+      shallowestHeading = 1
+    }
+
     var blocks: [MemoryMarkdownBlock] = []
     var index = 0
 
     while index < lines.count {
+      try checkCancellation(isCancelled)
       let line = lines[index]
       if line.trimmingCharacters(in: .whitespaces).isEmpty {
         index += 1
@@ -87,6 +141,9 @@ enum MemoryMarkdown {
         var codeLines: [String] = []
         index += 1
         while index < lines.count, !isClosingFence(lines[index]) {
+          if index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
           codeLines.append(lines[index])
           index += 1
         }
@@ -106,7 +163,10 @@ enum MemoryMarkdown {
         blocks.append(
           .heading(
             level: min(6, max(1, value.level - shallowestHeading + 1)),
-            runs: parseInline(value.text)
+            runs: try parseInline(
+              value.text,
+              isCancelled: isCancelled
+            )
           )
         )
         index += 1
@@ -124,10 +184,20 @@ enum MemoryMarkdown {
         while index < lines.count,
           let quoted = blockquoteText(lines[index])
         {
+          if index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
           quoteLines.append(quoted)
           index += 1
         }
-        blocks.append(.blockquote(try parseBlocks(quoteLines)))
+        blocks.append(
+          .blockquote(
+            try parseBlocks(
+              quoteLines,
+              isCancelled: isCancelled
+            )
+          )
+        )
         continue
       }
 
@@ -136,7 +206,12 @@ enum MemoryMarkdown {
         while index < lines.count,
           let item = unorderedItem(lines[index])
         {
-          items.append(parseInline(item))
+          if index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
+          items.append(
+            try parseInline(item, isCancelled: isCancelled)
+          )
           index += 1
         }
         blocks.append(.unorderedList(items))
@@ -148,7 +223,12 @@ enum MemoryMarkdown {
         while index < lines.count,
           let item = orderedItem(lines[index])
         {
-          items.append(parseInline(item))
+          if index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
+          items.append(
+            try parseInline(item, isCancelled: isCancelled)
+          )
           index += 1
         }
         blocks.append(.orderedList(items))
@@ -161,11 +241,19 @@ enum MemoryMarkdown {
         !lines[index].trimmingCharacters(in: .whitespaces).isEmpty,
         !startsBlock(lines[index])
       {
+        if index.isMultiple(of: 256) {
+          try checkCancellation(isCancelled)
+        }
         paragraph.append(lines[index])
         index += 1
       }
       blocks.append(
-        .paragraph(parseInline(paragraph.joined(separator: " ")))
+        .paragraph(
+          try parseInline(
+            paragraph.joined(separator: " "),
+            isCancelled: isCancelled
+          )
+        )
       )
     }
 
@@ -174,13 +262,21 @@ enum MemoryMarkdown {
 
   private static func removingLeadingTitle(
     from lines: [String],
-    title: String
-  ) -> [String] {
+    title: String,
+    isCancelled: () -> Bool
+  ) throws -> [String] {
+    try checkCancellation(isCancelled)
     guard let first = lines.firstIndex(where: {
       !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }),
       let candidate = heading(lines[first]),
-      normalized(candidate.text) == normalized(title)
+      try normalized(
+        candidate.text,
+        isCancelled: isCancelled
+      ) == normalized(
+        title,
+        isCancelled: isCancelled
+      )
     else {
       return lines
     }
@@ -212,118 +308,242 @@ enum MemoryMarkdown {
     )
   }
 
-  private static func parseInline(_ value: String) -> [InlineRun] {
-    var runs: [InlineRun] = []
-    var plain = ""
-    var index = value.startIndex
+  private static func parseInline(
+    _ value: String,
+    isCancelled: () -> Bool
+  ) throws -> [InlineRun] {
+    // ASCII delimiters are always valid UTF-8 slice boundaries.
+    let bytes = Array(value.utf8)
+    var asteriskPositions: [Int] = []
+    var underscorePositions: [Int] = []
+    var closingBracketPositions: [Int] = []
+    var closingParenthesisPositions: [Int] = []
+    var backtickPositions: [Int] = []
 
-    func appendPlain() {
-      guard !plain.isEmpty else { return }
-      runs.append(InlineRun(text: plain))
-      plain = ""
+    for index in bytes.indices {
+      if index.isMultiple(of: 4_096) {
+        try checkCancellation(isCancelled)
+      }
+      switch bytes[index] {
+      case 42:
+        asteriskPositions.append(index)
+      case 95:
+        underscorePositions.append(index)
+      case 93:
+        closingBracketPositions.append(index)
+      case 41:
+        closingParenthesisPositions.append(index)
+      case 96:
+        backtickPositions.append(index)
+      default:
+        break
+      }
     }
 
-    while index < value.endIndex {
-      let suffix = value[index...]
-      let strongDelimiter: String? = suffix.hasPrefix("**")
-        ? "**"
-        : suffix.hasPrefix("__") ? "__" : nil
-      if let strongDelimiter {
-        let contentStart = value.index(
-          index,
-          offsetBy: strongDelimiter.count
+    var runs: [InlineRun] = []
+    var plainStart = 0
+    var index = 0
+    var strongAsteriskCursor = 0
+    var strongUnderscoreCursor = 0
+    var asteriskCursor = 0
+    var underscoreCursor = 0
+    var imageBracketCursor = 0
+    var imageParenthesisCursor = 0
+    var linkBracketCursor = 0
+    var linkParenthesisCursor = 0
+    var backtickCursor = 0
+
+    func text(from start: Int, to end: Int) -> String {
+      String(decoding: bytes[start..<end], as: UTF8.self)
+    }
+
+    func appendPlain(to end: Int) {
+      guard plainStart < end else { return }
+      runs.append(InlineRun(text: text(from: plainStart, to: end)))
+    }
+
+    while index < bytes.count {
+      if index.isMultiple(of: 4_096) {
+        try checkCancellation(isCancelled)
+      }
+      if index + 1 < bytes.count,
+        bytes[index] == 42,
+        bytes[index + 1] == 42,
+        let close = nextPairPosition(
+          in: asteriskPositions,
+          cursor: &strongAsteriskCursor,
+          atOrAfter: index + 2
         )
-        if let close = value.range(
-          of: strongDelimiter,
-          range: contentStart..<value.endIndex
-        ) {
-          appendPlain()
-          runs.append(
-            InlineRun(
-              text: String(value[contentStart..<close.lowerBound]),
-              isStrong: true
-            )
-          )
-          index = close.upperBound
-          continue
-        }
-      }
-
-      let emphasisDelimiter: Character? =
-        value[index] == "*" || value[index] == "_"
-        ? value[index]
-        : nil
-      if let emphasisDelimiter {
-        let contentStart = value.index(after: index)
-        if let close = value[contentStart...].firstIndex(
-          of: emphasisDelimiter
-        ) {
-          appendPlain()
-          runs.append(
-            InlineRun(
-              text: String(value[contentStart..<close]),
-              isEmphasized: true
-            )
-          )
-          index = value.index(after: close)
-          continue
-        }
-      }
-
-      if value[index...].hasPrefix("!["),
-        let closeAlt = value[index...].firstIndex(of: "]"),
-        value.index(after: closeAlt) < value.endIndex,
-        value[value.index(after: closeAlt)] == "(",
-        let closeTarget = value[value.index(closeAlt, offsetBy: 2)...]
-          .firstIndex(of: ")")
       {
-        appendPlain()
-        let altStart = value.index(index, offsetBy: 2)
-        let alt = String(value[altStart..<closeAlt])
-        runs.append(InlineRun(text: "[Image: \(alt)]"))
-        index = value.index(after: closeTarget)
+        appendPlain(to: index)
+        runs.append(
+          InlineRun(
+            text: text(from: index + 2, to: close),
+            isStrong: true
+          )
+        )
+        index = close + 2
+        plainStart = index
         continue
       }
 
-      if value[index] == "[",
-        let closeLabel = value[index...].firstIndex(of: "]"),
-        value.index(after: closeLabel) < value.endIndex,
-        value[value.index(after: closeLabel)] == "(",
-        let closeTarget = value[value.index(closeLabel, offsetBy: 2)...]
-          .firstIndex(of: ")")
+      if index + 1 < bytes.count,
+        bytes[index] == 95,
+        bytes[index + 1] == 95,
+        let close = nextPairPosition(
+          in: underscorePositions,
+          cursor: &strongUnderscoreCursor,
+          atOrAfter: index + 2
+        )
       {
-        appendPlain()
-        let labelStart = value.index(after: index)
-        let targetStart = value.index(closeLabel, offsetBy: 2)
-        let label = String(value[labelStart..<closeLabel])
-        let target = String(value[targetStart..<closeTarget])
+        appendPlain(to: index)
+        runs.append(
+          InlineRun(
+            text: text(from: index + 2, to: close),
+            isStrong: true
+          )
+        )
+        index = close + 2
+        plainStart = index
+        continue
+      }
+
+      if bytes[index] == 42,
+        let close = nextPosition(
+          in: asteriskPositions,
+          cursor: &asteriskCursor,
+          atOrAfter: index + 1
+        )
+      {
+        appendPlain(to: index)
+        runs.append(
+          InlineRun(
+            text: text(from: index + 1, to: close),
+            isEmphasized: true
+          )
+        )
+        index = close + 1
+        plainStart = index
+        continue
+      }
+
+      if bytes[index] == 95,
+        let close = nextPosition(
+          in: underscorePositions,
+          cursor: &underscoreCursor,
+          atOrAfter: index + 1
+        )
+      {
+        appendPlain(to: index)
+        runs.append(
+          InlineRun(
+            text: text(from: index + 1, to: close),
+            isEmphasized: true
+          )
+        )
+        index = close + 1
+        plainStart = index
+        continue
+      }
+
+      if index + 1 < bytes.count,
+        bytes[index] == 33,
+        bytes[index + 1] == 91,
+        let closeAlt = nextPosition(
+          in: closingBracketPositions,
+          cursor: &imageBracketCursor,
+          atOrAfter: index + 2
+        ),
+        closeAlt + 1 < bytes.count,
+        bytes[closeAlt + 1] == 40,
+        let closeTarget = nextPosition(
+          in: closingParenthesisPositions,
+          cursor: &imageParenthesisCursor,
+          atOrAfter: closeAlt + 2
+        )
+      {
+        appendPlain(to: index)
+        let alt = text(from: index + 2, to: closeAlt)
+        runs.append(InlineRun(text: "[Image: \(alt)]"))
+        index = closeTarget + 1
+        plainStart = index
+        continue
+      }
+
+      if bytes[index] == 91,
+        let closeLabel = nextPosition(
+          in: closingBracketPositions,
+          cursor: &linkBracketCursor,
+          atOrAfter: index + 1
+        ),
+        closeLabel + 1 < bytes.count,
+        bytes[closeLabel + 1] == 40,
+        let closeTarget = nextPosition(
+          in: closingParenthesisPositions,
+          cursor: &linkParenthesisCursor,
+          atOrAfter: closeLabel + 2
+        )
+      {
+        appendPlain(to: index)
+        let label = text(from: index + 1, to: closeLabel)
+        let target = text(from: closeLabel + 2, to: closeTarget)
         runs.append(
           InlineRun(text: label, link: safeLink(target))
         )
-        index = value.index(after: closeTarget)
+        index = closeTarget + 1
+        plainStart = index
         continue
       }
 
-      if value[index] == "`",
-        let close = value[value.index(after: index)...].firstIndex(of: "`")
+      if bytes[index] == 96,
+        let close = nextPosition(
+          in: backtickPositions,
+          cursor: &backtickCursor,
+          atOrAfter: index + 1
+        )
       {
-        appendPlain()
-        let start = value.index(after: index)
+        appendPlain(to: index)
         runs.append(
           InlineRun(
-            text: String(value[start..<close]),
+            text: text(from: index + 1, to: close),
             isCode: true
           )
         )
-        index = value.index(after: close)
+        index = close + 1
+        plainStart = index
         continue
       }
 
-      plain.append(value[index])
-      index = value.index(after: index)
+      index += 1
     }
-    appendPlain()
+    appendPlain(to: bytes.count)
     return runs
+  }
+
+  private static func nextPosition(
+    in positions: [Int],
+    cursor: inout Int,
+    atOrAfter minimum: Int
+  ) -> Int? {
+    while cursor < positions.count, positions[cursor] < minimum {
+      cursor += 1
+    }
+    return cursor < positions.count ? positions[cursor] : nil
+  }
+
+  private static func nextPairPosition(
+    in positions: [Int],
+    cursor: inout Int,
+    atOrAfter minimum: Int
+  ) -> Int? {
+    while cursor + 1 < positions.count {
+      let position = positions[cursor]
+      if position >= minimum, positions[cursor + 1] == position + 1 {
+        return position
+      }
+      cursor += 1
+    }
+    return nil
   }
 
   private static func safeLink(_ rawValue: String) -> SafeLink? {
@@ -418,8 +638,11 @@ enum MemoryMarkdown {
     return compact.allSatisfy { $0 == first }
   }
 
-  private static func normalized(_ value: String) -> String {
-    parseInline(value)
+  private static func normalized(
+    _ value: String,
+    isCancelled: () -> Bool
+  ) throws -> String {
+    try parseInline(value, isCancelled: isCancelled)
       .map(\.text)
       .joined()
       .folding(
@@ -428,6 +651,14 @@ enum MemoryMarkdown {
       )
       .split(whereSeparator: \.isWhitespace)
       .joined(separator: " ")
+  }
+
+  private static func checkCancellation(
+    _ isCancelled: () -> Bool
+  ) throws {
+    if isCancelled() {
+      throw CancellationError()
+    }
   }
 
   private static func fallback(

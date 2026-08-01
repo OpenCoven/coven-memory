@@ -18,6 +18,11 @@ enum MemorySessionInvalidation: Equatable, Sendable {
   case expired
 }
 
+typealias MemoryMarkdownParsing = @Sendable (
+  _ source: String,
+  _ title: String
+) async throws -> MemoryMarkdownDocument
+
 struct MemoryReaderMetadata: Equatable, Sendable {
   let id: UUID
   let familiarId: String
@@ -60,6 +65,7 @@ final class MemoryReaderState {
   private(set) var phase: Phase = .loading
   private(set) var metadata: MemoryReaderMetadata?
   private(set) var presentedDetail: MemoryDetail?
+  private(set) var presentedDocument: MemoryMarkdownDocument?
   private(set) var protectedReference: ProtectedMemoryReference?
   private(set) var revealGrantID: UUID?
   private(set) var selectedID: UUID
@@ -68,17 +74,22 @@ final class MemoryReaderState {
 
   private let service: any CaveMemoryServicing
   private let authenticator: any LocalAuthenticating
+  private let markdownParser: MemoryMarkdownParsing
   private var hasLoaded = false
   private var generation = 0
 
   init(
     id: UUID,
     service: any CaveMemoryServicing,
-    authenticator: any LocalAuthenticating
+    authenticator: any LocalAuthenticating,
+    markdownParser: @escaping MemoryMarkdownParsing = {
+      try await MemoryMarkdown.parseOffMain($0, title: $1)
+    }
   ) {
     selectedID = id
     self.service = service
     self.authenticator = authenticator
+    self.markdownParser = markdownParser
   }
 
   func load() async {
@@ -130,11 +141,22 @@ final class MemoryReaderState {
         fail(.malformed)
         return
       }
+      let document = try await markdownParser(
+        detail.content,
+        detail.title
+      )
+      guard operationGeneration == generation,
+        reference.id == selectedID,
+        protectedReference == reference
+      else {
+        return
+      }
 
       metadata = MemoryReaderMetadata(detail: detail)
       revealGrantID = reference.id
       protectedReference = nil
       presentedDetail = detail
+      presentedDocument = document
       phase = .content
     } catch is CancellationError {
       guard operationGeneration == generation else { return }
@@ -158,6 +180,7 @@ final class MemoryReaderState {
     metadata = nil
     protectedReference = nil
     presentedDetail = nil
+    presentedDocument = nil
     revealGrantID = nil
     hasLoaded = false
   }
@@ -186,6 +209,7 @@ final class MemoryReaderState {
     metadata = nil
     protectedReference = nil
     presentedDetail = nil
+    presentedDocument = nil
     revealGrantID = nil
 
     do {
@@ -197,18 +221,27 @@ final class MemoryReaderState {
         fail(.malformed)
         return
       }
-      metadata = MemoryReaderMetadata(detail: detail)
       if MemoryPrivacyPolicy.requiresReveal(
         classification: detail.privacy.classification,
         revealRequired: detail.privacy.revealRequired
       ) {
+        metadata = MemoryReaderMetadata(detail: detail)
         protectedReference = ProtectedMemoryReference(
           id: detail.id,
           privacy: detail.privacy
         )
         phase = .protected
       } else {
+        let document = try await markdownParser(
+          detail.content,
+          detail.title
+        )
+        guard operationGeneration == generation, selectedID == id else {
+          return
+        }
+        metadata = MemoryReaderMetadata(detail: detail)
         presentedDetail = detail
+        presentedDocument = document
         phase = .content
       }
     } catch is CancellationError {
@@ -232,6 +265,7 @@ final class MemoryReaderState {
     metadata = nil
     protectedReference = nil
     presentedDetail = nil
+    presentedDocument = nil
     revealGrantID = nil
     phase = .failed(issue)
   }
@@ -290,8 +324,10 @@ struct MemoryReaderView: View {
       case .protected:
         protectedView
       case .content:
-        if let detail = state.presentedDetail {
-          reader(detail)
+        if let detail = state.presentedDetail,
+          let document = state.presentedDocument
+        {
+          reader(detail, document: document)
         }
       case .failed(let issue):
         failureView(issue)
@@ -387,7 +423,10 @@ struct MemoryReaderView: View {
     }
   }
 
-  private func reader(_ detail: MemoryDetail) -> some View {
+  private func reader(
+    _ detail: MemoryDetail,
+    document: MemoryMarkdownDocument
+  ) -> some View {
     ScrollView {
       VStack(
         alignment: .leading,
@@ -401,12 +440,7 @@ struct MemoryReaderView: View {
 
         switch displayMode {
         case .rendered:
-          MemoryMarkdownView(
-            document: MemoryMarkdown.parse(
-              detail.content,
-              title: detail.title
-            )
-          )
+          MemoryMarkdownView(document: document)
         case .raw:
           Text(detail.content)
             .font(.system(.body, design: .monospaced))

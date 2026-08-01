@@ -100,6 +100,35 @@ struct MemoryMarkdownTests {
     #expect(allRuns(document).allSatisfy { $0.link == nil })
   }
 
+  @Test(
+    "Unsafe and malformed link syntax preserves safe inert text",
+    arguments: [
+      ("[unsafe](javascript:evil)", "unsafe"),
+      ("[custom](cave-memory://secret)", "custom"),
+      ("[missing](https://example.com", "[missing](https://example.com"),
+      ("![missing](file:///secret.png", "![missing](file:///secret.png"),
+      ("[dangling](", "[dangling]("),
+    ]
+  )
+  func unsafeAndMalformedLinksPreserveInertText(
+    markdown: String,
+    expected: String
+  ) {
+    let document = MemoryMarkdown.parse(markdown, title: "Safe")
+
+    #expect(plainText(document) == expected)
+    #expect(allRuns(document).allSatisfy { $0.link == nil })
+  }
+
+  @Test("Many unmatched brackets remain literal text")
+  func unmatchedBracketsRemainLiteral() {
+    let body = String(repeating: "[javascript:evil ", count: 2_048)
+    let document = MemoryMarkdown.parse(body, title: "Safe")
+
+    #expect(plainText(document) == body)
+    #expect(allRuns(document) == [InlineRun(text: body)])
+  }
+
   @Test("HTTP and HTTPS links are marked external for confirmation")
   func externalLinksRequireConfirmation() {
     let document = MemoryMarkdown.parse(
@@ -146,6 +175,44 @@ struct MemoryMarkdownTests {
     }
 
     #expect(elapsed < .seconds(5))
+  }
+
+  @Test("Large malformed body meets the adversarial parser performance gate")
+  func malformedBodyPerformance() {
+    let unit = "[javascript:evil "
+    let maximumBodyBytes = 4 * 1024 * 1024
+    let repetitions = maximumBodyBytes / unit.utf8.count
+    let body = String(repeating: unit, count: repetitions)
+    let clock = ContinuousClock()
+
+    let elapsed = clock.measure {
+      _ = MemoryMarkdown.parse(body, title: "Synthetic")
+    }
+
+    #expect(body.utf8.count > maximumBodyBytes - unit.utf8.count)
+    #expect(body.utf8.count <= maximumBodyBytes)
+    #expect(elapsed < .seconds(2))
+  }
+
+  @Test("Off-main parsing cooperatively observes cancellation")
+  func offMainParsingCancellation() async {
+    let unit = "[javascript:evil "
+    let body = String(
+      repeating: unit,
+      count: (4 * 1024 * 1024) / unit.utf8.count
+    )
+    let parsing = Task {
+      try await MemoryMarkdown.parseOffMain(body, title: "Synthetic")
+    }
+
+    parsing.cancel()
+
+    do {
+      _ = try await parsing.value
+      Issue.record("Expected Markdown parsing cancellation")
+    } catch {
+      #expect(error is CancellationError)
+    }
   }
 
   private func allRuns(
