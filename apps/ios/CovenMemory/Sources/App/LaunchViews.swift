@@ -3,6 +3,7 @@ import UIKit
 
 struct LaunchRootView: View {
     @Bindable var coordinator: LaunchCoordinator
+    let authenticator: any LocalAuthenticating
     let lock: () -> Void
 
     @State private var pairingLink = ""
@@ -24,12 +25,19 @@ struct LaunchRootView: View {
                 LaunchProgressView(message: "Connecting to Cave…")
             case .checkingHost:
                 LaunchProgressView(message: "Checking private connection…")
-            case let .ready(host):
-                ConnectionReadyView(
-                    host: host,
-                    pairAgain: resetPairing,
-                    lock: lock
-                )
+            case .ready:
+                if let service = coordinator.memoryService {
+                    MemoryLibraryView(
+                        service: service,
+                        authenticator: authenticator,
+                        pairAgain: resetPairing,
+                        lock: lock
+                    )
+                } else {
+                    LaunchProgressView(
+                        message: "Preparing your private library…"
+                    )
+                }
             case let .failed(failure):
                 LaunchFailureView(
                     failure: failure,

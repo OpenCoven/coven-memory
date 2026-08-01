@@ -53,9 +53,10 @@ final class CovenMemoryLaunchUITests: XCTestCase {
         app.buttons["Continue"].tap()
 
         XCTAssertTrue(
-            app.staticTexts["Private connection ready"]
+            app.navigationBars["Memory Library"]
                 .waitForExistence(timeout: 5)
         )
+        XCTAssertTrue(app.staticTexts["Architecture decisions"].exists)
         XCTAssertFalse(inviteField.exists)
         XCTAssertEqual(
             app.descendants(matching: .any)

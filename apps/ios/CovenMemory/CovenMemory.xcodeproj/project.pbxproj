@@ -11,9 +11,13 @@
 		063E3A31FA276C27614CC258 /* detail-protected.json in Resources */ = {isa = PBXBuildFile; fileRef = CAD243670749032EA3FCE458 /* detail-protected.json */; };
 		0AD782F415B93EA8FDCA1358 /* PrivacyLockModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10195FDD2918B7D1EBCA2F06 /* PrivacyLockModel.swift */; };
 		0BA11C03F23F03E3478455DF /* CredentialVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB62383EEAA7F56CBADCBAB /* CredentialVault.swift */; };
+		16275F5EBBCAC817808827DC /* MemoryLibraryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2771B98DC141C65BEF8C3F62 /* MemoryLibraryUITests.swift */; };
 		180BF5B0786324E5B0CB0855 /* CovenThemeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF65F52751EDC5341B690A37 /* CovenThemeTests.swift */; };
 		24D7674659E6747122576AE5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C6703A8B7A48791FA0E2B425 /* Assets.xcassets */; };
+		2CF693759FF2C8695AF8F19F /* MemoryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC35B795556F968007B8368F /* MemoryRow.swift */; };
 		2F1521113F8A719F2233B6D8 /* detail-public.json in Resources */ = {isa = PBXBuildFile; fileRef = 2CC161183FBBF5530F4F0673 /* detail-public.json */; };
+		318E8BF54836C45EDC87BD6B /* MemoryLibraryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2536B5DA6D5FE3F7AA17AC /* MemoryLibraryState.swift */; };
+		36892B0EBC1939A05D88C02F /* MemoryHealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121F920ECB86F53F436B1AE9 /* MemoryHealthView.swift */; };
 		385C5D650DC8917FC17493C2 /* QRScannerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D24821CB07AECF57A80B18DD /* QRScannerSheet.swift */; };
 		3DA0BE93AB8B51D9027B770A /* PrivacyLifecycleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4B27A4170036F2FD6B8F12 /* PrivacyLifecycleTests.swift */; };
 		3DC1B17F9186376992F30D27 /* CaveMemoryConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F71913BCBA95B753D9ED9E /* CaveMemoryConnection.swift */; };
@@ -22,16 +26,20 @@
 		40A6689EF597A138B1788F01 /* LaunchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78F43D56ED5BFDF7E1C0DA00 /* LaunchViews.swift */; };
 		42C11778D372F82614D628EF /* LaunchCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF37227525DCF8D8C1F8162 /* LaunchCoordinator.swift */; };
 		4A37530637506032798B5232 /* list-success.json in Resources */ = {isa = PBXBuildFile; fileRef = 5E6AC8B919C7B1EA20648B6A /* list-success.json */; };
+		5915811F63593FC9C13AE233 /* MemoryLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3982DFC752C65B95CC85897 /* MemoryLibraryView.swift */; };
 		5AE5518CEFE3CE26C74E1620 /* cave-overview-success.json in Resources */ = {isa = PBXBuildFile; fileRef = B6283A5547D14134BA6254E0 /* cave-overview-success.json */; };
 		5D95EFEB8339B30A58EA5C52 /* capabilities-success.json in Resources */ = {isa = PBXBuildFile; fileRef = 329E0F6F3588CF867692E2FD /* capabilities-success.json */; };
+		67FDA48E20ED96A47A8C30E4 /* MemoryFilterSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27972E2F0D7BAEC45F3D03FF /* MemoryFilterSheet.swift */; };
 		6950D58BE46F2336CC98B912 /* CaveMemoryInviteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E2C5913BCE2F520A217BE55 /* CaveMemoryInviteTests.swift */; };
 		6B1371A0708D6132D0550E36 /* error-cases.json in Resources */ = {isa = PBXBuildFile; fileRef = 80B9B9BECEFDADFC3C549F1B /* error-cases.json */; };
+		6D027D64CDE49F3A0D56F210 /* MemoryLibraryStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FF6F418890331724303F335 /* MemoryLibraryStateTests.swift */; };
 		6DA87FCD740726B5702462D2 /* MemoryPrivacyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4296EAA63914269FAEB75F6D /* MemoryPrivacyPolicy.swift */; };
 		764410F5A067294DC104F7CA /* CredentialVaultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C533FFBF5F5AFB81E7CCCAF0 /* CredentialVaultTests.swift */; };
 		7A16C96FA6B87E614AB41FD4 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93468BFBD005399D3B853D44 /* KeychainStore.swift */; };
 		899CA8A93A175A512FD6B58D /* MobileContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A270006FDF5C369D0BFE7AB /* MobileContractTests.swift */; };
 		9363D89B048DC3EC6EA074D9 /* CaveMemoryTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B3B19371838D8C6E06925C /* CaveMemoryTransportTests.swift */; };
 		96D0078F294A09F2E369DE9E /* CaveMemoryTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F38D55200D227846D9EA459F /* CaveMemoryTransport.swift */; };
+		9DDC1FEFA7E95633B99EE3A9 /* MemoryReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE90755C4BFD5D7300B12CF /* MemoryReaderView.swift */; };
 		9E154215C6E6F038E2DD9A8D /* Fixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B762A333F484DB7460EFCA /* Fixture.swift */; };
 		A11DF53521C733E5E546692C /* Validated.swift in Sources */ = {isa = PBXBuildFile; fileRef = B654273DE28FF8238884DBFF /* Validated.swift */; };
 		A266937367A6A4D3593DFDC8 /* CovenMemoryApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30725A732F69B8755B6EC78A /* CovenMemoryApp.swift */; };
@@ -71,7 +79,11 @@
 
 /* Begin PBXFileReference section */
 		10195FDD2918B7D1EBCA2F06 /* PrivacyLockModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyLockModel.swift; sourceTree = "<group>"; };
+		121F920ECB86F53F436B1AE9 /* MemoryHealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryHealthView.swift; sourceTree = "<group>"; };
 		1904FCA988D0CBA09C429487 /* LaunchCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchCoordinatorTests.swift; sourceTree = "<group>"; };
+		1FF6F418890331724303F335 /* MemoryLibraryStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryLibraryStateTests.swift; sourceTree = "<group>"; };
+		2771B98DC141C65BEF8C3F62 /* MemoryLibraryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryLibraryUITests.swift; sourceTree = "<group>"; };
+		27972E2F0D7BAEC45F3D03FF /* MemoryFilterSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryFilterSheet.swift; sourceTree = "<group>"; };
 		2CC161183FBBF5530F4F0673 /* detail-public.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "detail-public.json"; sourceTree = "<group>"; };
 		2E2C5913BCE2F520A217BE55 /* CaveMemoryInviteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaveMemoryInviteTests.swift; sourceTree = "<group>"; };
 		30725A732F69B8755B6EC78A /* CovenMemoryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CovenMemoryApp.swift; sourceTree = "<group>"; };
@@ -96,7 +108,10 @@
 		93468BFBD005399D3B853D44 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		9A8356306DD6D3F069E9900D /* MemoryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryModels.swift; sourceTree = "<group>"; };
 		9DF37227525DCF8D8C1F8162 /* LaunchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchCoordinator.swift; sourceTree = "<group>"; };
+		ABE90755C4BFD5D7300B12CF /* MemoryReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryReaderView.swift; sourceTree = "<group>"; };
+		AC35B795556F968007B8368F /* MemoryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryRow.swift; sourceTree = "<group>"; };
 		AFB62383EEAA7F56CBADCBAB /* CredentialVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialVault.swift; sourceTree = "<group>"; };
+		B3982DFC752C65B95CC85897 /* MemoryLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryLibraryView.swift; sourceTree = "<group>"; };
 		B5813149F3F23A3DEC39C1B5 /* MemoryCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryCapabilities.swift; sourceTree = "<group>"; };
 		B6283A5547D14134BA6254E0 /* cave-overview-success.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "cave-overview-success.json"; sourceTree = "<group>"; };
 		B654273DE28FF8238884DBFF /* Validated.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Validated.swift; sourceTree = "<group>"; };
@@ -112,6 +127,7 @@
 		D806DED6D9B4CB8F8D26C522 /* MemoryPrivacyPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryPrivacyPolicyTests.swift; sourceTree = "<group>"; };
 		DD4B27A4170036F2FD6B8F12 /* PrivacyLifecycleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyLifecycleTests.swift; sourceTree = "<group>"; };
 		E70B8AEF02F415711BEC8DB8 /* NetworkError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkError.swift; sourceTree = "<group>"; };
+		EF2536B5DA6D5FE3F7AA17AC /* MemoryLibraryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryLibraryState.swift; sourceTree = "<group>"; };
 		F38D55200D227846D9EA459F /* CaveMemoryTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaveMemoryTransport.swift; sourceTree = "<group>"; };
 		F4B762A333F484DB7460EFCA /* Fixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fixture.swift; sourceTree = "<group>"; };
 		F6A4940070AB2B5F8C99D5E0 /* QRScannerSheetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerSheetTests.swift; sourceTree = "<group>"; };
@@ -133,6 +149,7 @@
 			isa = PBXGroup;
 			children = (
 				61BFD93FE933570FFE8E641D /* CovenMemoryLaunchUITests.swift */,
+				2771B98DC141C65BEF8C3F62 /* MemoryLibraryUITests.swift */,
 			);
 			path = UITests;
 			sourceTree = "<group>";
@@ -221,11 +238,32 @@
 				C533FFBF5F5AFB81E7CCCAF0 /* CredentialVaultTests.swift */,
 				1904FCA988D0CBA09C429487 /* LaunchCoordinatorTests.swift */,
 				BFFCBAEE024EE9F7FE932E0E /* MemoryFiltersTests.swift */,
+				1FF6F418890331724303F335 /* MemoryLibraryStateTests.swift */,
 				D806DED6D9B4CB8F8D26C522 /* MemoryPrivacyPolicyTests.swift */,
 				DD4B27A4170036F2FD6B8F12 /* PrivacyLifecycleTests.swift */,
 				F6A4940070AB2B5F8C99D5E0 /* QRScannerSheetTests.swift */,
 			);
 			path = Unit;
+			sourceTree = "<group>";
+		};
+		999E00E162D99AFAA514F57E /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				121F920ECB86F53F436B1AE9 /* MemoryHealthView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		9EA5E15DE29F35C47BEAFF51 /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				27972E2F0D7BAEC45F3D03FF /* MemoryFilterSheet.swift */,
+				EF2536B5DA6D5FE3F7AA17AC /* MemoryLibraryState.swift */,
+				B3982DFC752C65B95CC85897 /* MemoryLibraryView.swift */,
+				ABE90755C4BFD5D7300B12CF /* MemoryReaderView.swift */,
+				AC35B795556F968007B8368F /* MemoryRow.swift */,
+			);
+			path = Library;
 			sourceTree = "<group>";
 		};
 		AB709F28E176C98B2C30ACA7 /* Tests */ = {
@@ -251,6 +289,15 @@
 				645A43B798CA6B522BABF1E1 /* signature-vector.json */,
 			);
 			path = "mobile-memory-v1";
+			sourceTree = "<group>";
+		};
+		BB8D93F5E587FF28412AAA30 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				9EA5E15DE29F35C47BEAFF51 /* Library */,
+				999E00E162D99AFAA514F57E /* Settings */,
+			);
+			path = Features;
 			sourceTree = "<group>";
 		};
 		D1B02BEC7F41234DA4C73351 /* Support */ = {
@@ -300,6 +347,7 @@
 				DD9200FCD7F3468A304DB688 /* App */,
 				6D0CCEB747B5116796C2AE59 /* DesignSystem */,
 				1B2C5811B96E2358BAF9239F /* DeviceSecurity */,
+				BB8D93F5E587FF28412AAA30 /* Features */,
 				E7C0BC4FC4D0CE14FFEED51A /* MemoryDomain */,
 				52774688E282591A0D60A133 /* Pairing */,
 				0855E0997BD65B4718964060 /* Transport */,
@@ -439,6 +487,7 @@
 				9E154215C6E6F038E2DD9A8D /* Fixture.swift in Sources */,
 				BE0F9FC51225AC81459B32E2 /* LaunchCoordinatorTests.swift in Sources */,
 				E285531EDFF3CB50515E19E3 /* MemoryFiltersTests.swift in Sources */,
+				6D027D64CDE49F3A0D56F210 /* MemoryLibraryStateTests.swift in Sources */,
 				B0D2336497008531D4992B0D /* MemoryPrivacyPolicyTests.swift in Sources */,
 				899CA8A93A175A512FD6B58D /* MobileContractTests.swift in Sources */,
 				3DA0BE93AB8B51D9027B770A /* PrivacyLifecycleTests.swift in Sources */,
@@ -463,9 +512,15 @@
 				40A6689EF597A138B1788F01 /* LaunchViews.swift in Sources */,
 				DF7A2DAD367569586D600060 /* LocalAuthenticator.swift in Sources */,
 				A2C0BFD368AE25693F4F47E0 /* MemoryCapabilities.swift in Sources */,
+				67FDA48E20ED96A47A8C30E4 /* MemoryFilterSheet.swift in Sources */,
 				D7BB266E7101A56BCAD29661 /* MemoryFilters.swift in Sources */,
+				36892B0EBC1939A05D88C02F /* MemoryHealthView.swift in Sources */,
+				318E8BF54836C45EDC87BD6B /* MemoryLibraryState.swift in Sources */,
+				5915811F63593FC9C13AE233 /* MemoryLibraryView.swift in Sources */,
 				010C35759C2095B3DA2A1462 /* MemoryModels.swift in Sources */,
 				6DA87FCD740726B5702462D2 /* MemoryPrivacyPolicy.swift in Sources */,
+				9DDC1FEFA7E95633B99EE3A9 /* MemoryReaderView.swift in Sources */,
+				2CF693759FF2C8695AF8F19F /* MemoryRow.swift in Sources */,
 				A5976CF2CC0E776EEDE09A6D /* NetworkError.swift in Sources */,
 				D8A71C05DA210DBA372A551E /* PrivacyCover.swift in Sources */,
 				0AD782F415B93EA8FDCA1358 /* PrivacyLockModel.swift in Sources */,
@@ -479,6 +534,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF0D5C4C90EC02DBA3EE81E6 /* CovenMemoryLaunchUITests.swift in Sources */,
+				16275F5EBBCAC817808827DC /* MemoryLibraryUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

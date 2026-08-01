@@ -24,6 +24,7 @@ enum LaunchState: Equatable, Sendable {
 @Observable
 final class LaunchCoordinator {
     private(set) var state: LaunchState = .locked
+    private(set) var memoryService: (any CaveMemoryServicing)?
 
     var canRetry: Bool {
         guard currentConnection != nil else { return false }
@@ -54,6 +55,7 @@ final class LaunchCoordinator {
     }
 
     func start() async {
+        memoryService = nil
         currentConnection = nil
         persistenceRequired = false
         state = .checkingPairing
@@ -65,6 +67,7 @@ final class LaunchCoordinator {
 
     func submitInvite(_ rawValue: String) async {
         guard state != .locked else { return }
+        memoryService = nil
         state = .connecting
         let operation = beginOperation { [weak self] generation in
             await self?.openInvite(rawValue, generation: generation)
@@ -74,6 +77,7 @@ final class LaunchCoordinator {
 
     func retry() async {
         guard canRetry, let connection = currentConnection else { return }
+        memoryService = nil
         state = .checkingHost(connection.displayName)
         let persistAfterReadiness = persistenceRequired
         let operation = beginOperation { [weak self] generation in
@@ -88,6 +92,7 @@ final class LaunchCoordinator {
 
     func resetPairing() async {
         guard state != .locked else { return }
+        memoryService = nil
         let operation = beginOperation { [weak self] generation in
             guard let self else { return }
             do {
@@ -111,6 +116,7 @@ final class LaunchCoordinator {
         generation += 1
         task?.cancel()
         task = nil
+        memoryService = nil
         currentConnection = nil
         persistenceRequired = false
         state = wasLocked ? .locked : .unpaired
@@ -120,6 +126,7 @@ final class LaunchCoordinator {
         generation += 1
         task?.cancel()
         task = nil
+        memoryService = nil
         currentConnection = nil
         persistenceRequired = false
         state = .locked
@@ -254,6 +261,9 @@ final class LaunchCoordinator {
 
             guard isCurrent(generation) else { return }
             currentConnection = activeConnection
+            memoryService = activeConnection == connection
+                ? service
+                : makeService(activeConnection)
             state = .ready(activeConnection.displayName)
         } catch is CancellationError {
             return
