@@ -3,10 +3,11 @@ import XCTest
 final class MemoryReaderUITests: XCTestCase {
   @MainActor
   func testProtectedMemoryRevealsThenClearsOnSelection() {
-    let app = launch(scenario: "reader-protected")
+    let app = launch(scenario: "reader-protected-refetch")
     openMemory("Protected field notes", in: app)
 
     XCTAssertTrue(app.buttons["Reveal memory"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Discarded protected body"].exists)
     XCTAssertFalse(app.staticTexts["Protected synthetic body"].exists)
     app.buttons["Reveal memory"].tap()
     XCTAssertTrue(
@@ -23,6 +24,25 @@ final class MemoryReaderUITests: XCTestCase {
     XCTAssertTrue(
       app.staticTexts["Public synthetic body"].waitForExistence(timeout: 5)
     )
+  }
+
+  @MainActor
+  func testStaleRevealRefetchCannotCrossSelection() {
+    let app = launch(scenario: "reader-stale-reveal")
+    openMemory("Protected field notes", in: app)
+    app.buttons["Reveal memory"].tap()
+
+    if app.windows.firstMatch.frame.width >= 600 {
+      app.staticTexts["Public field notes"].tap()
+    } else {
+      app.navigationBars.buttons.element(boundBy: 0).tap()
+      app.staticTexts["Public field notes"].tap()
+    }
+
+    XCTAssertTrue(
+      app.staticTexts["Public synthetic body"].waitForExistence(timeout: 5)
+    )
+    XCTAssertFalse(app.staticTexts["Stale protected body"].exists)
   }
 
   @MainActor
@@ -69,6 +89,13 @@ final class MemoryReaderUITests: XCTestCase {
 
     XCTAssertTrue(app.buttons["Unlock"].waitForExistence(timeout: 5))
     XCTAssertFalse(app.staticTexts["Protected synthetic body"].exists)
+    app.buttons["Unlock"].tap()
+    XCTAssertTrue(
+      app.staticTexts["Protected field notes"].waitForExistence(timeout: 5)
+    )
+    app.staticTexts["Protected field notes"].tap()
+    XCTAssertTrue(app.buttons["Reveal memory"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.staticTexts["Protected synthetic body"].exists)
   }
 
   @MainActor
@@ -82,11 +109,12 @@ final class MemoryReaderUITests: XCTestCase {
     XCTAssertTrue(app.buttons["Raw"].exists)
     XCTAssertTrue(app.staticTexts["Label, Coven origin"].exists)
     XCTAssertTrue(app.staticTexts["Kind, coven-origin"].exists)
+    app.buttons["Raw"].tap()
+    app.swipeUp()
     XCTAssertTrue(app.staticTexts["State, Verified"].exists)
     XCTAssertTrue(app.staticTexts["Reason, Signed by Cave"].exists)
     XCTAssertTrue(app.staticTexts["Metadata, 3 fields"].exists)
 
-    app.buttons["Raw"].tap()
     app.buttons["Done"].tap()
     let raw = app.staticTexts["Raw memory source"]
     XCTAssertTrue(raw.exists)
@@ -99,12 +127,25 @@ final class MemoryReaderUITests: XCTestCase {
     openMemory("Public field notes", in: app)
     app.buttons["Memory info"].tap()
 
-    XCTAssertGreaterThanOrEqual(
-      app.staticTexts.matching(
-        NSPredicate(format: "label == 'Unsupported by this Cave'")
-      ).count,
-      3
-    )
+    XCTAssertTrue(app.staticTexts["Overview, Supported"].exists)
+    XCTAssertTrue(app.staticTexts["List, Supported"].exists)
+    XCTAssertTrue(app.staticTexts["Detail, Supported"].exists)
+    XCTAssertTrue(app.staticTexts["Verification, Unsupported"].exists)
+    app.swipeUp()
+    XCTAssertTrue(app.staticTexts["Mutations, Unsupported"].exists)
+  }
+
+  @MainActor
+  func testProvenanceShowsAllFiveCapabilities() {
+    let app = launch(scenario: "reader-provenance")
+    openMemory("Public field notes", in: app)
+    app.buttons["Memory info"].tap()
+
+    XCTAssertTrue(app.staticTexts["Overview, Supported"].exists)
+    XCTAssertTrue(app.staticTexts["List, Supported"].exists)
+    XCTAssertTrue(app.staticTexts["Detail, Supported"].exists)
+    XCTAssertTrue(app.staticTexts["Verification, Supported"].exists)
+    XCTAssertTrue(app.staticTexts["Mutations, Unsupported"].exists)
   }
 
   @MainActor
@@ -124,6 +165,7 @@ final class MemoryReaderUITests: XCTestCase {
     let app = launch(scenario: "reader-supersession")
     openMemory("Public field notes", in: app)
     app.buttons["Memory info"].tap()
+    scrollToButton("Newer memory", in: app)
     app.buttons["Newer memory"].tap()
 
     XCTAssertTrue(
@@ -131,12 +173,45 @@ final class MemoryReaderUITests: XCTestCase {
         .waitForExistence(timeout: 5)
     )
     app.buttons["Memory info"].tap()
+    scrollToButton("Older memory", in: app)
     app.buttons["Older memory"].tap()
 
     XCTAssertTrue(
-      app.staticTexts["Memory no longer available."]
+      app.staticTexts["Memory no longer available"]
         .waitForExistence(timeout: 5)
     )
+  }
+
+  @MainActor
+  func testDisconnectClearsReaderAndShowsConnectionFailure() {
+    assertSessionInvalidation(
+      scenario: "reader-disconnect",
+      expectedTitle: "Host unavailable"
+    )
+  }
+
+  @MainActor
+  func testRevocationClearsReaderAndShowsPairingFailure() {
+    assertSessionInvalidation(
+      scenario: "reader-revoked",
+      expectedTitle: "Pairing expired"
+    )
+  }
+
+  @MainActor
+  func testExpiryClearsRawReaderAndShowsPairingFailure() {
+    let app = launch(scenario: "reader-expired")
+    openMemory("Public field notes", in: app)
+    app.buttons["Memory info"].tap()
+    app.buttons["Raw"].tap()
+    app.buttons["Done"].tap()
+    XCTAssertTrue(app.staticTexts["Raw memory source"].exists)
+
+    XCTAssertTrue(
+      app.staticTexts["Pairing expired"].waitForExistence(timeout: 12)
+    )
+    XCTAssertFalse(app.staticTexts["Raw memory source"].exists)
+    XCTAssertFalse(app.staticTexts["Public synthetic body"].exists)
   }
 
   @MainActor
@@ -160,6 +235,34 @@ final class MemoryReaderUITests: XCTestCase {
     XCTAssertTrue(app.staticTexts[title].waitForExistence(timeout: 5))
     app.staticTexts[title].tap()
     XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5))
+  }
+
+  @MainActor
+  private func assertSessionInvalidation(
+    scenario: String,
+    expectedTitle: String
+  ) {
+    let app = launch(scenario: scenario)
+    openMemory("Public field notes", in: app)
+    XCTAssertTrue(
+      app.staticTexts["Public synthetic body"].waitForExistence(timeout: 5)
+    )
+
+    XCTAssertTrue(app.staticTexts[expectedTitle].waitForExistence(timeout: 12))
+    XCTAssertFalse(app.staticTexts["Public synthetic body"].exists)
+    XCTAssertFalse(app.buttons["Memory info"].exists)
+  }
+
+  @MainActor
+  private func scrollToButton(
+    _ label: String,
+    in app: XCUIApplication
+  ) {
+    let button = app.buttons[label]
+    for _ in 0..<4 where !button.exists {
+      app.swipeUp()
+    }
+    XCTAssertTrue(button.exists)
   }
 
   @MainActor

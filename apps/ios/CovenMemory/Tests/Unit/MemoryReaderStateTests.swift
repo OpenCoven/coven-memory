@@ -24,56 +24,114 @@ struct MemoryReaderStateTests {
   @Test("Protected detail body remains outside presented state until reveal")
   @MainActor
   func protectedReveal() async {
-    let detail = makeDetail(id: 1, isPublic: false, content: "Private body")
+    let classified = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Classified body must be discarded"
+    )
+    let revealed = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Refetched private body"
+    )
     let authenticator = ReaderAuthenticator()
     let state = MemoryReaderState(
-      id: detail.id,
-      service: ReaderStubService(results: [.success(detail)]),
+      id: classified.id,
+      service: ReaderStubService(
+        results: [.success(classified), .success(revealed)]
+      ),
       authenticator: authenticator
     )
 
     await state.load()
     #expect(state.phase == .protected)
     #expect(state.presentedDetail == nil)
+    #expect(state.retainedContent == nil)
+    #expect(state.protectedReference?.id == classified.id)
+    #expect(state.protectedReference?.privacy == classified.privacy)
     #expect(state.revealGrantID == nil)
 
     await state.reveal()
 
     #expect(state.phase == .content)
-    #expect(state.presentedDetail?.content == "Private body")
-    #expect(state.revealGrantID == detail.id)
+    #expect(state.presentedDetail?.content == "Refetched private body")
+    #expect(state.revealGrantID == classified.id)
     #expect(await authenticator.callCount == 1)
   }
 
-  @Test("Selection change clears the old body and reveal before fetching")
+  @Test("A stale reveal refetch cannot cross a selection change")
   @MainActor
-  func selectionChangeClearsFirst() async {
-    let first = makeDetail(id: 1, isPublic: false, content: "First private")
+  func staleRevealCannotCrossSelection() async {
+    let first = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Discarded first private"
+    )
+    let staleRefetch = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Stale refetched private"
+    )
     let second = makeDetail(id: 2, isPublic: true, content: "Second public")
     let gate = ReaderGate()
     let state = MemoryReaderState(
       id: first.id,
       service: ReaderStubService(
-        results: [.success(first), .success(second)],
+        results: [
+          .success(first),
+          .success(staleRefetch),
+          .success(second),
+        ],
         gateOnCall: 2,
         gate: gate
       ),
       authenticator: ReaderAuthenticator()
     )
     await state.load()
-    await state.reveal()
-    #expect(state.presentedDetail?.id == first.id)
 
-    let change = Task { await state.select(second.id) }
+    let reveal = Task { await state.reveal() }
     #expect(await gate.waitUntilEntered())
 
-    #expect(state.phase == .loading)
-    #expect(state.presentedDetail == nil)
-    #expect(state.revealGrantID == nil)
+    await state.select(second.id)
+    #expect(state.phase == .content)
+    #expect(state.presentedDetail?.id == second.id)
+    #expect(state.presentedDetail?.content == "Second public")
 
     await gate.open()
-    await change.value
+    await reveal.value
     #expect(state.presentedDetail?.id == second.id)
+    #expect(state.presentedDetail?.content == "Second public")
+    #expect(state.revealGrantID == nil)
+  }
+
+  @Test("Reveal rejects a refetch whose privacy state changed")
+  @MainActor
+  func revealRevalidatesPrivacy() async {
+    let classified = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Discarded private"
+    )
+    let changed = makeDetail(
+      id: 1,
+      isPublic: true,
+      content: "Changed privacy body"
+    )
+    let state = MemoryReaderState(
+      id: classified.id,
+      service: ReaderStubService(
+        results: [.success(classified), .success(changed)]
+      ),
+      authenticator: ReaderAuthenticator()
+    )
+
+    await state.load()
+    await state.reveal()
+
+    #expect(state.phase == .failed(.malformed))
+    #expect(state.presentedDetail == nil)
+    #expect(state.retainedContent == nil)
+    #expect(state.revealGrantID == nil)
   }
 
   @Test("Lifecycle clearing removes body and grant without persistence")
@@ -82,7 +140,9 @@ struct MemoryReaderStateTests {
     let detail = makeDetail(id: 1, isPublic: false, content: "Private")
     let state = MemoryReaderState(
       id: detail.id,
-      service: ReaderStubService(results: [.success(detail)]),
+      service: ReaderStubService(
+        results: [.success(detail), .success(detail)]
+      ),
       authenticator: ReaderAuthenticator()
     )
     await state.load()
@@ -92,6 +152,40 @@ struct MemoryReaderStateTests {
 
     #expect(state.phase == .loading)
     #expect(state.presentedDetail == nil)
+    #expect(state.revealGrantID == nil)
+  }
+
+  @Test(
+    "Session invalidation clears every retained reader layer",
+    arguments: [
+      (MemorySessionInvalidation.disconnected, MemoryReaderIssue.offline),
+      (.revoked, .revoked),
+      (.expired, .revoked),
+    ]
+  )
+  @MainActor
+  func sessionInvalidationClearsReader(
+    invalidation: MemorySessionInvalidation,
+    expected: MemoryReaderIssue
+  ) async {
+    let detail = makeDetail(id: 1, isPublic: false, content: "Private")
+    let state = MemoryReaderState(
+      id: detail.id,
+      service: ReaderStubService(
+        results: [.success(detail), .success(detail)]
+      ),
+      authenticator: ReaderAuthenticator()
+    )
+    await state.load()
+    await state.reveal()
+
+    state.invalidateSession(invalidation)
+
+    #expect(state.phase == .failed(expected))
+    #expect(state.metadata == nil)
+    #expect(state.protectedReference == nil)
+    #expect(state.presentedDetail == nil)
+    #expect(state.retainedContent == nil)
     #expect(state.revealGrantID == nil)
   }
 
@@ -166,10 +260,11 @@ private actor ReaderStubService: CaveMemoryServicing {
 
   func detail(id: UUID) async throws -> MemoryDetail {
     detailCalls += 1
+    let result = results.removeFirst()
     if detailCalls == gateOnCall {
       await gate?.enter()
     }
-    return try results.removeFirst().get()
+    return try result.get()
   }
 
   func refreshToken() async throws -> CaveMemoryConnection {

@@ -79,6 +79,7 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
     private let connection: CaveMemoryConnection
     private let scenario: UITestLibraryScenario?
     private var overviewCallCount = 0
+    private var detailCallCounts: [UUID: Int] = [:]
 
     init(
         connection: CaveMemoryConnection,
@@ -115,7 +116,9 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             return Self.navigationSummaries
         case .readerProtected, .readerPublic, .readerProvenance,
             .readerUnsupportedProvenance, .readerLinks,
-            .readerSupersession:
+            .readerSupersession, .readerProtectedRefetch,
+            .readerStaleReveal, .readerDisconnect, .readerRevoked,
+            .readerExpired:
             return Self.readerSummaries
         case .filteredEmpty, .healthy, .overviewFailure,
             .healthDegraded, nil:
@@ -155,7 +158,18 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             throw NetworkError.memoryNotFound
         }
         if Self.readerIDs.contains(id) {
-            return try Self.readerDetail(id: id, scenario: scenario)
+            detailCallCounts[id, default: 0] += 1
+            let callCount = detailCallCounts[id, default: 0]
+            if scenario == .readerStaleReveal,
+               id == Self.protectedReaderID,
+               callCount == 2 {
+                try await Task.sleep(for: .seconds(1))
+            }
+            return try Self.readerDetail(
+                id: id,
+                scenario: scenario,
+                callCount: callCount
+            )
         }
         let title = Self.summaries(for: scenario)
             .first(where: { $0.id == id })?.title
@@ -470,7 +484,9 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             navigationSummaries
         case .readerProtected, .readerPublic, .readerProvenance,
             .readerUnsupportedProvenance, .readerLinks,
-            .readerSupersession:
+            .readerSupersession, .readerProtectedRefetch,
+            .readerStaleReveal, .readerDisconnect, .readerRevoked,
+            .readerExpired:
             readerSummaries
         case .healthy, .loading, .filteredEmpty, .overviewFailure,
             .healthDegraded, nil:
@@ -480,7 +496,8 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
 
     private static func readerDetail(
         id: UUID,
-        scenario: UITestLibraryScenario?
+        scenario: UITestLibraryScenario?,
+        callCount: Int
     ) throws -> MemoryDetail {
         let isProtected = id == protectedReaderID
         let isNewer = id == newerReaderID
@@ -489,7 +506,13 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             : isNewer ? "Superseding field notes" : "Public field notes"
         let content: String
         if isProtected {
-            content = "Protected synthetic body"
+            if scenario == .readerProtectedRefetch, callCount == 1 {
+                content = "Discarded protected body"
+            } else if scenario == .readerStaleReveal, callCount == 2 {
+                content = "Stale protected body"
+            } else {
+                content = "Protected synthetic body"
+            }
         } else if isNewer {
             content = "Superseding synthetic body"
         } else if scenario == .readerLinks {
@@ -584,6 +607,11 @@ private enum UITestLibraryScenario: String, Sendable {
     case readerUnsupportedProvenance = "reader-unsupported-provenance"
     case readerLinks = "reader-links"
     case readerSupersession = "reader-supersession"
+    case readerProtectedRefetch = "reader-protected-refetch"
+    case readerStaleReveal = "reader-stale-reveal"
+    case readerDisconnect = "reader-disconnect"
+    case readerRevoked = "reader-revoked"
+    case readerExpired = "reader-expired"
     case offline
     case unavailable
     case revoked

@@ -12,6 +12,12 @@ enum MemoryReaderIssue: Equatable, Sendable {
   case missingSupersession
 }
 
+enum MemorySessionInvalidation: Equatable, Sendable {
+  case disconnected
+  case revoked
+  case expired
+}
+
 struct MemoryReaderMetadata: Equatable, Sendable {
   let id: UUID
   let familiarId: String
@@ -36,6 +42,11 @@ struct MemoryReaderMetadata: Equatable, Sendable {
   }
 }
 
+struct ProtectedMemoryReference: Equatable, Sendable {
+  let id: UUID
+  let privacy: MemoryPrivacySummary
+}
+
 @MainActor
 @Observable
 final class MemoryReaderState {
@@ -49,12 +60,14 @@ final class MemoryReaderState {
   private(set) var phase: Phase = .loading
   private(set) var metadata: MemoryReaderMetadata?
   private(set) var presentedDetail: MemoryDetail?
+  private(set) var protectedReference: ProtectedMemoryReference?
   private(set) var revealGrantID: UUID?
   private(set) var selectedID: UUID
 
+  var retainedContent: String? { presentedDetail?.content }
+
   private let service: any CaveMemoryServicing
   private let authenticator: any LocalAuthenticating
-  private var pendingDetail: MemoryDetail?
   private var hasLoaded = false
   private var generation = 0
 
@@ -85,8 +98,8 @@ final class MemoryReaderState {
 
   func reveal() async {
     guard phase == .protected,
-      let detail = pendingDetail,
-      detail.id == selectedID,
+      let reference = protectedReference,
+      reference.id == selectedID,
       revealGrantID == nil
     else {
       return
@@ -97,15 +110,40 @@ final class MemoryReaderState {
         reason: "Reveal this private memory."
       )
       guard operationGeneration == generation,
-        detail.id == selectedID,
-        pendingDetail?.id == detail.id
+        reference.id == selectedID,
+        protectedReference == reference
       else {
         return
       }
-      revealGrantID = detail.id
-      pendingDetail = nil
+
+      let detail = try await service.detail(id: reference.id)
+      guard operationGeneration == generation,
+        reference.id == selectedID,
+        protectedReference == reference
+      else {
+        return
+      }
+      guard detail.id == reference.id,
+        detail.privacy == reference.privacy,
+        detail.requiresReveal
+      else {
+        fail(.malformed)
+        return
+      }
+
+      metadata = MemoryReaderMetadata(detail: detail)
+      revealGrantID = reference.id
+      protectedReference = nil
       presentedDetail = detail
       phase = .content
+    } catch is CancellationError {
+      guard operationGeneration == generation else { return }
+      revealGrantID = nil
+      presentedDetail = nil
+      phase = .protected
+    } catch let error as NetworkError {
+      guard operationGeneration == generation else { return }
+      fail(Self.map(error))
     } catch {
       guard operationGeneration == generation else { return }
       revealGrantID = nil
@@ -118,10 +156,18 @@ final class MemoryReaderState {
     generation += 1
     phase = .loading
     metadata = nil
-    pendingDetail = nil
+    protectedReference = nil
     presentedDetail = nil
     revealGrantID = nil
     hasLoaded = false
+  }
+
+  func invalidateSession(_ invalidation: MemorySessionInvalidation) {
+    clearSensitiveContent()
+    hasLoaded = true
+    phase = .failed(
+      invalidation == .disconnected ? .offline : .revoked
+    )
   }
 
   private func prepareForSelection(_ id: UUID) {
@@ -138,7 +184,7 @@ final class MemoryReaderState {
     let operationGeneration = generation
     phase = .loading
     metadata = nil
-    pendingDetail = nil
+    protectedReference = nil
     presentedDetail = nil
     revealGrantID = nil
 
@@ -147,12 +193,19 @@ final class MemoryReaderState {
       guard operationGeneration == generation, selectedID == id else {
         return
       }
+      guard detail.id == id else {
+        fail(.malformed)
+        return
+      }
       metadata = MemoryReaderMetadata(detail: detail)
       if MemoryPrivacyPolicy.requiresReveal(
         classification: detail.privacy.classification,
         revealRequired: detail.privacy.revealRequired
       ) {
-        pendingDetail = detail
+        protectedReference = ProtectedMemoryReference(
+          id: detail.id,
+          privacy: detail.privacy
+        )
         phase = .protected
       } else {
         presentedDetail = detail
@@ -173,6 +226,14 @@ final class MemoryReaderState {
       guard operationGeneration == generation else { return }
       phase = .failed(.malformed)
     }
+  }
+
+  private func fail(_ issue: MemoryReaderIssue) {
+    metadata = nil
+    protectedReference = nil
+    presentedDetail = nil
+    revealGrantID = nil
+    phase = .failed(issue)
   }
 
   private static func map(_ error: NetworkError) -> MemoryReaderIssue {
@@ -250,7 +311,7 @@ struct MemoryReaderView: View {
         .disabled(state.metadata == nil)
 
         Button {
-          state.clearSensitiveContent()
+          clearReaderState()
           lock()
         } label: {
           Image(systemName: "lock")
@@ -264,10 +325,12 @@ struct MemoryReaderView: View {
       }
     }
     .task { await state.load() }
-    .onDisappear { state.clearSensitiveContent() }
+    .onDisappear { clearReaderState() }
     .onChange(of: scenePhase) { _, phase in
-      if phase != .active {
-        state.clearSensitiveContent()
+      if phase == .active {
+        Task { await state.load() }
+      } else {
+        clearReaderState()
       }
     }
   }
@@ -380,7 +443,7 @@ struct MemoryReaderView: View {
     case .incompatible: "Update Cave to continue"
     case .malformed: "Memory data is invalid"
     case .unsupported: "Memory detail is unsupported"
-    case .missingSupersession: "Memory no longer available."
+    case .missingSupersession: "Memory no longer available"
     }
   }
 
@@ -412,6 +475,12 @@ struct MemoryReaderView: View {
     case .malformed: "xmark.octagon"
     case .unsupported: "questionmark.folder"
     }
+  }
+
+  private func clearReaderState() {
+    infoPresented = false
+    displayMode = .rendered
+    state.clearSensitiveContent()
   }
 }
 

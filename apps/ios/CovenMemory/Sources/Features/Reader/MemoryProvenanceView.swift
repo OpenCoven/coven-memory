@@ -7,6 +7,12 @@ struct MemoryProvenanceView: View {
 
   var body: some View {
     Group {
+      Section("Capabilities") {
+        ForEach(Self.capabilityRows(capabilities)) { row in
+          LabeledContent(row.label, value: row.status)
+        }
+      }
+
       Section("Source") {
         LabeledContent("Label", value: metadata.source.label)
         LabeledContent("Kind", value: metadata.source.kind)
@@ -71,6 +77,41 @@ struct MemoryProvenanceView: View {
         }
       }
     }
+  }
+
+  static func capabilityRows(
+    _ capabilities: MemoryCapabilities?
+  ) -> [MemoryCapabilityRow] {
+    [
+      MemoryCapabilityRow(
+        label: "Overview",
+        isSupported: true
+      ),
+      MemoryCapabilityRow(
+        label: "List",
+        isSupported: true
+      ),
+      MemoryCapabilityRow(
+        label: "Detail",
+        isSupported: true
+      ),
+      MemoryCapabilityRow(
+        label: "Verification",
+        isSupported: capabilities?.verification == true
+      ),
+      MemoryCapabilityRow(
+        label: "Mutations",
+        isSupported: capabilities?.mutations == true
+      ),
+    ]
+  }
+
+  struct MemoryCapabilityRow: Identifiable, Equatable, Sendable {
+    let label: String
+    let isSupported: Bool
+
+    var id: String { label }
+    var status: String { isSupported ? "Supported" : "Unsupported" }
   }
 
   private func verificationTitle(
