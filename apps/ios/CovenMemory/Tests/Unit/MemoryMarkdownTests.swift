@@ -163,6 +163,70 @@ struct MemoryMarkdownTests {
     #expect(plainText(document) == "&lt;unsafe&gt;�&amp;")
   }
 
+  @Test("Ordinary nested blockquotes preserve their block semantics")
+  func ordinaryNestedBlockquotes() {
+    let document = MemoryMarkdown.parse(
+      "> Outer\n> > **Inner**\n> Back",
+      title: "Safe"
+    )
+
+    #expect(document.blocks == [
+      .blockquote([
+        .paragraph([InlineRun(text: "Outer")]),
+        .blockquote([
+          .paragraph([InlineRun(text: "Inner", isStrong: true)])
+        ]),
+        .paragraph([InlineRun(text: "Back")]),
+      ])
+    ])
+  }
+
+  @Test("Twenty thousand blockquote markers are bounded without content loss")
+  func deeplyNestedBlockquotesAreBounded() throws {
+    let markerCount = 20_000
+    let suffix = " payload"
+    let body = String(repeating: ">", count: markerCount) + suffix
+    let clock = ContinuousClock()
+    var document: MemoryMarkdownDocument?
+
+    let elapsed = clock.measure {
+      document = MemoryMarkdown.parse(body, title: "Synthetic")
+    }
+
+    let result = try #require(document)
+    let leaf = quoteLeaf(result)
+    #expect(MemoryMarkdown.maximumBlockquoteNestingDepth == 8)
+    #expect(leaf.depth == MemoryMarkdown.maximumBlockquoteNestingDepth)
+    #expect(
+      leaf.text
+        == String(repeating: ">", count: markerCount - leaf.depth) + suffix
+    )
+    #expect(elapsed < .seconds(2))
+  }
+
+  @Test("Four MiB of blockquote markers remains bounded and near-linear")
+  func maximumBodyBlockquotesAreBounded() throws {
+    let maximumBodyBytes = 4 * 1024 * 1024
+    let suffix = " payload"
+    let markerCount = maximumBodyBytes - suffix.utf8.count
+    let body = String(repeating: ">", count: markerCount) + suffix
+    let clock = ContinuousClock()
+    var document: MemoryMarkdownDocument?
+
+    let elapsed = clock.measure {
+      document = MemoryMarkdown.parse(body, title: "Synthetic")
+    }
+
+    let result = try #require(document)
+    let leaf = quoteLeaf(result)
+    #expect(body.utf8.count == maximumBodyBytes)
+    #expect(leaf.depth == MemoryMarkdown.maximumBlockquoteNestingDepth)
+    #expect(leaf.text.utf8.count == maximumBodyBytes - leaf.depth)
+    #expect(leaf.text.hasPrefix(">"))
+    #expect(leaf.text.hasSuffix(suffix))
+    #expect(elapsed < .seconds(5))
+  }
+
   @Test("Maximum-size synthetic body meets the parser performance gate")
   func maximumBodyPerformance() {
     let line = "## Heading\nParagraph with [safe](https://example.com).\n\n"
@@ -240,5 +304,23 @@ struct MemoryMarkdownTests {
     _ document: MemoryMarkdownDocument
   ) -> String {
     allRuns(document).map(\.text).joined()
+  }
+
+  private func quoteLeaf(
+    _ document: MemoryMarkdownDocument
+  ) -> (depth: Int, text: String) {
+    var depth = 0
+    var blocks = document.blocks
+
+    while blocks.count == 1, case .blockquote(let nested) = blocks[0] {
+      depth += 1
+      blocks = nested
+    }
+
+    guard blocks.count == 1, case .paragraph(let runs) = blocks[0] else {
+      Issue.record("Expected a blockquote chain ending in one paragraph")
+      return (depth, "")
+    }
+    return (depth, runs.map(\.text).joined())
   }
 }

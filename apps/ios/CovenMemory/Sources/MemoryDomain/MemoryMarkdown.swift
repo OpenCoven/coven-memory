@@ -43,6 +43,17 @@ struct MemoryMarkdownDocument: Sendable, Equatable {
 }
 
 enum MemoryMarkdown {
+  // Deeper visual nesting is unreadable; excess markers remain inert text.
+  static let maximumBlockquoteNestingDepth = 8
+
+  private struct BlockFrame {
+    let lines: [String]
+    let shallowestHeading: Int
+    let blockquoteDepth: Int
+    var blocks: [MemoryMarkdownBlock] = []
+    var index = 0
+  }
+
   static func parseOffMain(
     _ source: String,
     title: String
@@ -113,6 +124,178 @@ enum MemoryMarkdown {
     _ lines: [String],
     isCancelled: () -> Bool
   ) throws -> [MemoryMarkdownBlock] {
+    var frames = [
+      try blockFrame(
+        lines: lines,
+        blockquoteDepth: 0,
+        isCancelled: isCancelled
+      )
+    ]
+
+    while var frame = frames.popLast() {
+      try checkCancellation(isCancelled)
+      guard frame.index < frame.lines.count else {
+        guard var parent = frames.popLast() else {
+          return frame.blocks
+        }
+        parent.blocks.append(.blockquote(frame.blocks))
+        frames.append(parent)
+        continue
+      }
+
+      let line = frame.lines[frame.index]
+      if line.trimmingCharacters(in: .whitespaces).isEmpty {
+        frame.index += 1
+        frames.append(frame)
+        continue
+      }
+
+      if let fence = fenceStart(line) {
+        var codeLines: [String] = []
+        frame.index += 1
+        while frame.index < frame.lines.count,
+          !isClosingFence(frame.lines[frame.index])
+        {
+          if frame.index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
+          codeLines.append(frame.lines[frame.index])
+          frame.index += 1
+        }
+        if frame.index < frame.lines.count {
+          frame.index += 1
+        }
+        frame.blocks.append(
+          .code(
+            language: fence.isEmpty ? nil : fence,
+            value: codeLines.joined(separator: "\n")
+          )
+        )
+        frames.append(frame)
+        continue
+      }
+
+      if let value = heading(line) {
+        frame.blocks.append(
+          .heading(
+            level: min(
+              6,
+              max(1, value.level - frame.shallowestHeading + 1)
+            ),
+            runs: try parseInline(
+              value.text,
+              isCancelled: isCancelled
+            )
+          )
+        )
+        frame.index += 1
+        frames.append(frame)
+        continue
+      }
+
+      if isThematicBreak(line) {
+        frame.blocks.append(.thematicBreak)
+        frame.index += 1
+        frames.append(frame)
+        continue
+      }
+
+      if frame.blockquoteDepth < maximumBlockquoteNestingDepth,
+        blockquoteText(line) != nil
+      {
+        var quoteLines: [String] = []
+        while frame.index < frame.lines.count,
+          let quoted = blockquoteText(frame.lines[frame.index])
+        {
+          if frame.index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
+          quoteLines.append(quoted)
+          frame.index += 1
+        }
+        frames.append(frame)
+        frames.append(
+          try blockFrame(
+            lines: quoteLines,
+            blockquoteDepth: frame.blockquoteDepth + 1,
+            isCancelled: isCancelled
+          )
+        )
+        continue
+      }
+
+      if unorderedItem(line) != nil {
+        var items: [[InlineRun]] = []
+        while frame.index < frame.lines.count,
+          let item = unorderedItem(frame.lines[frame.index])
+        {
+          if frame.index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
+          items.append(
+            try parseInline(item, isCancelled: isCancelled)
+          )
+          frame.index += 1
+        }
+        frame.blocks.append(.unorderedList(items))
+        frames.append(frame)
+        continue
+      }
+
+      if orderedItem(line) != nil {
+        var items: [[InlineRun]] = []
+        while frame.index < frame.lines.count,
+          let item = orderedItem(frame.lines[frame.index])
+        {
+          if frame.index.isMultiple(of: 256) {
+            try checkCancellation(isCancelled)
+          }
+          items.append(
+            try parseInline(item, isCancelled: isCancelled)
+          )
+          frame.index += 1
+        }
+        frame.blocks.append(.orderedList(items))
+        frames.append(frame)
+        continue
+      }
+
+      var paragraph: [String] = [line]
+      frame.index += 1
+      while frame.index < frame.lines.count,
+        !frame.lines[frame.index]
+          .trimmingCharacters(in: .whitespaces).isEmpty,
+        !startsBlock(
+          frame.lines[frame.index],
+          recognizesBlockquotes:
+            frame.blockquoteDepth < maximumBlockquoteNestingDepth
+        )
+      {
+        if frame.index.isMultiple(of: 256) {
+          try checkCancellation(isCancelled)
+        }
+        paragraph.append(frame.lines[frame.index])
+        frame.index += 1
+      }
+      frame.blocks.append(
+        .paragraph(
+          try parseInline(
+            paragraph.joined(separator: " "),
+            isCancelled: isCancelled
+          )
+        )
+      )
+      frames.append(frame)
+    }
+
+    return []
+  }
+
+  private static func blockFrame(
+    lines: [String],
+    blockquoteDepth: Int,
+    isCancelled: () -> Bool
+  ) throws -> BlockFrame {
     var shallowestHeading = 7
     for (offset, line) in lines.enumerated() {
       if offset.isMultiple(of: 256) {
@@ -126,138 +309,11 @@ enum MemoryMarkdown {
       shallowestHeading = 1
     }
 
-    var blocks: [MemoryMarkdownBlock] = []
-    var index = 0
-
-    while index < lines.count {
-      try checkCancellation(isCancelled)
-      let line = lines[index]
-      if line.trimmingCharacters(in: .whitespaces).isEmpty {
-        index += 1
-        continue
-      }
-
-      if let fence = fenceStart(line) {
-        var codeLines: [String] = []
-        index += 1
-        while index < lines.count, !isClosingFence(lines[index]) {
-          if index.isMultiple(of: 256) {
-            try checkCancellation(isCancelled)
-          }
-          codeLines.append(lines[index])
-          index += 1
-        }
-        if index < lines.count {
-          index += 1
-        }
-        blocks.append(
-          .code(
-            language: fence.isEmpty ? nil : fence,
-            value: codeLines.joined(separator: "\n")
-          )
-        )
-        continue
-      }
-
-      if let value = heading(line) {
-        blocks.append(
-          .heading(
-            level: min(6, max(1, value.level - shallowestHeading + 1)),
-            runs: try parseInline(
-              value.text,
-              isCancelled: isCancelled
-            )
-          )
-        )
-        index += 1
-        continue
-      }
-
-      if isThematicBreak(line) {
-        blocks.append(.thematicBreak)
-        index += 1
-        continue
-      }
-
-      if blockquoteText(line) != nil {
-        var quoteLines: [String] = []
-        while index < lines.count,
-          let quoted = blockquoteText(lines[index])
-        {
-          if index.isMultiple(of: 256) {
-            try checkCancellation(isCancelled)
-          }
-          quoteLines.append(quoted)
-          index += 1
-        }
-        blocks.append(
-          .blockquote(
-            try parseBlocks(
-              quoteLines,
-              isCancelled: isCancelled
-            )
-          )
-        )
-        continue
-      }
-
-      if unorderedItem(line) != nil {
-        var items: [[InlineRun]] = []
-        while index < lines.count,
-          let item = unorderedItem(lines[index])
-        {
-          if index.isMultiple(of: 256) {
-            try checkCancellation(isCancelled)
-          }
-          items.append(
-            try parseInline(item, isCancelled: isCancelled)
-          )
-          index += 1
-        }
-        blocks.append(.unorderedList(items))
-        continue
-      }
-
-      if orderedItem(line) != nil {
-        var items: [[InlineRun]] = []
-        while index < lines.count,
-          let item = orderedItem(lines[index])
-        {
-          if index.isMultiple(of: 256) {
-            try checkCancellation(isCancelled)
-          }
-          items.append(
-            try parseInline(item, isCancelled: isCancelled)
-          )
-          index += 1
-        }
-        blocks.append(.orderedList(items))
-        continue
-      }
-
-      var paragraph: [String] = [line]
-      index += 1
-      while index < lines.count,
-        !lines[index].trimmingCharacters(in: .whitespaces).isEmpty,
-        !startsBlock(lines[index])
-      {
-        if index.isMultiple(of: 256) {
-          try checkCancellation(isCancelled)
-        }
-        paragraph.append(lines[index])
-        index += 1
-      }
-      blocks.append(
-        .paragraph(
-          try parseInline(
-            paragraph.joined(separator: " "),
-            isCancelled: isCancelled
-          )
-        )
-      )
-    }
-
-    return blocks
+    return BlockFrame(
+      lines: lines,
+      shallowestHeading: shallowestHeading,
+      blockquoteDepth: blockquoteDepth
+    )
   }
 
   private static func removingLeadingTitle(
@@ -572,10 +628,13 @@ enum MemoryMarkdown {
     return .external(url)
   }
 
-  private static func startsBlock(_ line: String) -> Bool {
+  private static func startsBlock(
+    _ line: String,
+    recognizesBlockquotes: Bool = true
+  ) -> Bool {
     heading(line) != nil
       || fenceStart(line) != nil
-      || blockquoteText(line) != nil
+      || (recognizesBlockquotes && blockquoteText(line) != nil)
       || unorderedItem(line) != nil
       || orderedItem(line) != nil
       || isThematicBreak(line)
