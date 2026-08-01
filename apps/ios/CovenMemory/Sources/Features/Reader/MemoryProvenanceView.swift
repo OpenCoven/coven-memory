@@ -84,34 +84,40 @@ struct MemoryProvenanceView: View {
   ) -> [MemoryCapabilityRow] {
     [
       MemoryCapabilityRow(
-        label: "Overview",
-        isSupported: true
-      ),
-      MemoryCapabilityRow(
-        label: "List",
-        isSupported: true
-      ),
-      MemoryCapabilityRow(
         label: "Detail",
-        isSupported: true
+        isSupported: capabilities.map(\.detail)
       ),
       MemoryCapabilityRow(
         label: "Verification",
-        isSupported: capabilities?.verification == true
+        isSupported: capabilities.map(\.verification)
+      ),
+      MemoryCapabilityRow(
+        label: "Attestation metadata",
+        isSupported: capabilities.map(\.attestationMetadata)
+      ),
+      MemoryCapabilityRow(
+        label: "Supersession history",
+        isSupported: capabilities.map(\.supersessionHistory)
       ),
       MemoryCapabilityRow(
         label: "Mutations",
-        isSupported: capabilities?.mutations == true
+        isSupported: capabilities.map(\.mutations)
       ),
     ]
   }
 
   struct MemoryCapabilityRow: Identifiable, Equatable, Sendable {
     let label: String
-    let isSupported: Bool
+    let isSupported: Bool?
 
     var id: String { label }
-    var status: String { isSupported ? "Supported" : "Unsupported" }
+    var status: String {
+      switch isSupported {
+      case true: "Supported"
+      case false: "Unsupported"
+      case nil: "Unavailable"
+      }
+    }
   }
 
   private func verificationTitle(

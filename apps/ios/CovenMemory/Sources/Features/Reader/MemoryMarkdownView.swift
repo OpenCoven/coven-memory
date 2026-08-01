@@ -101,8 +101,8 @@ struct MemoryMarkdownView: View {
       AnyView(ScrollView(.horizontal) {
         Text(value)
           .font(.system(.body, design: .monospaced))
-          .textSelection(.enabled)
           .padding(CovenTheme.Spacing.medium)
+          .accessibilityIdentifier("memory-code-block")
       }
       .background(Color.secondary.opacity(0.08))
       .accessibilityLabel(

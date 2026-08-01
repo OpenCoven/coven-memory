@@ -232,6 +232,50 @@ struct CaveMemoryTransportTests {
     }
 
     @Test(
+        "404 memory-not-found is restricted to detail requests",
+        arguments: [
+            SuccessEndpoint.list,
+            .overview,
+            .refresh,
+        ]
+    )
+    private func doesNotMapNonDetail404ToMissingMemory(
+        _ endpoint: SuccessEndpoint
+    ) async {
+        let transport = Self.transport(
+            path: endpoint.path,
+            status: 404,
+            body: #"{"ok":false,"code":"memory_not_found"}"#
+        )
+
+        await #expect(throws: NetworkError.invalidResponse) {
+            try await Self.call(endpoint, using: transport)
+        }
+    }
+
+    @Test(
+        "Non-detail 404 responses retain canonical protocol semantics",
+        arguments: [
+            SuccessEndpoint.list,
+            .overview,
+            .refresh,
+        ]
+    )
+    private func mapsNonDetail404CanonicalError(
+        _ endpoint: SuccessEndpoint
+    ) async {
+        let transport = Self.transport(
+            path: endpoint.path,
+            status: 404,
+            body: #"{"ok":false,"code":"daemon_update_required"}"#
+        )
+
+        await #expect(throws: NetworkError.protocolUnsupported) {
+            try await Self.call(endpoint, using: transport)
+        }
+    }
+
+    @Test(
         "Canonical error codes map strictly",
         arguments: [
             ("local_daemon_required", NetworkError.daemonUnavailable),

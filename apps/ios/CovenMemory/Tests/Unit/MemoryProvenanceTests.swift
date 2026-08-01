@@ -12,15 +12,17 @@ struct MemoryProvenanceTests {
       capabilities(
         detail: true,
         verification: true,
-        mutations: false
+        attestationMetadata: true,
+        supersessionHistory: true,
+        mutations: true
       )
     )
 
     #expect(rows.map(\.label) == [
-      "Overview",
-      "List",
       "Detail",
       "Verification",
+      "Attestation metadata",
+      "Supersession history",
       "Mutations",
     ])
     #expect(rows.map(\.status) == [
@@ -28,17 +30,19 @@ struct MemoryProvenanceTests {
       "Supported",
       "Supported",
       "Supported",
-      "Unsupported",
+      "Supported",
     ])
   }
 
-  @Test("Unavailable capability combinations are explicit")
+  @Test("False and unavailable capability combinations are explicit")
   @MainActor
   func unavailableCombinations() {
     let partial = MemoryProvenanceView.capabilityRows(
       capabilities(
-        detail: false,
+        detail: true,
         verification: false,
+        attestationMetadata: true,
+        supersessionHistory: false,
         mutations: true
       )
     )
@@ -46,23 +50,25 @@ struct MemoryProvenanceTests {
 
     #expect(partial.map(\.status) == [
       "Supported",
-      "Supported",
+      "Unsupported",
       "Supported",
       "Unsupported",
       "Supported",
     ])
     #expect(unavailable.map(\.status) == [
-      "Supported",
-      "Supported",
-      "Supported",
-      "Unsupported",
-      "Unsupported",
+      "Unavailable",
+      "Unavailable",
+      "Unavailable",
+      "Unavailable",
+      "Unavailable",
     ])
   }
 
   private func capabilities(
     detail: Bool,
     verification: Bool,
+    attestationMetadata: Bool,
+    supersessionHistory: Bool,
     mutations: Bool
   ) -> MemoryCapabilities {
     let data = Data(
@@ -70,8 +76,8 @@ struct MemoryProvenanceTests {
       {
         "detail": \(detail),
         "verification": \(verification),
-        "attestationMetadata": false,
-        "supersessionHistory": false,
+        "attestationMetadata": \(attestationMetadata),
+        "supersessionHistory": \(supersessionHistory),
         "mutations": \(mutations)
       }
       """.utf8

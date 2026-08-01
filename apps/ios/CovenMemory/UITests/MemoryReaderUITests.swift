@@ -7,6 +7,18 @@ final class MemoryReaderUITests: XCTestCase {
     openMemory("Protected field notes", in: app)
 
     XCTAssertTrue(app.buttons["Reveal memory"].waitForExistence(timeout: 5))
+    let classification =
+      app.staticTexts["memory-privacy-classification"]
+    XCTAssertTrue(classification.exists)
+    XCTAssertEqual(classification.label, "Privacy classification")
+    XCTAssertEqual(classification.value as? String, "Private")
+    let lifecycleNotice =
+      app.staticTexts["memory-reveal-lifecycle-notice"]
+    XCTAssertTrue(lifecycleNotice.exists)
+    XCTAssertEqual(
+      lifecycleNotice.label,
+      "Reveal hides when the app locks or you navigate away."
+    )
     XCTAssertFalse(app.staticTexts["Discarded protected body"].exists)
     XCTAssertFalse(app.staticTexts["Protected synthetic body"].exists)
     app.buttons["Reveal memory"].tap()
@@ -27,6 +39,18 @@ final class MemoryReaderUITests: XCTestCase {
   }
 
   @MainActor
+  func testUnclassifiedProtectedMemoryIsExplicit() {
+    let app = launch(scenario: "reader-unclassified")
+    openMemory("Protected field notes", in: app)
+
+    let classification =
+      app.staticTexts["memory-privacy-classification"]
+    XCTAssertTrue(classification.waitForExistence(timeout: 5))
+    XCTAssertEqual(classification.label, "Privacy classification")
+    XCTAssertEqual(classification.value as? String, "Unclassified")
+  }
+
+  @MainActor
   func testStaleRevealRefetchCannotCrossSelection() {
     let app = launch(scenario: "reader-stale-reveal")
     openMemory("Protected field notes", in: app)
@@ -43,6 +67,18 @@ final class MemoryReaderUITests: XCTestCase {
       app.staticTexts["Public synthetic body"].waitForExistence(timeout: 5)
     )
     XCTAssertFalse(app.staticTexts["Stale protected body"].exists)
+  }
+
+  @MainActor
+  func testRenderedCodeBlocksDoNotOfferCopy() {
+    let app = launch(scenario: "reader-code")
+    openMemory("Public field notes", in: app)
+
+    let code = app.staticTexts["memory-code-block"]
+    XCTAssertTrue(code.waitForExistence(timeout: 5))
+    code.press(forDuration: 1.5)
+
+    XCTAssertFalse(app.menuItems["Copy"].waitForExistence(timeout: 1))
   }
 
   @MainActor
@@ -127,11 +163,15 @@ final class MemoryReaderUITests: XCTestCase {
     openMemory("Public field notes", in: app)
     app.buttons["Memory info"].tap()
 
-    XCTAssertTrue(app.staticTexts["Overview, Supported"].exists)
-    XCTAssertTrue(app.staticTexts["List, Supported"].exists)
     XCTAssertTrue(app.staticTexts["Detail, Supported"].exists)
     XCTAssertTrue(app.staticTexts["Verification, Unsupported"].exists)
+    XCTAssertTrue(
+      app.staticTexts["Attestation metadata, Unsupported"].exists
+    )
     app.swipeUp()
+    XCTAssertTrue(
+      app.staticTexts["Supersession history, Unsupported"].exists
+    )
     XCTAssertTrue(app.staticTexts["Mutations, Unsupported"].exists)
   }
 
@@ -141,10 +181,14 @@ final class MemoryReaderUITests: XCTestCase {
     openMemory("Public field notes", in: app)
     app.buttons["Memory info"].tap()
 
-    XCTAssertTrue(app.staticTexts["Overview, Supported"].exists)
-    XCTAssertTrue(app.staticTexts["List, Supported"].exists)
     XCTAssertTrue(app.staticTexts["Detail, Supported"].exists)
     XCTAssertTrue(app.staticTexts["Verification, Supported"].exists)
+    XCTAssertTrue(
+      app.staticTexts["Attestation metadata, Supported"].exists
+    )
+    XCTAssertTrue(
+      app.staticTexts["Supersession history, Supported"].exists
+    )
     XCTAssertTrue(app.staticTexts["Mutations, Unsupported"].exists)
   }
 

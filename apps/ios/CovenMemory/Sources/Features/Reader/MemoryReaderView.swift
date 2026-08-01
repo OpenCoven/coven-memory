@@ -339,10 +339,25 @@ struct MemoryReaderView: View {
     ContentUnavailableView {
       Label("Private memory", systemImage: "lock")
     } description: {
-      Text(
-        state.metadata?.privacy.reason
-          ?? "Authenticate to reveal this memory."
-      )
+      VStack(spacing: CovenTheme.Spacing.small) {
+        Text(
+          state.metadata?.privacy.reason
+            ?? "Authenticate to reveal this memory."
+        )
+        Text(
+          "Classification: \(Self.privacyClassificationTitle(state.metadata?.privacy.classification))"
+        )
+        .accessibilityLabel("Privacy classification")
+        .accessibilityValue(
+          Self.privacyClassificationTitle(
+            state.metadata?.privacy.classification
+          )
+        )
+        .accessibilityIdentifier("memory-privacy-classification")
+
+        Text("Reveal hides when the app locks or you navigate away.")
+          .accessibilityIdentifier("memory-reveal-lifecycle-notice")
+      }
     } actions: {
       Button("Reveal memory") {
         Task { await state.reveal() }
@@ -350,6 +365,25 @@ struct MemoryReaderView: View {
       .buttonStyle(.borderedProminent)
       .controlSize(.large)
       .frame(minHeight: CovenTheme.minimumTarget)
+    }
+  }
+
+  static func privacyClassificationTitle(
+    _ classification: String?
+  ) -> String {
+    guard let classification = classification?
+      .trimmingCharacters(in: .whitespacesAndNewlines),
+      !classification.isEmpty,
+      classification.lowercased() != "unclassified"
+    else {
+      return "Unclassified"
+    }
+
+    return switch classification.lowercased() {
+    case "public": "Public"
+    case "private": "Private"
+    case "needs-review": "Needs review"
+    default: classification
     }
   }
 

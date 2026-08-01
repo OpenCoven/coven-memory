@@ -116,6 +116,7 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             return Self.navigationSummaries
         case .readerProtected, .readerPublic, .readerProvenance,
             .readerUnsupportedProvenance, .readerLinks,
+            .readerCode, .readerUnclassified,
             .readerSupersession, .readerProtectedRefetch,
             .readerStaleReveal, .readerDisconnect, .readerRevoked,
             .readerExpired:
@@ -484,6 +485,7 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             navigationSummaries
         case .readerProtected, .readerPublic, .readerProvenance,
             .readerUnsupportedProvenance, .readerLinks,
+            .readerCode, .readerUnclassified,
             .readerSupersession, .readerProtectedRefetch,
             .readerStaleReveal, .readerDisconnect, .readerRevoked,
             .readerExpired:
@@ -517,6 +519,8 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             content = "Superseding synthetic body"
         } else if scenario == .readerLinks {
             content = "[Open example](https://example.com)"
+        } else if scenario == .readerCode {
+            content = "```swift\\nlet selected = false\\n```"
         } else {
             content = "## Public synthetic body"
         }
@@ -535,6 +539,10 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             supersedes = "null"
             supersededBy = "null"
         }
+        let privacyClassification =
+            scenario == .readerUnclassified && isProtected
+            ? "null"
+            : "\"\(isProtected ? "private" : "public")\""
         let data = Data(
             """
             {
@@ -549,7 +557,7 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
               "content": "\(content)",
               "contentFormat": "markdown",
               "privacy": {
-                "classification": "\(isProtected ? "private" : "public")",
+                "classification": \(privacyClassification),
                 "revealRequired": \(isProtected),
                 "reason": \(isProtected ? "\"Sensitive context\"" : "null")
               },
@@ -606,6 +614,8 @@ private enum UITestLibraryScenario: String, Sendable {
     case readerProvenance = "reader-provenance"
     case readerUnsupportedProvenance = "reader-unsupported-provenance"
     case readerLinks = "reader-links"
+    case readerCode = "reader-code"
+    case readerUnclassified = "reader-unclassified"
     case readerSupersession = "reader-supersession"
     case readerProtectedRefetch = "reader-protected-refetch"
     case readerStaleReveal = "reader-stale-reveal"

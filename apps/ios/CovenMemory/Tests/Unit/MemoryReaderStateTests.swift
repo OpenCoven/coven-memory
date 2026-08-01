@@ -190,6 +190,100 @@ struct MemoryReaderStateTests {
   }
 
   @Test(
+    "In-flight reveal refetch stays invalidated after session failure",
+    arguments: [
+      (MemorySessionInvalidation.disconnected, MemoryReaderIssue.offline),
+      (.revoked, .revoked),
+      (.expired, .revoked),
+    ]
+  )
+  @MainActor
+  func inFlightRevealCannotReturnAfterSessionInvalidation(
+    invalidation: MemorySessionInvalidation,
+    expected: MemoryReaderIssue
+  ) async {
+    let classified = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Discarded classified body"
+    )
+    let staleRefetch = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Stale private body"
+    )
+    let gate = ReaderGate()
+    let state = MemoryReaderState(
+      id: classified.id,
+      service: ReaderStubService(
+        results: [.success(classified), .success(staleRefetch)],
+        gateOnCall: 2,
+        gate: gate
+      ),
+      authenticator: ReaderAuthenticator()
+    )
+    await state.load()
+
+    let reveal = Task { await state.reveal() }
+    #expect(await gate.waitUntilEntered())
+
+    state.invalidateSession(invalidation)
+    #expect(state.phase == .failed(expected))
+
+    await gate.open()
+    await reveal.value
+
+    #expect(state.phase == .failed(expected))
+    #expect(state.metadata == nil)
+    #expect(state.protectedReference == nil)
+    #expect(state.presentedDetail == nil)
+    #expect(state.retainedContent == nil)
+    #expect(state.revealGrantID == nil)
+  }
+
+  @Test("In-flight reveal refetch stays cleared after lock")
+  @MainActor
+  func inFlightRevealCannotReturnAfterLock() async {
+    let classified = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Discarded classified body"
+    )
+    let staleRefetch = makeDetail(
+      id: 1,
+      isPublic: false,
+      content: "Stale private body"
+    )
+    let gate = ReaderGate()
+    let state = MemoryReaderState(
+      id: classified.id,
+      service: ReaderStubService(
+        results: [.success(classified), .success(staleRefetch)],
+        gateOnCall: 2,
+        gate: gate
+      ),
+      authenticator: ReaderAuthenticator()
+    )
+    await state.load()
+
+    let reveal = Task { await state.reveal() }
+    #expect(await gate.waitUntilEntered())
+
+    state.clearSensitiveContent()
+    #expect(state.phase == .loading)
+
+    await gate.open()
+    await reveal.value
+
+    #expect(state.phase == .loading)
+    #expect(state.metadata == nil)
+    #expect(state.protectedReference == nil)
+    #expect(state.presentedDetail == nil)
+    #expect(state.retainedContent == nil)
+    #expect(state.revealGrantID == nil)
+  }
+
+  @Test(
     "Reader failures remain distinct and fail closed",
     arguments: [
       (NetworkError.connectionFailed, MemoryReaderIssue.offline),
