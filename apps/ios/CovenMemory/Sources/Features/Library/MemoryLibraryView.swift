@@ -174,7 +174,9 @@ struct MemoryLibraryView: View {
         MemoryReaderView(
           summary: summary,
           service: service,
-          authenticator: authenticator
+          authenticator: authenticator,
+          capabilities: state.overview?.capabilities,
+          lock: lock
         )
       }
     }
@@ -190,7 +192,9 @@ struct MemoryLibraryView: View {
       MemoryReaderView(
         summary: summary,
         service: service,
-        authenticator: authenticator
+        authenticator: authenticator,
+        capabilities: state.overview?.capabilities,
+        lock: lock
       )
       .id(id)
     } else {

@@ -115,6 +115,9 @@ actor CaveMemoryTransport: CaveMemoryServicing {
                 || httpResponse.statusCode == 403 {
                 throw NetworkError.authenticationRequired
             }
+            if httpResponse.statusCode == 404 {
+                throw NetworkError.memoryNotFound
+            }
             throw decodeError(from: data)
         }
         return data

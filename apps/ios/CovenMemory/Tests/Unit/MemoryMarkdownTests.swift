@@ -1,0 +1,177 @@
+import Foundation
+import Testing
+
+@testable import CovenMemory
+
+@Suite("Safe native memory Markdown")
+struct MemoryMarkdownTests {
+  @Test("Equivalent leading title heading is removed")
+  func removesEquivalentTitle() {
+    let document = MemoryMarkdown.parse(
+      "#  Architecture   Decisions \n\nBody.",
+      title: "architecture decisions"
+    )
+
+    #expect(document.blocks == [
+      .paragraph([InlineRun(text: "Body.")])
+    ])
+  }
+
+  @Test("Inline styling does not prevent equivalent title removal")
+  func removesStyledEquivalentTitle() {
+    let document = MemoryMarkdown.parse(
+      "# **Architecture** `Decisions`\n\nBody.",
+      title: "Architecture Decisions"
+    )
+
+    #expect(document.blocks == [
+      .paragraph([InlineRun(text: "Body.")])
+    ])
+  }
+
+  @Test("Heading levels are normalized relative to the shallowest heading")
+  func normalizesHeadings() {
+    let document = MemoryMarkdown.parse(
+      "### First\n\n##### Nested",
+      title: "Different title"
+    )
+
+    #expect(document.blocks == [
+      .heading(level: 1, runs: [InlineRun(text: "First")]),
+      .heading(level: 3, runs: [InlineRun(text: "Nested")]),
+    ])
+  }
+
+  @Test("Raw HTML remains literal text")
+  func rawHTMLIsText() {
+    let document = MemoryMarkdown.parse(
+      "<script>alert('no')</script>",
+      title: "Safe"
+    )
+
+    #expect(plainText(document) == "<script>alert('no')</script>")
+  }
+
+  @Test("Strong, emphasis, and code remain native inline runs")
+  func nativeInlineStyles() {
+    let document = MemoryMarkdown.parse(
+      "**Bold** and *italic* with `code`.",
+      title: "Safe"
+    )
+
+    guard case .paragraph(let runs) = document.blocks.first else {
+      Issue.record("Expected a paragraph")
+      return
+    }
+    #expect(runs == [
+      InlineRun(text: "Bold", isStrong: true),
+      InlineRun(text: " and "),
+      InlineRun(text: "italic", isEmphasized: true),
+      InlineRun(text: " with "),
+      InlineRun(text: "code", isCode: true),
+      InlineRun(text: "."),
+    ])
+  }
+
+  @Test("Images become inert accessible alt text")
+  func imagesBecomeText() {
+    let document = MemoryMarkdown.parse(
+      "Before ![Map of cave](file:///secret.png) after.",
+      title: "Safe"
+    )
+
+    #expect(plainText(document) == "Before [Image: Map of cave] after.")
+    #expect(allRuns(document).allSatisfy { $0.link == nil })
+  }
+
+  @Test(
+    "Unsafe and malformed links are inert",
+    arguments: [
+      "[one](javascript:alert(1))",
+      "[two](data:text/html,hello)",
+      "[three](file:///private/file)",
+      "[four](cave-memory://secret)",
+      "[five](https://example.com",
+    ]
+  )
+  func unsafeLinksAreInert(markdown: String) {
+    let document = MemoryMarkdown.parse(markdown, title: "Safe")
+
+    #expect(allRuns(document).allSatisfy { $0.link == nil })
+  }
+
+  @Test("HTTP and HTTPS links are marked external for confirmation")
+  func externalLinksRequireConfirmation() {
+    let document = MemoryMarkdown.parse(
+      "[HTTP](http://example.com) and [HTTPS](https://example.com/path)",
+      title: "Safe"
+    )
+
+    #expect(allRuns(document).compactMap(\.link) == [
+      .external(URL(string: "http://example.com")!),
+      .external(URL(string: "https://example.com/path")!),
+    ])
+  }
+
+  @Test("Fragment links remain internal")
+  func fragmentLinksRemainInternal() {
+    let document = MemoryMarkdown.parse(
+      "[Jump](#details)",
+      title: "Safe"
+    )
+
+    #expect(allRuns(document).compactMap(\.link) == [.fragment("details")])
+  }
+
+  @Test("Parser failure falls back to escaped raw text")
+  func parserFailureFallsBack() {
+    let document = MemoryMarkdown.parse(
+      "<unsafe>\u{0}&",
+      title: "Safe"
+    )
+
+    #expect(document.usedEscapedFallback)
+    #expect(plainText(document) == "&lt;unsafe&gt;�&amp;")
+  }
+
+  @Test("Maximum-size synthetic body meets the parser performance gate")
+  func maximumBodyPerformance() {
+    let line = "## Heading\nParagraph with [safe](https://example.com).\n\n"
+    let repetitions = (4 * 1024 * 1024) / line.utf8.count
+    let body = String(repeating: line, count: repetitions)
+    let clock = ContinuousClock()
+
+    let elapsed = clock.measure {
+      _ = MemoryMarkdown.parse(body, title: "Synthetic")
+    }
+
+    #expect(elapsed < .seconds(5))
+  }
+
+  private func allRuns(
+    _ document: MemoryMarkdownDocument
+  ) -> [InlineRun] {
+    document.blocks.flatMap(runs)
+  }
+
+  private func runs(_ block: MemoryMarkdownBlock) -> [InlineRun] {
+    switch block {
+    case .heading(_, let runs), .paragraph(let runs):
+      runs
+    case .unorderedList(let items), .orderedList(let items):
+      items.flatMap { $0 }
+    case .blockquote(let blocks):
+      blocks.flatMap(runs)
+    case .code(_, let value):
+      [InlineRun(text: value)]
+    case .thematicBreak:
+      []
+    }
+  }
+
+  private func plainText(
+    _ document: MemoryMarkdownDocument
+  ) -> String {
+    allRuns(document).map(\.text).joined()
+  }
+}

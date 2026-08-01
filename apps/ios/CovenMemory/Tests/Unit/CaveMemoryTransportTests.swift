@@ -216,6 +216,21 @@ struct CaveMemoryTransportTests {
         }
     }
 
+    @Test("404 maps to a missing typed memory detail")
+    func mapsMissingMemory() async {
+        let id = UUID(
+            uuidString: "00000000-0000-0000-0000-000000000404"
+        )!
+        let transport = Self.transport(
+            status: 404,
+            body: #"{"ok":false,"code":"memory_not_found"}"#
+        )
+
+        await #expect(throws: NetworkError.memoryNotFound) {
+            _ = try await transport.detail(id: id)
+        }
+    }
+
     @Test(
         "Canonical error codes map strictly",
         arguments: [

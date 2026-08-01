@@ -291,6 +291,8 @@ extension MemoryLibraryState {
       .incompatible
     case .invalidResponse, .responseTooLarge:
       .malformed
+    case .memoryNotFound:
+      .unavailable
     }
   }
 }

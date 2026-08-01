@@ -291,6 +291,8 @@ final class LaunchCoordinator {
             .pairingInvalidated
         case NetworkError.daemonUnavailable:
             .memoryUnavailable
+        case NetworkError.memoryNotFound:
+            .memoryUnavailable
         case NetworkError.capabilityUnavailable:
             .memoryUnsupported
         case NetworkError.connectionFailed,

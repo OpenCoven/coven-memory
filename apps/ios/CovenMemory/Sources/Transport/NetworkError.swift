@@ -9,6 +9,7 @@ enum NetworkError: Error, Equatable, Sendable {
     case responseTooLarge
     case authenticationRequired
     case connectionFailed
+    case memoryNotFound
 }
 
 extension NetworkError: LocalizedError {
@@ -22,6 +23,7 @@ extension NetworkError: LocalizedError {
         case .responseTooLarge: "The response exceeded the safe limit."
         case .authenticationRequired: "Pair with Cave again."
         case .connectionFailed: "Cave could not be reached."
+        case .memoryNotFound: "Memory no longer exists."
         }
     }
 }

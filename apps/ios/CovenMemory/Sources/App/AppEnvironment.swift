@@ -113,6 +113,10 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             return Self.liveRecencySummaries
         case .navigation:
             return Self.navigationSummaries
+        case .readerProtected, .readerPublic, .readerProvenance,
+            .readerUnsupportedProvenance, .readerLinks,
+            .readerSupersession:
+            return Self.readerSummaries
         case .filteredEmpty, .healthy, .overviewFailure,
             .healthDegraded, nil:
             return Self.baseSummaries
@@ -130,15 +134,29 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             scenario == .healthDegraded
             ? ["Index verification is degraded."]
             : []
+        let hasReaderProvenance =
+            scenario == .readerProvenance
+            || scenario == .readerSupersession
+        let readerUnsupported =
+            scenario == .readerUnsupportedProvenance
         return try Self.overview(
             detailAvailable: scenario != .unavailable,
             summaries: Self.summaries(for: scenario),
+            verificationAvailable: !readerUnsupported,
+            attestationAvailable: hasReaderProvenance,
+            supersessionAvailable: hasReaderProvenance,
             verificationState: verificationState,
             issues: issues
         )
     }
 
     func detail(id: UUID) async throws -> MemoryDetail {
+        if id == Self.missingReaderID {
+            throw NetworkError.memoryNotFound
+        }
+        if Self.readerIDs.contains(id) {
+            return try Self.readerDetail(id: id, scenario: scenario)
+        }
         let title = Self.summaries(for: scenario)
             .first(where: { $0.id == id })?.title
             ?? "Synthetic memory"
@@ -325,6 +343,38 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         return baseSummaries + archives
     }
 
+    private static var readerSummaries: [MemorySummary] {
+        [
+            summary(
+                id: protectedReaderID.uuidString,
+                familiar: "sage",
+                title: "Protected field notes",
+                updatedAt: referenceNow,
+                relative: "today",
+                excerpt: "Protected synthetic context.",
+                source: MemorySource(
+                    kind: "coven-origin",
+                    label: "Coven origin"
+                ),
+                verification: .verified,
+                isPublic: false
+            ),
+            summary(
+                id: publicReaderID.uuidString,
+                familiar: "sage",
+                title: "Public field notes",
+                updatedAt: referenceNow.addingTimeInterval(-60),
+                relative: "today",
+                excerpt: "Public synthetic context.",
+                source: MemorySource(
+                    kind: "coven-origin",
+                    label: "Coven origin"
+                ),
+                verification: .verified
+            ),
+        ]
+    }
+
     private static func summary(
         id: String,
         familiar: String,
@@ -333,7 +383,8 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         relative: String,
         excerpt: String,
         source: MemorySource,
-        verification: MemoryVerificationState
+        verification: MemoryVerificationState,
+        isPublic: Bool = true
     ) -> MemorySummary {
         MemorySummary(
             id: UUID(uuidString: id)!,
@@ -344,8 +395,8 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             excerpt: excerpt,
             source: source,
             privacy: MemoryPrivacySummary(
-                classification: "public",
-                revealRequired: false
+                classification: isPublic ? "public" : "private",
+                revealRequired: !isPublic
             ),
             verification: MemoryVerificationSummary(state: verification)
         )
@@ -354,6 +405,9 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
     private static func overview(
         detailAvailable: Bool,
         summaries: [MemorySummary],
+        verificationAvailable: Bool = true,
+        attestationAvailable: Bool = false,
+        supersessionAvailable: Bool = false,
         verificationState: MemoryVerificationState,
         issues: [String]
     ) throws -> MemoryOverview {
@@ -383,9 +437,9 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
               "lastUpdatedAt": "2026-07-31T12:00:00.000Z",
               "capabilities": {
                 "detail": \(detailAvailable),
-                "verification": true,
-                "attestationMetadata": false,
-                "supersessionHistory": false,
+                "verification": \(verificationAvailable),
+                "attestationMetadata": \(attestationAvailable),
+                "supersessionHistory": \(supersessionAvailable),
                 "mutations": false
               },
               "verification": {
@@ -414,11 +468,100 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             liveRecencySummaries
         case .navigation:
             navigationSummaries
+        case .readerProtected, .readerPublic, .readerProvenance,
+            .readerUnsupportedProvenance, .readerLinks,
+            .readerSupersession:
+            readerSummaries
         case .healthy, .loading, .filteredEmpty, .overviewFailure,
             .healthDegraded, nil:
             baseSummaries
         }
     }
+
+    private static func readerDetail(
+        id: UUID,
+        scenario: UITestLibraryScenario?
+    ) throws -> MemoryDetail {
+        let isProtected = id == protectedReaderID
+        let isNewer = id == newerReaderID
+        let title = isProtected
+            ? "Protected field notes"
+            : isNewer ? "Superseding field notes" : "Public field notes"
+        let content: String
+        if isProtected {
+            content = "Protected synthetic body"
+        } else if isNewer {
+            content = "Superseding synthetic body"
+        } else if scenario == .readerLinks {
+            content = "[Open example](https://example.com)"
+        } else {
+            content = "## Public synthetic body"
+        }
+        let hasAttestation = scenario == .readerProvenance
+            || scenario == .readerSupersession
+        let hasSupersession = scenario == .readerSupersession
+        let supersedes: String
+        let supersededBy: String
+        if hasSupersession && isNewer {
+            supersedes = "\"\(missingReaderID.uuidString.lowercased())\""
+            supersededBy = "null"
+        } else if hasSupersession {
+            supersedes = "null"
+            supersededBy = "\"\(newerReaderID.uuidString.lowercased())\""
+        } else {
+            supersedes = "null"
+            supersededBy = "null"
+        }
+        let data = Data(
+            """
+            {
+              "id": "\(id.uuidString.lowercased())",
+              "familiarId": "sage",
+              "title": "\(title)",
+              "updatedAt": "2026-07-31T12:00:00.000Z",
+              "source": {
+                "kind": "coven-origin",
+                "label": "Coven origin"
+              },
+              "content": "\(content)",
+              "contentFormat": "markdown",
+              "privacy": {
+                "classification": "\(isProtected ? "private" : "public")",
+                "revealRequired": \(isProtected),
+                "reason": \(isProtected ? "\"Sensitive context\"" : "null")
+              },
+              "verification": {
+                "state": "verified",
+                "reason": "Signed by Cave"
+              },
+              "attestationMetadata": \(hasAttestation ? "{\"fieldCount\":3}" : "null"),
+              "supersession": {
+                "supersedes": \(supersedes),
+                "supersededBy": \(supersededBy)
+              }
+            }
+            """.utf8
+        )
+        return try JSONDecoder.mobile.decode(MemoryDetail.self, from: data)
+    }
+
+    private static let protectedReaderID = UUID(
+        uuidString: "00000000-0000-0000-0000-000000000200"
+    )!
+    private static let publicReaderID = UUID(
+        uuidString: "00000000-0000-0000-0000-000000000201"
+    )!
+    private static let newerReaderID = UUID(
+        uuidString: "00000000-0000-0000-0000-000000000202"
+    )!
+    private static let missingReaderID = UUID(
+        uuidString: "00000000-0000-0000-0000-000000000404"
+    )!
+    private static let readerIDs: Set<UUID> = [
+        protectedReaderID,
+        publicReaderID,
+        newerReaderID,
+    ]
 
     private static let referenceNow = Date(
         timeIntervalSince1970: 1_785_326_400
@@ -435,6 +578,12 @@ private enum UITestLibraryScenario: String, Sendable {
     case recencyBoundary = "recency-boundary"
     case liveRecency = "live-recency"
     case navigation
+    case readerProtected = "reader-protected"
+    case readerPublic = "reader-public"
+    case readerProvenance = "reader-provenance"
+    case readerUnsupportedProvenance = "reader-unsupported-provenance"
+    case readerLinks = "reader-links"
+    case readerSupersession = "reader-supersession"
     case offline
     case unavailable
     case revoked
