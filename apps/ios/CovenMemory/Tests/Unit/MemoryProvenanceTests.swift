@@ -64,6 +64,53 @@ struct MemoryProvenanceTests {
     ])
   }
 
+  @Test("Provenance sections distinguish nil, false, and true capabilities")
+  @MainActor
+  func provenanceSectionAvailability() {
+    let unsupported = capabilities(
+      detail: true,
+      verification: false,
+      attestationMetadata: false,
+      supersessionHistory: false,
+      mutations: false
+    )
+    let available = capabilities(
+      detail: true,
+      verification: true,
+      attestationMetadata: true,
+      supersessionHistory: true,
+      mutations: false
+    )
+
+    let statuses = [
+      (
+        MemoryProvenanceView.verificationAvailability(nil),
+        MemoryProvenanceView.attestationAvailability(nil),
+        MemoryProvenanceView.supersessionAvailability(nil)
+      ),
+      (
+        MemoryProvenanceView.verificationAvailability(unsupported),
+        MemoryProvenanceView.attestationAvailability(unsupported),
+        MemoryProvenanceView.supersessionAvailability(unsupported)
+      ),
+      (
+        MemoryProvenanceView.verificationAvailability(available),
+        MemoryProvenanceView.attestationAvailability(available),
+        MemoryProvenanceView.supersessionAvailability(available)
+      ),
+    ]
+
+    #expect(
+      statuses.map(\.0) == [.unavailable, .unsupported, .available]
+    )
+    #expect(
+      statuses.map(\.1) == [.unavailable, .unsupported, .available]
+    )
+    #expect(
+      statuses.map(\.2) == [.unavailable, .unsupported, .available]
+    )
+  }
+
   private func capabilities(
     detail: Bool,
     verification: Bool,

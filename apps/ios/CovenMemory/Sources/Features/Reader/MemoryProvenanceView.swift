@@ -26,7 +26,8 @@ struct MemoryProvenanceView: View {
       }
 
       Section("Verification") {
-        if capabilities?.verification == true {
+        switch Self.verificationAvailability(capabilities) {
+        case .available:
           LabeledContent(
             "State",
             value: verificationTitle(metadata.verification.state)
@@ -35,26 +36,38 @@ struct MemoryProvenanceView: View {
             "Reason",
             value: metadata.verification.reason ?? "Not provided"
           )
-        } else {
+        case .unsupported:
           Text("Unsupported by this Cave")
+        case .unavailable:
+          Text("Unavailable")
+            .accessibilityIdentifier(
+              "verification-capability-unavailable"
+            )
         }
       }
 
       Section("Attestation metadata") {
-        if capabilities?.attestationMetadata == true {
+        switch Self.attestationAvailability(capabilities) {
+        case .available:
           LabeledContent(
             "Metadata",
             value: metadata.attestationMetadata.map {
               "\($0.fieldCount) fields"
             } ?? "Not provided"
           )
-        } else {
+        case .unsupported:
           Text("Unsupported by this Cave")
+        case .unavailable:
+          Text("Unavailable")
+            .accessibilityIdentifier(
+              "attestation-capability-unavailable"
+            )
         }
       }
 
       Section("Supersession history") {
-        if capabilities?.supersessionHistory == true {
+        switch Self.supersessionAvailability(capabilities) {
+        case .available:
           if let newer = metadata.supersession.supersededBy {
             Button("Newer memory") {
               follow(newer)
@@ -72,8 +85,13 @@ struct MemoryProvenanceView: View {
           } else {
             LabeledContent("Older memory", value: "None")
           }
-        } else {
+        case .unsupported:
           Text("Unsupported by this Cave")
+        case .unavailable:
+          Text("Unavailable")
+            .accessibilityIdentifier(
+              "supersession-capability-unavailable"
+            )
         }
       }
     }
@@ -106,6 +124,30 @@ struct MemoryProvenanceView: View {
     ]
   }
 
+  enum CapabilityAvailability: Equatable, Sendable {
+    case available
+    case unsupported
+    case unavailable
+  }
+
+  static func verificationAvailability(
+    _ capabilities: MemoryCapabilities?
+  ) -> CapabilityAvailability {
+    availability(capabilities.map(\.verification))
+  }
+
+  static func attestationAvailability(
+    _ capabilities: MemoryCapabilities?
+  ) -> CapabilityAvailability {
+    availability(capabilities.map(\.attestationMetadata))
+  }
+
+  static func supersessionAvailability(
+    _ capabilities: MemoryCapabilities?
+  ) -> CapabilityAvailability {
+    availability(capabilities.map(\.supersessionHistory))
+  }
+
   struct MemoryCapabilityRow: Identifiable, Equatable, Sendable {
     let label: String
     let isSupported: Bool?
@@ -117,6 +159,16 @@ struct MemoryProvenanceView: View {
       case false: "Unsupported"
       case nil: "Unavailable"
       }
+    }
+  }
+
+  private static func availability(
+    _ capability: Bool?
+  ) -> CapabilityAvailability {
+    switch capability {
+    case true: .available
+    case false: .unsupported
+    case nil: .unavailable
     }
   }
 

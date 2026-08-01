@@ -520,6 +520,57 @@ struct LaunchCoordinatorTests {
         #expect(coordinator.memoryService == nil)
     }
 
+    @Test("Token expiry blocks an in-flight protected reveal response")
+    @MainActor
+    func tokenExpiryBlocksInflightReveal() async {
+        let expiryGate = LaunchGate()
+        let detailGate = LaunchGate()
+        let service = LaunchStubCaveService(
+            detailGate: detailGate,
+            detailGateOnCall: 2,
+            detailResults: [
+                .success(LaunchDetailFixture.protected),
+                .success(LaunchDetailFixture.revealed),
+            ]
+        )
+        let coordinator = LaunchCoordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            makeService: { _ in service },
+            now: { Self.now },
+            sleep: { _ in await expiryGate.enter() }
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+        let reader = MemoryReaderState(
+            id: LaunchDetailFixture.protected.id,
+            service: activeService,
+            authenticator: LaunchAuthenticator()
+        )
+        await reader.load()
+        #expect(reader.phase == .protected)
+
+        let reveal = Task { await reader.reveal() }
+        #expect(await detailGate.waitUntilEntered())
+
+        await expiryGate.open()
+        for _ in 0..<1_000
+        where coordinator.state != .failed(.pairingInvalidated) {
+            await Task.yield()
+        }
+        #expect(coordinator.state == .failed(.pairingInvalidated))
+        #expect(coordinator.memoryService == nil)
+
+        await detailGate.open()
+        await reveal.value
+
+        #expect(reader.phase == .failed(.revoked))
+        #expect(reader.metadata == nil)
+        #expect(reader.protectedReference == nil)
+        #expect(reader.presentedDetail == nil)
+        #expect(reader.retainedContent == nil)
+        #expect(reader.revealGrantID == nil)
+    }
+
     @Test(
         "Transport errors map to bounded launch failures",
         arguments: [
@@ -897,11 +948,14 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
     private let refreshUnknownError: Bool
     private let detailError: NetworkError?
     private let detailGate: LaunchGate?
+    private let detailGateOnCall: Int
     private let listError: NetworkError?
     private let detailValue: MemoryDetail?
+    private var detailResults: [Result<MemoryDetail, NetworkError>]?
     private let listGate: LaunchGate?
     private(set) var overviewCount = 0
     private(set) var refreshCount = 0
+    private var detailCallCount = 0
 
     init(
         overviewError: NetworkError? = nil,
@@ -915,8 +969,10 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
         refreshUnknownError: Bool = false,
         detailError: NetworkError? = nil,
         detailGate: LaunchGate? = nil,
+        detailGateOnCall: Int = 1,
         listError: NetworkError? = nil,
         detailValue: MemoryDetail? = nil,
+        detailResults: [Result<MemoryDetail, NetworkError>]? = nil,
         listGate: LaunchGate? = nil
     ) {
         self.overviewResults = overviewResults
@@ -927,8 +983,10 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
         self.refreshUnknownError = refreshUnknownError
         self.detailError = detailError
         self.detailGate = detailGate
+        self.detailGateOnCall = detailGateOnCall
         self.listError = listError
         self.detailValue = detailValue
+        self.detailResults = detailResults
         self.listGate = listGate
     }
 
@@ -951,7 +1009,15 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
     }
 
     func detail(id: UUID) async throws -> MemoryDetail {
-        if let detailGate { await detailGate.enter() }
+        detailCallCount += 1
+        if detailCallCount == detailGateOnCall, let detailGate {
+            await detailGate.enter()
+        }
+        if var detailResults {
+            let result = detailResults.removeFirst()
+            self.detailResults = detailResults
+            return try result.get()
+        }
         if let detailError { throw detailError }
         if let detailValue { return detailValue }
         throw NetworkError.invalidResponse
@@ -992,6 +1058,40 @@ private enum LaunchDetailFixture {
         )
         return try! JSONDecoder.mobile.decode(MemoryDetail.self, from: data)
     }()
+
+    static let protected = privateDetail(content: "Discarded private body")
+    static let revealed = privateDetail(content: "Stale revealed body")
+
+    private static func privateDetail(content: String) -> MemoryDetail {
+        let data = Data(
+            """
+            {
+              "id": "00000000-0000-0000-0000-000000000002",
+              "familiarId": "sage",
+              "title": "Protected detail",
+              "updatedAt": "2026-07-31T12:00:00.000Z",
+              "source": {"kind": "coven-origin", "label": "Coven origin"},
+              "content": "\(content)",
+              "contentFormat": "markdown",
+              "privacy": {
+                "classification": "private",
+                "revealRequired": true,
+                "reason": "Sensitive context"
+              },
+              "verification": {"state": "verified", "reason": null},
+              "attestationMetadata": null,
+              "supersession": {"supersedes": null, "supersededBy": null}
+            }
+            """.utf8
+        )
+        return try! JSONDecoder.mobile.decode(MemoryDetail.self, from: data)
+    }
+}
+
+private struct LaunchAuthenticator: LocalAuthenticating {
+    func authenticate(reason: String) async throws -> AuthenticationGrant {
+        AuthenticationGrant()
+    }
 }
 
 private enum LaunchUnknownServiceError: Error {

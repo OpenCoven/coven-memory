@@ -176,6 +176,34 @@ final class MemoryReaderUITests: XCTestCase {
   }
 
   @MainActor
+  func testUnavailableProvenanceCapabilitiesAreExplicit() {
+    let app = launch(scenario: "overview-failure")
+    openMemory("Architecture decisions", in: app)
+    app.buttons["Memory info"].tap()
+
+    XCTAssertTrue(app.staticTexts["Detail, Unavailable"].exists)
+    XCTAssertTrue(app.staticTexts["Verification, Unavailable"].exists)
+    XCTAssertTrue(
+      app.staticTexts["Attestation metadata, Unavailable"].exists
+    )
+    app.swipeUp()
+    XCTAssertTrue(
+      app.staticTexts["Supersession history, Unavailable"].exists
+    )
+    XCTAssertTrue(app.staticTexts["Mutations, Unavailable"].exists)
+    XCTAssertTrue(
+      app.staticTexts["verification-capability-unavailable"].exists
+    )
+    XCTAssertTrue(
+      app.staticTexts["attestation-capability-unavailable"].exists
+    )
+    XCTAssertTrue(
+      app.staticTexts["supersession-capability-unavailable"].exists
+    )
+    XCTAssertFalse(app.staticTexts["Unsupported by this Cave"].exists)
+  }
+
+  @MainActor
   func testProvenanceShowsAllFiveCapabilities() {
     let app = launch(scenario: "reader-provenance")
     openMemory("Public field notes", in: app)

@@ -43,6 +43,7 @@ final class LaunchCoordinator {
     private var persistenceRequired = false
     private var task: Task<Void, Never>?
     private var expiryTask: Task<Void, Never>?
+    private var sessionValidity: MemorySessionValidity?
     private var generation = 0
 
     init(
@@ -63,7 +64,7 @@ final class LaunchCoordinator {
 
     func start() async {
         cancelSessionExpiry()
-        memoryService = nil
+        invalidateActiveService(.revoked)
         currentConnection = nil
         persistenceRequired = false
         state = .checkingPairing
@@ -76,7 +77,7 @@ final class LaunchCoordinator {
     func submitInvite(_ rawValue: String) async {
         guard state != .locked else { return }
         cancelSessionExpiry()
-        memoryService = nil
+        invalidateActiveService(.revoked)
         state = .connecting
         let operation = beginOperation { [weak self] generation in
             await self?.openInvite(rawValue, generation: generation)
@@ -87,7 +88,7 @@ final class LaunchCoordinator {
     func retry() async {
         guard canRetry, let connection = currentConnection else { return }
         cancelSessionExpiry()
-        memoryService = nil
+        invalidateActiveService(.disconnected)
         state = .checkingHost(connection.displayName)
         let persistAfterReadiness = persistenceRequired
         let operation = beginOperation { [weak self] generation in
@@ -103,7 +104,7 @@ final class LaunchCoordinator {
     func resetPairing() async {
         guard state != .locked else { return }
         cancelSessionExpiry()
-        memoryService = nil
+        invalidateActiveService(.revoked)
         let operation = beginOperation { [weak self] generation in
             guard let self else { return }
             do {
@@ -128,7 +129,7 @@ final class LaunchCoordinator {
         generation += 1
         task?.cancel()
         task = nil
-        memoryService = nil
+        invalidateActiveService(.revoked)
         currentConnection = nil
         persistenceRequired = false
         state = wasLocked ? .locked : .unpaired
@@ -139,7 +140,7 @@ final class LaunchCoordinator {
         generation += 1
         task?.cancel()
         task = nil
-        memoryService = nil
+        invalidateActiveService(.expired)
         currentConnection = nil
         persistenceRequired = false
         state = .locked
@@ -277,14 +278,18 @@ final class LaunchCoordinator {
             let activeService = activeConnection == connection
                 ? service
                 : makeService(activeConnection)
-            memoryService = SessionInvalidatingCaveMemoryService(
-                service: activeService
+            let sessionValidity = MemorySessionValidity()
+            let sessionService = SessionInvalidatingCaveMemoryService(
+                service: activeService,
+                validity: sessionValidity
             ) { [weak self] invalidation in
                 await self?.invalidateSession(
                     invalidation,
                     generation: generation
                 )
             }
+            self.sessionValidity = sessionValidity
+            memoryService = sessionService
             state = .ready(activeConnection.displayName)
             scheduleSessionExpiry(
                 for: activeConnection,
@@ -354,7 +359,7 @@ final class LaunchCoordinator {
         task?.cancel()
         task = nil
         cancelSessionExpiry()
-        memoryService = nil
+        invalidateActiveService(invalidation)
         persistenceRequired = false
 
         switch invalidation {
@@ -364,6 +369,14 @@ final class LaunchCoordinator {
             currentConnection = nil
             state = .failed(.pairingInvalidated)
         }
+    }
+
+    private func invalidateActiveService(
+        _ invalidation: MemorySessionInvalidation
+    ) {
+        sessionValidity?.invalidate(invalidation)
+        sessionValidity = nil
+        memoryService = nil
     }
 
     private func map(_ error: Error) -> LaunchFailure {
@@ -400,21 +413,54 @@ private enum LaunchCoordinatorError: Error {
     case credentialFailure
 }
 
+private final class MemorySessionValidity: @unchecked Sendable {
+    private let lock = NSLock()
+    private var invalidation: MemorySessionInvalidation?
+
+    @discardableResult
+    func invalidate(
+        _ invalidation: MemorySessionInvalidation
+    ) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard self.invalidation == nil else { return false }
+        self.invalidation = invalidation
+        return true
+    }
+
+    func check() throws {
+        lock.lock()
+        let invalidation = self.invalidation
+        lock.unlock()
+
+        switch invalidation {
+        case .disconnected:
+            throw NetworkError.connectionFailed
+        case .revoked, .expired:
+            throw NetworkError.authenticationRequired
+        case nil:
+            return
+        }
+    }
+}
+
 private actor SessionInvalidatingCaveMemoryService: CaveMemoryServicing {
     private let service: any CaveMemoryServicing
+    private let validity: MemorySessionValidity
     private let invalidate:
         @Sendable (MemorySessionInvalidation) async -> Void
     private var hasServedDetail = false
     private var detailRequestsInFlight = 0
-    private var sessionInvalidation: MemorySessionInvalidation?
 
     init(
         service: any CaveMemoryServicing,
+        validity: MemorySessionValidity,
         invalidate: @escaping @Sendable (
             MemorySessionInvalidation
         ) async -> Void
     ) {
         self.service = service
+        self.validity = validity
         self.invalidate = invalidate
     }
 
@@ -431,13 +477,13 @@ private actor SessionInvalidatingCaveMemoryService: CaveMemoryServicing {
     }
 
     func detail(id: UUID) async throws -> MemoryDetail {
-        try ensureSessionIsValid()
+        try validity.check()
         detailRequestsInFlight += 1
         defer { detailRequestsInFlight -= 1 }
         let detail = try await perform {
             try await service.detail(id: id)
         }
-        try ensureSessionIsValid()
+        try validity.check()
         hasServedDetail = true
         scheduleSyntheticInvalidationAfterDetail()
         return detail
@@ -453,9 +499,13 @@ private actor SessionInvalidatingCaveMemoryService: CaveMemoryServicing {
         _ operation: () async throws -> Value
     ) async throws -> Value {
         do {
-            return try await operation()
+            try validity.check()
+            let value = try await operation()
+            try validity.check()
+            return value
         } catch let error as NetworkError {
             await invalidateSession(for: error)
+            try validity.check()
             throw error
         }
     }
@@ -464,11 +514,15 @@ private actor SessionInvalidatingCaveMemoryService: CaveMemoryServicing {
         _ operation: () async throws -> Value
     ) async throws -> Value {
         do {
-            return try await operation()
+            try validity.check()
+            let value = try await operation()
+            try validity.check()
+            return value
         } catch let error as NetworkError {
             if hasServedDetail || detailRequestsInFlight > 0 {
                 await invalidateSession(for: error)
             }
+            try validity.check()
             throw error
         }
     }
@@ -483,18 +537,8 @@ private actor SessionInvalidatingCaveMemoryService: CaveMemoryServicing {
         default:
             return
         }
-        sessionInvalidation = invalidation
-        await invalidate(invalidation)
-    }
-
-    private func ensureSessionIsValid() throws {
-        switch sessionInvalidation {
-        case .disconnected:
-            throw NetworkError.connectionFailed
-        case .revoked, .expired:
-            throw NetworkError.authenticationRequired
-        case nil:
-            return
+        if validity.invalidate(invalidation) {
+            await invalidate(invalidation)
         }
     }
 
