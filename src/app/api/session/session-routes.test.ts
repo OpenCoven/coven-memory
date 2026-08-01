@@ -7,6 +7,8 @@ import { GET as status, OPTIONS as statusOptions } from "./status/route";
 import { runtime } from "@/server/runtime";
 import { SESSION_COOKIE } from "@/server/request-guard";
 
+const RUNTIME_AUTH_MODE_ENV = "COVEN_MEMORY_RUNTIME_AUTH_MODE";
+
 function localRequest(
   path: string,
   init: RequestInit = {},
@@ -30,6 +32,11 @@ function cookiePair(setCookie: string | null) {
 }
 
 describe("session routes", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
   it("exchanges the active launch token for a strict HttpOnly cookie", async () => {
     const token = runtime().sessions.issueLaunchToken();
     const response = await exchange(
@@ -145,6 +152,55 @@ describe("session routes", () => {
     const afterLogout = await status(
       localRequest("/api/session/status", { headers: { cookie } })
     );
+    expect(afterLogout.status).toBe(401);
+    expect(afterLogout.headers.get("cache-control")).toContain("no-store");
+  });
+
+  it("reports ready and logs out without a cookie in development", async () => {
+    vi.stubEnv(RUNTIME_AUTH_MODE_ENV, "development");
+    const revokeSession = vi.spyOn(runtime().sessions, "revokeSession");
+
+    const statusResponse = await status(
+      localRequest("/api/session/status")
+    );
+    expect(statusResponse.status).toBe(200);
+
+    const logoutResponse = await logout(
+      localRequest("/api/session/logout", { method: "POST" })
+    );
+    expect(logoutResponse.status).toBe(200);
+    expect(logoutResponse.headers.get("set-cookie")).toMatch(
+      new RegExp(`^${SESSION_COOKIE}=;`)
+    );
+    expect(revokeSession).not.toHaveBeenCalled();
+  });
+
+  it("revokes an existing session on development logout", async () => {
+    const token = runtime().sessions.issueLaunchToken();
+    const exchanged = await exchange(
+      localRequest("/api/session/exchange", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ token })
+      })
+    );
+    const cookie = cookiePair(exchanged.headers.get("set-cookie"));
+
+    vi.stubEnv(RUNTIME_AUTH_MODE_ENV, "development");
+    const logoutResponse = await logout(
+      localRequest("/api/session/logout", {
+        method: "POST",
+        headers: { cookie }
+      })
+    );
+
+    expect(logoutResponse.status).toBe(200);
+
+    vi.stubEnv(RUNTIME_AUTH_MODE_ENV, "strict");
+    const afterLogout = await status(
+      localRequest("/api/session/status", { headers: { cookie } })
+    );
+
     expect(afterLogout.status).toBe(401);
     expect(afterLogout.headers.get("cache-control")).toContain("no-store");
   });

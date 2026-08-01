@@ -33,10 +33,10 @@ pnpm install
 pnpm dev
 ```
 
-The custom server binds to `127.0.0.1:3737` by default and prints one launch URL.
-Open that URL as printed. Its fragment contains a short-lived, one-time token;
-the browser removes the fragment before exchanging it for an HttpOnly local
-session.
+The custom server binds to `127.0.0.1:3737` by default. In development it
+prints a plain loopback URL; open that URL directly. Development skips the
+session cookie only after the strict loopback Host and same-origin Origin
+checks pass.
 
 For deterministic synthetic data:
 
@@ -57,6 +57,10 @@ pnpm install --frozen-lockfile
 pnpm build
 pnpm start
 ```
+
+Production prints a launch URL whose fragment contains a short-lived,
+single-use token. The browser removes the fragment before exchanging it for an
+HttpOnly local session.
 
 Runtime configuration:
 

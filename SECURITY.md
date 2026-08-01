@@ -33,12 +33,15 @@ The Phase 1 dashboard is a read-only local client with these enforced
 properties:
 
 - the application server binds only to explicit IPv4 or IPv6 loopback;
-- launch tokens are random, memory-only, short-lived, single-use, carried in a
-  URL fragment, and removed before exchange;
-- sessions are process-local, short-lived, non-sliding HttpOnly cookies with
-  `SameSite=Strict`;
-- every data route validates the loopback Host, same-origin Origin when
-  present, and the local session before contacting the daemon;
+- production launch tokens are random, memory-only, short-lived, single-use,
+  carried in a URL fragment, and removed before exchange;
+- development may skip the session cookie only after explicit loopback Host
+  and same-origin Origin validation succeeds;
+- production sessions are process-local, short-lived, non-sliding HttpOnly
+  cookies with `SameSite=Strict`;
+- every data route validates the loopback Host and same-origin Origin when
+  present, and production also requires the local session before contacting
+  the daemon;
 - all API success and error responses are `no-store`, and no permissive CORS is
   enabled;
 - the Content Security Policy permits only local application resources;

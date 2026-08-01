@@ -1,3 +1,5 @@
+import { isDevelopmentAuthMode } from "./auth-mode";
+
 export const SESSION_COOKIE = "coven_memory_session";
 
 type GuardFailure = {
@@ -7,7 +9,9 @@ type GuardFailure = {
 };
 
 type LoopbackGuard = { ok: true } | GuardFailure;
-type SessionGuard = { ok: true; session: string } | GuardFailure;
+type SessionGuard =
+  | { ok: true; session: string | null }
+  | GuardFailure;
 
 function sessionCookie(header: string | null): string | null {
   let session: string | null = null;
@@ -81,6 +85,16 @@ export function guardLocalRequest(
   }
 
   const session = sessionCookie(request.headers.get("cookie"));
+
+  if (isDevelopmentAuthMode()) {
+    if (session === null) {
+      return { ok: true, session: null };
+    }
+    return hasSession(session)
+      ? { ok: true, session }
+      : { ok: true, session: null };
+  }
+
   if (!session || !hasSession(session)) {
     return { ok: false, status: 401, code: "session_required" };
   }

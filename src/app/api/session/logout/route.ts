@@ -14,7 +14,9 @@ export function POST(request: Request) {
     );
   }
 
-  runtime().sessions.revokeSession(guard.session);
+  if (guard.session !== null) {
+    runtime().sessions.revokeSession(guard.session);
+  }
   const response = jsonNoStore({ ok: true });
   response.cookies.set(SESSION_COOKIE, "", {
     httpOnly: true,

@@ -14,6 +14,7 @@ vi.mock("@/server/runtime", () => ({
 
 const mockedRuntime = vi.mocked(runtime);
 const id = "d251bc66-3e45-5d03-8d78-1e76919642f9";
+const RUNTIME_AUTH_MODE_ENV = "COVEN_MEMORY_RUNTIME_AUTH_MODE";
 
 function request(
   path: string,
@@ -52,7 +53,10 @@ function useRuntime(options: {
 }
 
 describe("memory API routes", () => {
-  afterEach(() => vi.clearAllMocks());
+  afterEach(() => {
+    vi.clearAllMocks();
+    vi.unstubAllEnvs();
+  });
 
   it("rejects missing sessions before reading daemon data", async () => {
     const memory = useRuntime({ authenticated: false });
@@ -66,6 +70,20 @@ describe("memory API routes", () => {
     });
     expect(response.headers.get("cache-control")).toContain("no-store");
     expect(memory.list).not.toHaveBeenCalled();
+  });
+
+  it("allows sessionless loopback memory reads in development", async () => {
+    vi.stubEnv(RUNTIME_AUTH_MODE_ENV, "development");
+    const memory = useRuntime({
+      authenticated: false,
+      list: vi.fn().mockResolvedValue([])
+    });
+
+    const response = await list(request("/api/memory"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ ok: true, data: [] });
+    expect(memory.list).toHaveBeenCalledOnce();
   });
 
   it("rejects foreign Origin and Host values before reading daemon data", async () => {
