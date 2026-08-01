@@ -24,8 +24,19 @@ struct MemoryLibraryView: View {
     self.authenticator = authenticator
     self.pairAgain = pairAgain
     self.lock = lock
+    #if DEBUG
+      let stateNow =
+        Self.uiScenario == "recency-boundary"
+        ? Date(timeIntervalSince1970: 1_785_326_400)
+        : Date()
+    #else
+      let stateNow = Date()
+    #endif
     _state = State(
-      initialValue: MemoryLibraryState(service: service)
+      initialValue: MemoryLibraryState(
+        service: service,
+        now: { stateNow }
+      )
     )
   }
 
@@ -219,8 +230,7 @@ struct MemoryLibraryView: View {
         case .memoryHealth:
           MemoryHealthView(
             overview: state.overview,
-            issue: state.refreshAttention
-              ?? state.healthAttention
+            issue: memoryHealthIssue
           )
         }
       }
@@ -236,6 +246,16 @@ struct MemoryLibraryView: View {
     default:
       "\(state.activeFilterCount) active filters"
     }
+  }
+
+  private var memoryHealthIssue: MemoryLibraryIssue? {
+    if let issue = state.refreshAttention ?? state.healthAttention {
+      return issue
+    }
+    if case .failure(let issue) = state.phase {
+      return issue
+    }
+    return nil
   }
 
   private func unavailableView(
@@ -274,8 +294,12 @@ struct MemoryLibraryView: View {
     case .offline: "Cave is offline"
     case .unavailable: "Memory is unavailable"
     case .revoked: "Pairing expired"
+    case .unsupported: "Memory Library is unsupported"
     case .incompatible: "Update Cave to continue"
     case .malformed: "Cave returned invalid memory data"
+    case .needsReview: "Memory verification needs review"
+    case .degraded: "Memory verification is degraded"
+    case .unknown: "Memory verification is unknown"
     }
   }
 
@@ -287,10 +311,18 @@ struct MemoryLibraryView: View {
       "Canonical memory is not available from this Cave."
     case .revoked:
       "Pair again with a fresh Open on phone invite."
+    case .unsupported:
+      "This Cave does not offer the Memory Library contract."
     case .incompatible:
       "This Cave does not support the required memory contract."
     case .malformed:
       "Memory data was rejected without showing partial results."
+    case .needsReview:
+      "Review the available verification details before relying on memory."
+    case .degraded:
+      "Available verification checks reported degraded memory health."
+    case .unknown:
+      "Cave returned memory data without a known verification result."
     }
   }
 
@@ -299,8 +331,12 @@ struct MemoryLibraryView: View {
     case .offline: "wifi.slash"
     case .unavailable: "books.vertical"
     case .revoked: "lock.slash"
+    case .unsupported: "questionmark.folder"
     case .incompatible: "arrow.trianglehead.2.clockwise.rotate.90"
     case .malformed: "xmark.octagon"
+    case .needsReview: "exclamationmark.triangle"
+    case .degraded: "waveform.path.ecg.rectangle"
+    case .unknown: "questionmark.circle"
     }
   }
 
@@ -310,8 +346,9 @@ struct MemoryLibraryView: View {
     switch issue {
     case .offline: .unavailable
     case .unavailable, .revoked: .warning
-    case .incompatible: .incompatible
-    case .malformed: .failure
+    case .unsupported, .incompatible: .incompatible
+    case .malformed, .degraded: .failure
+    case .needsReview, .unknown: .warning
     }
   }
 
@@ -325,10 +362,18 @@ struct MemoryLibraryView: View {
       "Some memory health information is unavailable."
     case .revoked:
       "Pairing needs attention."
+    case .unsupported:
+      "This Cave does not support Memory Library."
     case .incompatible:
       "Memory health requires a Cave update."
     case .malformed:
       "Memory health data was rejected."
+    case .needsReview:
+      "Memory verification needs review."
+    case .degraded:
+      "Memory verification is degraded."
+    case .unknown:
+      "Memory verification status is unknown."
     }
   }
 

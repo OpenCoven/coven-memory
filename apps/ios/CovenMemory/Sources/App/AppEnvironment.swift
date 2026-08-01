@@ -92,21 +92,26 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         switch scenario {
         case .loading:
             try await Task.sleep(for: .seconds(8))
-            return Self.summaries
+            return Self.baseSummaries
         case .offline:
             throw NetworkError.connectionFailed
         case .unavailable:
             return []
         case .revoked:
             throw NetworkError.authenticationRequired
-        case .incompatible:
+        case .unsupported:
             throw NetworkError.protocolUnsupported
         case .malformed:
             throw NetworkError.invalidResponse
         case .empty:
             return []
-        case .filteredEmpty, .healthy, .overviewFailure, nil:
-            return Self.summaries
+        case .recencyBoundary:
+            return Self.recencyBoundarySummaries
+        case .navigation:
+            return Self.navigationSummaries
+        case .filteredEmpty, .healthy, .overviewFailure,
+            .healthDegraded, nil:
+            return Self.baseSummaries
         }
     }
 
@@ -115,13 +120,23 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         if scenario == .overviewFailure, overviewCallCount > 1 {
             throw NetworkError.invalidResponse
         }
+        let verificationState: MemoryVerificationState =
+            scenario == .healthDegraded ? .degraded : .verified
+        let issues =
+            scenario == .healthDegraded
+            ? ["Index verification is degraded."]
+            : []
         return try Self.overview(
-            detailAvailable: scenario != .unavailable
+            detailAvailable: scenario != .unavailable,
+            summaries: Self.summaries(for: scenario),
+            verificationState: verificationState,
+            issues: issues
         )
     }
 
     func detail(id: UUID) async throws -> MemoryDetail {
-        let title = Self.summaries.first(where: { $0.id == id })?.title
+        let title = Self.summaries(for: scenario)
+            .first(where: { $0.id == id })?.title
             ?? "Synthetic memory"
         let data = Data(
             """
@@ -160,7 +175,7 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         connection
     }
 
-    private static var summaries: [MemorySummary] {
+    private static var baseSummaries: [MemorySummary] {
         let now = Date()
         let calendar = Calendar(identifier: .gregorian)
         return [
@@ -170,7 +185,12 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
                 title: "Architecture decisions",
                 updatedAt: now,
                 relative: "today",
-                excerpt: "Architecture context appears only while searching."
+                excerpt: "Architecture context appears only while searching.",
+                source: MemorySource(
+                    kind: "coven-origin",
+                    label: "Coven origin"
+                ),
+                verification: .verified
             ),
             summary(
                 id: "00000000-0000-0000-0000-000000000002",
@@ -182,7 +202,12 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
                     to: now
                 )!,
                 relative: "3 days ago",
-                excerpt: "Synthetic garden context."
+                excerpt: "Synthetic garden context.",
+                source: MemorySource(
+                    kind: "cave-import",
+                    label: "Cave import"
+                ),
+                verification: .needsReview
             ),
             summary(
                 id: "00000000-0000-0000-0000-000000000003",
@@ -194,9 +219,82 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
                     to: now
                 )!,
                 relative: "8 days ago",
-                excerpt: "Synthetic older context."
+                excerpt: "Synthetic older context.",
+                source: MemorySource(
+                    kind: "archive",
+                    label: "Archived memory"
+                ),
+                verification: .degraded
             ),
         ]
+    }
+
+    private static var recencyBoundarySummaries: [MemorySummary] {
+        let calendar = Calendar(identifier: .gregorian)
+        let boundary = calendar.date(
+            byAdding: .day,
+            value: -7,
+            to: referenceNow
+        )!
+        return [
+            summary(
+                id: "00000000-0000-0000-0000-000000000041",
+                familiar: "sage",
+                title: "Boundary previous 7 days",
+                updatedAt: boundary,
+                relative: "7 days ago",
+                excerpt: "Exactly on the seven-day boundary.",
+                source: MemorySource(
+                    kind: "coven-origin",
+                    label: "Coven origin"
+                ),
+                verification: .verified
+            ),
+            summary(
+                id: "00000000-0000-0000-0000-000000000042",
+                familiar: "ember",
+                title: "Boundary older",
+                updatedAt: calendar.date(
+                    byAdding: .second,
+                    value: -1,
+                    to: boundary
+                )!,
+                relative: "more than 7 days ago",
+                excerpt: "One second beyond the seven-day boundary.",
+                source: MemorySource(
+                    kind: "archive",
+                    label: "Archived memory"
+                ),
+                verification: .verified
+            ),
+        ]
+    }
+
+    private static var navigationSummaries: [MemorySummary] {
+        let archives = (1...30).map { index in
+            summary(
+                id: String(
+                    format: "00000000-0000-0000-0000-%012d",
+                    100 + index
+                ),
+                familiar: "sage",
+                title: String(
+                    format: "Architecture archive %02d",
+                    index
+                ),
+                updatedAt: Date().addingTimeInterval(
+                    TimeInterval(-index * 60)
+                ),
+                relative: "\(index) minutes ago",
+                excerpt: "Archive context \(index).",
+                source: MemorySource(
+                    kind: "archive",
+                    label: "Archived memory"
+                ),
+                verification: .verified
+            )
+        }
+        return baseSummaries + archives
     }
 
     private static func summary(
@@ -205,7 +303,9 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
         title: String,
         updatedAt: Date,
         relative: String,
-        excerpt: String
+        excerpt: String,
+        source: MemorySource,
+        verification: MemoryVerificationState
     ) -> MemorySummary {
         MemorySummary(
             id: UUID(uuidString: id)!,
@@ -214,31 +314,43 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
             updatedAt: updatedAt,
             relativeUpdatedAt: relative,
             excerpt: excerpt,
-            source: MemorySource(
-                kind: "coven-origin",
-                label: "Coven origin"
-            ),
+            source: source,
             privacy: MemoryPrivacySummary(
                 classification: "public",
                 revealRequired: false
             ),
-            verification: MemoryVerificationSummary(state: .verified)
+            verification: MemoryVerificationSummary(state: verification)
         )
     }
 
     private static func overview(
-        detailAvailable: Bool
+        detailAvailable: Bool,
+        summaries: [MemorySummary],
+        verificationState: MemoryVerificationState,
+        issues: [String]
     ) throws -> MemoryOverview {
+        let familiarCount = Set(summaries.map(\.familiarId)).count
+        let verifiedCount = summaries.count {
+            $0.verification.state == .verified
+        }
+        let needsReviewCount = summaries.count {
+            $0.verification.state == .needsReview
+        }
+        let unknownCount =
+            summaries.count - verifiedCount - needsReviewCount
+        let encodedIssues = issues
+            .map { "\"\($0)\"" }
+            .joined(separator: ",")
         let data = Data(
             """
             {
               "generatedAt": "2026-07-31T12:00:00.000Z",
               "totals": {
-                "entries": 3,
-                "familiars": 2,
-                "verified": 3,
-                "needsReview": 0,
-                "unknown": 0
+                "entries": \(summaries.count),
+                "familiars": \(familiarCount),
+                "verified": \(verifiedCount),
+                "needsReview": \(needsReviewCount),
+                "unknown": \(unknownCount)
               },
               "lastUpdatedAt": "2026-07-31T12:00:00.000Z",
               "capabilities": {
@@ -249,17 +361,38 @@ private actor UITestCaveMemoryService: CaveMemoryServicing {
                 "mutations": false
               },
               "verification": {
-                "state": "verified",
+                "state": "\(verificationState.rawValue)",
                 "checkedAt": "2026-07-31T12:00:00.000Z",
                 "manifest": "verified",
                 "index": "verified",
-                "issues": []
+                "issues": [\(encodedIssues)]
               }
             }
             """.utf8
         )
         return try JSONDecoder.mobile.decode(MemoryOverview.self, from: data)
     }
+
+    private static func summaries(
+        for scenario: UITestLibraryScenario?
+    ) -> [MemorySummary] {
+        switch scenario {
+        case .empty, .offline, .unavailable, .revoked, .unsupported,
+            .malformed:
+            []
+        case .recencyBoundary:
+            recencyBoundarySummaries
+        case .navigation:
+            navigationSummaries
+        case .healthy, .loading, .filteredEmpty, .overviewFailure,
+            .healthDegraded, nil:
+            baseSummaries
+        }
+    }
+
+    private static let referenceNow = Date(
+        timeIntervalSince1970: 1_785_326_400
+    )
 }
 
 private enum UITestLibraryScenario: String, Sendable {
@@ -268,10 +401,13 @@ private enum UITestLibraryScenario: String, Sendable {
     case empty
     case filteredEmpty = "filtered-empty"
     case overviewFailure = "overview-failure"
+    case healthDegraded = "health-degraded"
+    case recencyBoundary = "recency-boundary"
+    case navigation
     case offline
     case unavailable
     case revoked
-    case incompatible
+    case unsupported
     case malformed
 
     static var current: Self? {

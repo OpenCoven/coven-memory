@@ -9,22 +9,32 @@ struct MemoryHealthView: View {
       if let issue {
         Section {
           Label(message(for: issue), systemImage: symbol(for: issue))
-            .foregroundStyle(issue == .malformed ? .red : .orange)
+            .foregroundStyle(
+              issue == .malformed || issue == .degraded
+                ? .red
+                : .orange
+            )
         }
-      } else if let overview {
+      }
+
+      if let overview {
         Section("Availability") {
-          LabeledContent(
-            "Memory details",
-            value: overview.capabilities.detail
-              ? "Available"
-              : "Unavailable"
-          )
-          LabeledContent(
-            "Verification",
-            value: overview.capabilities.verification
-              ? verificationTitle(overview.verification.state)
-              : "Unavailable"
-          )
+          LabeledContent("Memory details") {
+            Text(
+              overview.capabilities.detail
+                ? "Available"
+                : "Unavailable"
+            )
+            .accessibilityIdentifier("memory-detail-availability")
+          }
+          LabeledContent("Verification") {
+            Text(
+              overview.capabilities.verification
+                ? verificationTitle(overview.verification.state)
+                : "Unavailable"
+            )
+            .accessibilityIdentifier("memory-verification-state")
+          }
         }
 
         Section("Last check") {
@@ -46,7 +56,7 @@ struct MemoryHealthView: View {
             }
           }
         }
-      } else {
+      } else if issue == nil {
         ContentUnavailableView(
           "Health information is unavailable.",
           systemImage: "heart.text.clipboard"
@@ -64,10 +74,18 @@ struct MemoryHealthView: View {
       "Health information is unavailable."
     case .revoked:
       "Pairing expired."
+    case .unsupported:
+      "This Cave does not support Memory Library."
     case .incompatible:
       "Cave must be updated before health can be checked."
     case .malformed:
       "Cave returned invalid health data."
+    case .needsReview:
+      "Memory verification needs review."
+    case .degraded:
+      "Memory verification is degraded."
+    case .unknown:
+      "Memory verification status is unknown."
     }
   }
 
@@ -76,8 +94,12 @@ struct MemoryHealthView: View {
     case .offline: "wifi.slash"
     case .unavailable: "questionmark.circle"
     case .revoked: "lock.slash"
+    case .unsupported: "questionmark.folder"
     case .incompatible: "arrow.trianglehead.2.clockwise.rotate.90"
     case .malformed: "xmark.octagon"
+    case .needsReview: "exclamationmark.triangle"
+    case .degraded: "waveform.path.ecg.rectangle"
+    case .unknown: "questionmark.circle"
     }
   }
 

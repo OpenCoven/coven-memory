@@ -110,14 +110,89 @@ struct MemoryLibraryStateTests {
     #expect(state.phase == .failure(.offline))
   }
 
-  @Test("Unsupported protocol is incompatible")
+  @Test("Unsupported protocol has a distinct unsupported issue")
   @MainActor
-  func incompatible() async {
+  func unsupported() async {
     let state = makeState(list: .failure(.protocolUnsupported))
 
     await state.load()
 
-    #expect(state.phase == .failure(.incompatible))
+    guard case .failure(let issue) = state.phase else {
+      Issue.record("Expected a typed failure state")
+      return
+    }
+    #expect(issue == .unsupported)
+    #expect(issue != .incompatible)
+  }
+
+  @Test("Needs-review overview preserves health data and requests attention")
+  @MainActor
+  func needsReviewHealth() async {
+    let state = makeState(
+      list: .success([summary(id: 1)]),
+      overview: .success(
+        overview(
+          verificationState: .needsReview,
+          issues: ["Manifest needs review."]
+        )
+      )
+    )
+
+    await state.load()
+
+    #expect(state.phase == .content)
+    #expect(state.overview?.verification.state == .needsReview)
+    #expect(state.healthAttention == .needsReview)
+  }
+
+  @Test("Degraded overview preserves health data and reports degradation")
+  @MainActor
+  func degradedHealth() async {
+    let state = makeState(
+      list: .success([summary(id: 1)]),
+      overview: .success(
+        overview(
+          verificationState: .degraded,
+          issues: ["Index verification is degraded."]
+        )
+      )
+    )
+
+    await state.load()
+
+    #expect(state.phase == .content)
+    #expect(state.overview?.verification.state == .degraded)
+    #expect(state.healthAttention == .degraded)
+  }
+
+  @Test("Unknown verification remains distinct from unavailable")
+  @MainActor
+  func unknownHealth() async {
+    let state = makeState(
+      list: .success([summary(id: 1)]),
+      overview: .success(overview(verificationState: .unknown))
+    )
+
+    await state.load()
+
+    #expect(state.phase == .content)
+    #expect(state.overview?.verification.state == .unknown)
+    #expect(state.healthAttention == .unknown)
+  }
+
+  @Test("Unavailable verification preserves the available overview")
+  @MainActor
+  func unavailableVerification() async {
+    let state = makeState(
+      list: .success([summary(id: 1)]),
+      overview: .success(overview(verificationState: .unavailable))
+    )
+
+    await state.load()
+
+    #expect(state.phase == .content)
+    #expect(state.overview?.verification.state == .unavailable)
+    #expect(state.healthAttention == .unavailable)
   }
 
   @Test("Invalid payload is malformed")
@@ -289,7 +364,15 @@ struct MemoryLibraryStateTests {
     )
   }
 
-  private func overview(detailAvailable: Bool = true) -> MemoryOverview {
+  private func overview(
+    detailAvailable: Bool = true,
+    verificationAvailable: Bool = true,
+    verificationState: MemoryVerificationState = .verified,
+    issues: [String] = []
+  ) -> MemoryOverview {
+    let encodedIssues = issues
+      .map { "\"\($0)\"" }
+      .joined(separator: ",")
     let data = Data(
       """
       {
@@ -304,17 +387,17 @@ struct MemoryLibraryStateTests {
         "lastUpdatedAt": "2026-07-29T12:00:00.000Z",
         "capabilities": {
           "detail": \(detailAvailable),
-          "verification": true,
+          "verification": \(verificationAvailable),
           "attestationMetadata": false,
           "supersessionHistory": false,
           "mutations": false
         },
         "verification": {
-          "state": "verified",
+          "state": "\(verificationState.rawValue)",
           "checkedAt": "2026-07-29T12:00:00.000Z",
           "manifest": "verified",
           "index": "verified",
-          "issues": []
+          "issues": [\(encodedIssues)]
         }
       }
       """.utf8

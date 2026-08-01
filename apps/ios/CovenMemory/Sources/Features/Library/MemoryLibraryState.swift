@@ -6,8 +6,12 @@ enum MemoryLibraryIssue: Equatable, Sendable {
   case offline
   case unavailable
   case revoked
+  case unsupported
   case incompatible
   case malformed
+  case needsReview
+  case degraded
+  case unknown
 }
 
 enum MemoryLibraryPhase: Equatable, Sendable {
@@ -252,12 +256,21 @@ extension MemoryLibraryState {
   private static func healthIssue(
     for overview: MemoryOverview
   ) -> MemoryLibraryIssue? {
-    guard overview.capabilities.verification,
-      overview.verification.state == .verified
-    else {
+    guard overview.capabilities.verification else {
       return .unavailable
     }
-    return nil
+    switch overview.verification.state {
+    case .verified:
+      return nil
+    case .needsReview:
+      return .needsReview
+    case .degraded:
+      return .degraded
+    case .unknown:
+      return .unknown
+    case .unavailable:
+      return .unavailable
+    }
   }
 
   private static func map(_ error: NetworkError) -> MemoryLibraryIssue {
@@ -269,7 +282,7 @@ extension MemoryLibraryState {
     case .authenticationRequired:
       .revoked
     case .protocolUnsupported:
-      .incompatible
+      .unsupported
     case .invalidResponse, .responseTooLarge:
       .malformed
     }

@@ -74,7 +74,7 @@ final class MemoryReaderState {
     case .connectionFailed, .cancelled: .offline
     case .daemonUnavailable: .unavailable
     case .authenticationRequired: .revoked
-    case .protocolUnsupported: .incompatible
+    case .protocolUnsupported: .unsupported
     case .invalidResponse, .responseTooLarge: .malformed
     }
   }
@@ -164,8 +164,12 @@ struct MemoryReaderView: View {
     case .offline: "Cave is offline"
     case .unavailable: "Memory is unavailable"
     case .revoked: "Pairing expired"
+    case .unsupported: "Memory Library is unsupported"
     case .incompatible: "Update Cave to continue"
     case .malformed: "Memory data is invalid"
+    case .needsReview: "Memory verification needs review"
+    case .degraded: "Memory verification is degraded"
+    case .unknown: "Memory verification is unknown"
     }
   }
 }
