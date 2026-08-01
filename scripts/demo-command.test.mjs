@@ -12,3 +12,11 @@ test("root package delegates demo commands to the static site", async () => {
     "pnpm demo:build && node scripts/check-demo-boundary.mjs"
   );
 });
+
+test("Vercel serves the demo as a static export", async () => {
+  const config = JSON.parse(await readFile("site/vercel.json", "utf8"));
+
+  assert.equal(config.framework, undefined);
+  assert.equal(config.buildCommand, "pnpm build");
+  assert.equal(config.outputDirectory, "out");
+});
