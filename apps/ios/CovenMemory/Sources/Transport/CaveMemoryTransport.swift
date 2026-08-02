@@ -57,7 +57,8 @@ actor CaveMemoryTransport: CaveMemoryServicing {
             path: """
             /api/mobile/coven-memory/\(id.uuidString.lowercased())
             """,
-            method: "GET"
+            method: "GET",
+            mapsNotFoundToMemory: true
         )
         return try decodeSuccess(
             CaveMemoryDetailEnvelope.self,
@@ -87,7 +88,8 @@ actor CaveMemoryTransport: CaveMemoryServicing {
 
     private func send(
         path: String,
-        method: String
+        method: String,
+        mapsNotFoundToMemory: Bool = false
     ) async throws -> Data {
         let request = try makeRequest(path: path, method: method)
         let result: (Data, URLResponse)
@@ -114,6 +116,10 @@ actor CaveMemoryTransport: CaveMemoryServicing {
             if httpResponse.statusCode == 401
                 || httpResponse.statusCode == 403 {
                 throw NetworkError.authenticationRequired
+            }
+            if httpResponse.statusCode == 404,
+                mapsNotFoundToMemory {
+                throw NetworkError.memoryNotFound
             }
             throw decodeError(from: data)
         }
@@ -230,6 +236,8 @@ actor CaveMemoryTransport: CaveMemoryServicing {
         case "local_daemon_required",
              "canonical_memory_unavailable":
             return .daemonUnavailable
+        case "capability_unavailable":
+            return .capabilityUnavailable
         case "daemon_update_required",
              "invalid_daemon_payload":
             return .protocolUnsupported

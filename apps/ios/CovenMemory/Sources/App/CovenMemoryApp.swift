@@ -25,6 +25,7 @@ struct CovenMemoryApp: App {
                 } else {
                     LaunchRootView(
                         coordinator: coordinator,
+                        authenticator: environment.authenticator,
                         lock: lock
                     )
                 }

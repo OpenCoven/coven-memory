@@ -55,6 +55,5 @@ struct ExceptionNotice: View {
             }
         }
         .padding(.vertical, CovenTheme.Spacing.medium)
-        .accessibilityElement(children: .combine)
     }
 }

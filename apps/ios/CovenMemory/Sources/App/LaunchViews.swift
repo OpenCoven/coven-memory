@@ -3,6 +3,7 @@ import UIKit
 
 struct LaunchRootView: View {
     @Bindable var coordinator: LaunchCoordinator
+    let authenticator: any LocalAuthenticating
     let lock: () -> Void
 
     @State private var pairingLink = ""
@@ -24,12 +25,19 @@ struct LaunchRootView: View {
                 LaunchProgressView(message: "Connecting to Cave…")
             case .checkingHost:
                 LaunchProgressView(message: "Checking private connection…")
-            case let .ready(host):
-                ConnectionReadyView(
-                    host: host,
-                    pairAgain: resetPairing,
-                    lock: lock
-                )
+            case .ready:
+                if let service = coordinator.memoryService {
+                    MemoryLibraryView(
+                        service: service,
+                        authenticator: authenticator,
+                        pairAgain: resetPairing,
+                        lock: lock
+                    )
+                } else {
+                    LaunchProgressView(
+                        message: "Preparing your private library…"
+                    )
+                }
             case let .failed(failure):
                 LaunchFailureView(
                     failure: failure,
@@ -347,6 +355,8 @@ private struct LaunchFailureView: View {
             "Host unavailable"
         case .memoryUnavailable:
             "Memory unavailable"
+        case .memoryUnsupported:
+            "Memory Library unsupported"
         case .incompatibleHost:
             "Host incompatible"
         case .credentialFailure:
@@ -364,6 +374,8 @@ private struct LaunchFailureView: View {
             "Check that Cave is online and privately reachable."
         case .memoryUnavailable:
             "Cave is reachable, but canonical memory is unavailable."
+        case .memoryUnsupported:
+            "This Cave does not support Memory Library."
         case .incompatibleHost:
             "Update Cave before pairing this device again."
         case .credentialFailure:

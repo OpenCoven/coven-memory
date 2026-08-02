@@ -126,7 +126,13 @@ struct LaunchCoordinatorTests {
             await credentials.saved.map(\.accessToken)
                 == (shouldRefresh ? [Self.refreshedToken] : [])
         )
-        #expect(coordinator.state == .ready("cave.example.ts.net"))
+        if let expiry = CaveMemoryInvite.tokenExpiry(token),
+           expiry <= Self.now {
+            #expect(coordinator.state == .failed(.pairingInvalidated))
+            #expect(coordinator.memoryService == nil)
+        } else {
+            #expect(coordinator.state == .ready("cave.example.ts.net"))
+        }
     }
 
     @Test("Successful refresh replaces the stored QR token")
@@ -183,6 +189,10 @@ struct LaunchCoordinatorTests {
             (NetworkError.invalidResponse, LaunchFailure.incompatibleHost),
             (NetworkError.responseTooLarge, LaunchFailure.incompatibleHost),
             (NetworkError.daemonUnavailable, LaunchFailure.memoryUnavailable),
+            (
+                NetworkError.capabilityUnavailable,
+                LaunchFailure.memoryUnsupported
+            ),
             (NetworkError.cancelled, LaunchFailure.hostUnavailable),
         ]
     )
@@ -336,9 +346,239 @@ struct LaunchCoordinatorTests {
     }
 
     @Test(
+        "Active service invalidation leaves an honest launch failure",
+        arguments: [
+            (
+                NetworkError.connectionFailed,
+                LaunchState.failed(.hostUnavailable)
+            ),
+            (
+                NetworkError.authenticationRequired,
+                LaunchState.failed(.pairingInvalidated)
+            ),
+        ]
+    )
+    @MainActor
+    func activeServiceInvalidation(
+        _ error: NetworkError,
+        _ expected: LaunchState
+    ) async {
+        let service = LaunchStubCaveService(detailError: error)
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+
+        await #expect(throws: error) {
+            _ = try await activeService.detail(
+                id: UUID(
+                    uuidString: "00000000-0000-0000-0000-000000000001"
+                )!
+            )
+        }
+
+        #expect(coordinator.state == expected)
+        #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("A refresh disconnect invalidates a session with an open detail")
+    @MainActor
+    func refreshDisconnectAfterDetail() async {
+        let service = LaunchStubCaveService(
+            listError: .connectionFailed,
+            detailValue: LaunchDetailFixture.value
+        )
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+        _ = try! await activeService.detail(id: LaunchDetailFixture.value.id)
+
+        await #expect(throws: NetworkError.connectionFailed) {
+            _ = try await activeService.list()
+        }
+
+        #expect(coordinator.state == .failed(.hostUnavailable))
+        #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("A refresh begun before detail still invalidates after detail opens")
+    @MainActor
+    func concurrentRefreshDisconnectAfterDetail() async {
+        let listGate = LaunchGate()
+        let service = LaunchStubCaveService(
+            listError: .connectionFailed,
+            detailValue: LaunchDetailFixture.value,
+            listGate: listGate
+        )
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+        let refresh = Task {
+            try? await activeService.list()
+        }
+        #expect(await listGate.waitUntilEntered())
+
+        _ = try! await activeService.detail(id: LaunchDetailFixture.value.id)
+        await listGate.open()
+        _ = await refresh.value
+
+        #expect(coordinator.state == .failed(.hostUnavailable))
+        #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("Invalidation blocks an in-flight first detail response")
+    @MainActor
+    func invalidationBlocksInflightDetail() async {
+        let detailGate = LaunchGate()
+        let service = LaunchStubCaveService(
+            detailGate: detailGate,
+            listError: .connectionFailed,
+            detailValue: LaunchDetailFixture.value
+        )
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+        let detail = Task {
+            try? await activeService.detail(id: LaunchDetailFixture.value.id)
+        }
+        #expect(await detailGate.waitUntilEntered())
+
+        await #expect(throws: NetworkError.connectionFailed) {
+            _ = try await activeService.list()
+        }
+        await detailGate.open()
+
+        #expect(await detail.value == nil)
+        #expect(coordinator.state == .failed(.hostUnavailable))
+        #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("A stale service failure cannot invalidate a replacement session")
+    @MainActor
+    func staleServiceFailureIsDiscarded() async {
+        let detailGate = LaunchGate()
+        let service = LaunchStubCaveService(
+            detailError: .connectionFailed,
+            detailGate: detailGate
+        )
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let staleService = try! #require(coordinator.memoryService)
+        let staleRequest = Task {
+            try? await staleService.detail(
+                id: UUID(
+                    uuidString: "00000000-0000-0000-0000-000000000001"
+                )!
+            )
+        }
+        #expect(await detailGate.waitUntilEntered())
+
+        await coordinator.start()
+        #expect(coordinator.state == .ready("cave.example.ts.net"))
+
+        await detailGate.open()
+        _ = await staleRequest.value
+
+        #expect(coordinator.state == .ready("cave.example.ts.net"))
+        #expect(coordinator.memoryService != nil)
+    }
+
+    @Test("Active token expiry invalidates the ready session")
+    @MainActor
+    func activeTokenExpiry() async {
+        let expiryGate = LaunchGate()
+        let coordinator = LaunchCoordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            makeService: { _ in LaunchStubCaveService() },
+            now: { Self.now },
+            sleep: { _ in await expiryGate.enter() }
+        )
+        await coordinator.start()
+        #expect(coordinator.state == .ready("cave.example.ts.net"))
+        #expect(await expiryGate.waitUntilEntered())
+
+        await expiryGate.open()
+        for _ in 0..<1_000 where coordinator.memoryService != nil {
+            await Task.yield()
+        }
+
+        #expect(coordinator.state == .failed(.pairingInvalidated))
+        #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("Token expiry blocks an in-flight protected reveal response")
+    @MainActor
+    func tokenExpiryBlocksInflightReveal() async {
+        let expiryGate = LaunchGate()
+        let detailGate = LaunchGate()
+        let service = LaunchStubCaveService(
+            detailGate: detailGate,
+            detailGateOnCall: 2,
+            detailResults: [
+                .success(LaunchDetailFixture.protected),
+                .success(LaunchDetailFixture.revealed),
+            ]
+        )
+        let coordinator = LaunchCoordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            makeService: { _ in service },
+            now: { Self.now },
+            sleep: { _ in await expiryGate.enter() }
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+        let reader = MemoryReaderState(
+            id: LaunchDetailFixture.protected.id,
+            service: activeService,
+            authenticator: LaunchAuthenticator()
+        )
+        await reader.load()
+        #expect(reader.phase == .protected)
+
+        let reveal = Task { await reader.reveal() }
+        #expect(await detailGate.waitUntilEntered())
+
+        await expiryGate.open()
+        for _ in 0..<1_000
+        where coordinator.state != .failed(.pairingInvalidated) {
+            await Task.yield()
+        }
+        #expect(coordinator.state == .failed(.pairingInvalidated))
+        #expect(coordinator.memoryService == nil)
+
+        await detailGate.open()
+        await reveal.value
+
+        #expect(reader.phase == .failed(.revoked))
+        #expect(reader.metadata == nil)
+        #expect(reader.protectedReference == nil)
+        #expect(reader.presentedDetail == nil)
+        #expect(reader.retainedContent == nil)
+        #expect(reader.revealGrantID == nil)
+    }
+
+    @Test(
         "Transport errors map to bounded launch failures",
         arguments: [
             (NetworkError.daemonUnavailable, LaunchFailure.memoryUnavailable),
+            (
+                NetworkError.capabilityUnavailable,
+                LaunchFailure.memoryUnsupported
+            ),
             (NetworkError.protocolUnsupported, LaunchFailure.incompatibleHost),
             (NetworkError.invalidResponse, LaunchFailure.incompatibleHost),
             (NetworkError.responseTooLarge, LaunchFailure.incompatibleHost),
@@ -363,6 +603,40 @@ struct LaunchCoordinatorTests {
                 == (expected == .hostUnavailable
                     || expected == .memoryUnavailable)
         )
+    }
+
+    @Test("Unavailable overview capability does not enter a retry loop")
+    @MainActor
+    func unsupportedOverviewIsNotRetryable() async {
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: LaunchStubCaveService(
+                overviewError: .capabilityUnavailable
+            )
+        )
+
+        await coordinator.start()
+
+        #expect(coordinator.state == .failed(.memoryUnsupported))
+        #expect(!coordinator.canRetry)
+    }
+
+    @Test("Unavailable refresh capability does not enter a retry loop")
+    @MainActor
+    func unsupportedRefreshIsNotRetryable() async {
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(
+                pairing: Self.refreshableStored
+            ),
+            service: LaunchStubCaveService(
+                refreshError: .capabilityUnavailable
+            )
+        )
+
+        await coordinator.start()
+
+        #expect(coordinator.state == .failed(.memoryUnsupported))
+        #expect(!coordinator.canRetry)
     }
 
     @Test("Invalid stored connection requires pairing again")
@@ -672,8 +946,16 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
     private let refreshed: CaveMemoryConnection
     private let refreshError: NetworkError?
     private let refreshUnknownError: Bool
+    private let detailError: NetworkError?
+    private let detailGate: LaunchGate?
+    private let detailGateOnCall: Int
+    private let listError: NetworkError?
+    private let detailValue: MemoryDetail?
+    private var detailResults: [Result<MemoryDetail, NetworkError>]?
+    private let listGate: LaunchGate?
     private(set) var overviewCount = 0
     private(set) var refreshCount = 0
+    private var detailCallCount = 0
 
     init(
         overviewError: NetworkError? = nil,
@@ -684,7 +966,14 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
             accessToken: "v1.1787592000000.refreshed.signature"
         ),
         refreshError: NetworkError? = nil,
-        refreshUnknownError: Bool = false
+        refreshUnknownError: Bool = false,
+        detailError: NetworkError? = nil,
+        detailGate: LaunchGate? = nil,
+        detailGateOnCall: Int = 1,
+        listError: NetworkError? = nil,
+        detailValue: MemoryDetail? = nil,
+        detailResults: [Result<MemoryDetail, NetworkError>]? = nil,
+        listGate: LaunchGate? = nil
     ) {
         self.overviewResults = overviewResults
             ?? [overviewError.map(Result.failure) ?? .success(())]
@@ -692,10 +981,19 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
         self.refreshed = refreshed
         self.refreshError = refreshError
         self.refreshUnknownError = refreshUnknownError
+        self.detailError = detailError
+        self.detailGate = detailGate
+        self.detailGateOnCall = detailGateOnCall
+        self.listError = listError
+        self.detailValue = detailValue
+        self.detailResults = detailResults
+        self.listGate = listGate
     }
 
     func list() async throws -> [MemorySummary] {
-        []
+        if let listGate { await listGate.enter() }
+        if let listError { throw listError }
+        return []
     }
 
     func overview() async throws -> MemoryOverview {
@@ -711,6 +1009,17 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
     }
 
     func detail(id: UUID) async throws -> MemoryDetail {
+        detailCallCount += 1
+        if detailCallCount == detailGateOnCall, let detailGate {
+            await detailGate.enter()
+        }
+        if var detailResults {
+            let result = detailResults.removeFirst()
+            self.detailResults = detailResults
+            return try result.get()
+        }
+        if let detailError { throw detailError }
+        if let detailValue { return detailValue }
         throw NetworkError.invalidResponse
     }
 
@@ -721,6 +1030,67 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
             throw LaunchUnknownServiceError.failure
         }
         return refreshed
+    }
+}
+
+private enum LaunchDetailFixture {
+    static let value: MemoryDetail = {
+        let data = Data(
+            """
+            {
+              "id": "00000000-0000-0000-0000-000000000001",
+              "familiarId": "sage",
+              "title": "Synthetic detail",
+              "updatedAt": "2026-07-31T12:00:00.000Z",
+              "source": {"kind": "coven-origin", "label": "Coven origin"},
+              "content": "Synthetic body",
+              "contentFormat": "markdown",
+              "privacy": {
+                "classification": "public",
+                "revealRequired": false,
+                "reason": null
+              },
+              "verification": {"state": "verified", "reason": null},
+              "attestationMetadata": null,
+              "supersession": {"supersedes": null, "supersededBy": null}
+            }
+            """.utf8
+        )
+        return try! JSONDecoder.mobile.decode(MemoryDetail.self, from: data)
+    }()
+
+    static let protected = privateDetail(content: "Discarded private body")
+    static let revealed = privateDetail(content: "Stale revealed body")
+
+    private static func privateDetail(content: String) -> MemoryDetail {
+        let data = Data(
+            """
+            {
+              "id": "00000000-0000-0000-0000-000000000002",
+              "familiarId": "sage",
+              "title": "Protected detail",
+              "updatedAt": "2026-07-31T12:00:00.000Z",
+              "source": {"kind": "coven-origin", "label": "Coven origin"},
+              "content": "\(content)",
+              "contentFormat": "markdown",
+              "privacy": {
+                "classification": "private",
+                "revealRequired": true,
+                "reason": "Sensitive context"
+              },
+              "verification": {"state": "verified", "reason": null},
+              "attestationMetadata": null,
+              "supersession": {"supersedes": null, "supersededBy": null}
+            }
+            """.utf8
+        )
+        return try! JSONDecoder.mobile.decode(MemoryDetail.self, from: data)
+    }
+}
+
+private struct LaunchAuthenticator: LocalAuthenticating {
+    func authenticate(reason: String) async throws -> AuthenticationGrant {
+        AuthenticationGrant()
     }
 }
 
