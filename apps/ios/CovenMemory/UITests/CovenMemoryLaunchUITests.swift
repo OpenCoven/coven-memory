@@ -44,9 +44,7 @@ final class CovenMemoryLaunchUITests: XCTestCase {
         )
 
         let syntheticToken = "ui-test-secret-token"
-        let invite = """
-        https://cave.example/?coven_access_token=\(syntheticToken)
-        """
+        let invite = "https://cave.example/?coven_access_token=\(syntheticToken)" // gitleaks:allow — synthetic invite
         let inviteField = app.textFields["Cave invite link"]
         inviteField.tap()
         inviteField.typeText(invite)

@@ -22,11 +22,21 @@ final class AccessibilityUITests: XCTestCase {
     XCTAssertTrue(
       app.navigationBars["Memory Library"].waitForExistence(timeout: 5)
     )
-    try audit(app)
+    try audit(
+      app,
+      allowingContrastFor: [(.searchField, "Search memories")]
+    )
 
     app.buttons["Filter memories"].tap()
     XCTAssertTrue(app.navigationBars["Filters"].waitForExistence(timeout: 5))
-    try audit(app)
+    try audit(
+      app,
+      allowingContrastFor: [
+        (.staticText, "Filters"),
+        (.staticText, "Familiar"),
+        (.staticText, "Source"),
+      ]
+    )
   }
 
   @MainActor
@@ -46,7 +56,13 @@ final class AccessibilityUITests: XCTestCase {
       provenanceApp.navigationBars["Memory Info"]
         .waitForExistence(timeout: 5)
     )
-    try audit(provenanceApp)
+    try audit(
+      provenanceApp,
+      allowingContrastFor: [
+        (.staticText, "Display"),
+        (.button, "Done"),
+      ]
+    )
   }
 
   @MainActor
@@ -79,7 +95,12 @@ final class AccessibilityUITests: XCTestCase {
   }
 
   @MainActor
-  private func audit(_ app: XCUIApplication) throws {
+  private func audit(
+    _ app: XCUIApplication,
+    allowingContrastFor allowedControls: [
+      (XCUIElement.ElementType, String)
+    ] = []
+  ) throws {
     // Dynamic Type and clipping are exercised behaviorally at AX XXXL by
     // MemoryLibraryUITests, MemoryReaderUITests, and LocalizationUITests.
     let auditTypes: XCUIAccessibilityAuditType = [
@@ -98,18 +119,14 @@ final class AccessibilityUITests: XCTestCase {
         return true
       }
 
-      // XCTest screenshots these SwiftUI-owned controls without their full
-      // material background on iOS 26, producing false contrast failures.
-      let swiftUISystemControlLabels: Set<String> = [
-        "Search memories",
-        "Display",
-        "Done",
-        "Filters",
-        "Familiar",
-        "Source",
-      ]
-      return issue.auditType == .contrast
-        && swiftUISystemControlLabels.contains(issue.element?.label ?? "")
+      // XCTest screenshots these caller-scoped SwiftUI controls without their
+      // full material background on iOS 26, producing false contrast failures.
+      guard issue.auditType == .contrast, let element = issue.element else {
+        return false
+      }
+      return allowedControls.contains { allowed in
+        allowed.0 == element.elementType && allowed.1 == element.label
+      }
     }
   }
 

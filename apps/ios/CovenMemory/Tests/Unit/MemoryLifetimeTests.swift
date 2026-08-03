@@ -11,7 +11,7 @@ struct MemoryLifetimeTests {
     let now = Date(timeIntervalSince1970: 1_785_326_400)
     let expiry = Int64((now.timeIntervalSince1970 + 30 * 24 * 60 * 60) * 1_000)
     let token = "v1.\(expiry).nonce.signature"
-    let invite = "https://cave.example/?coven_access_token=\(token)"
+    let invite = "https://cave.example/?coven_access_token=\(token)" // gitleaks:allow — synthetic invite
     let probe = LifetimeServiceProbe()
     let coordinator = LaunchCoordinator(
       credentials: LifetimeCredentialStore(),

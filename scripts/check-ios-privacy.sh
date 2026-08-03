@@ -10,7 +10,8 @@ else
     "$ROOT/apps/ios/CovenMemory/Sources"
     "$ROOT/apps/ios/CovenMemory/Config"
     "$ROOT/apps/ios/CovenMemory/Resources"
-    "$ROOT/apps/ios/CovenMemory/Tests/Fixtures"
+    "$ROOT/apps/ios/CovenMemory/Tests"
+    "$ROOT/apps/ios/CovenMemory/UITests"
   )
   [[ ! -e "$ROOT/apps/ios/CovenMemory/build" ]] ||
     targets+=("$ROOT/apps/ios/CovenMemory/build")
@@ -45,7 +46,8 @@ check_text() {
     if ! strings -a "$file" | LC_ALL=C grep -Eq "$pattern"; then
       return
     fi
-  elif ! LC_ALL=C grep -aEq "$pattern" "$file"; then
+  elif ! LC_ALL=C grep -aEv 'gitleaks:allow|guard-scan-allow' "$file" |
+    LC_ALL=C grep -Eq "$pattern"; then
     return
   fi
   printf '%s: %s\n' "$file" "$label" >&2
@@ -61,7 +63,8 @@ check_linked() {
       LC_ALL=C grep -Eq "$pattern"; then
       return
     fi
-  elif ! LC_ALL=C grep -aEq "$pattern" "$file"; then
+  elif ! LC_ALL=C grep -aEv 'gitleaks:allow|guard-scan-allow' "$file" |
+    LC_ALL=C grep -Eq "$pattern"; then
     return
   fi
   printf '%s: %s\n' "$file" "$label" >&2

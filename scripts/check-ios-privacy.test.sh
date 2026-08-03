@@ -38,10 +38,17 @@ expect_test_bundle_ignored() {
   "$SCANNER" "$app" >/dev/null
 }
 
+expect_default_test_sources_scanned() {
+  grep -F '"$ROOT/apps/ios/CovenMemory/Tests"' "$SCANNER" >/dev/null
+  grep -F '"$ROOT/apps/ios/CovenMemory/UITests"' "$SCANNER" >/dev/null
+}
+
 expect_pass "safe.txt" "Synthetic fixture metadata only."
 expect_pass "Info.plist" '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
 expect_pass "Tests/Fixtures/detail.json" '{"content":"Synthetic protected content only."}'
+expect_pass "Tests/synthetic.swift" 'let url = "https://cave.example.ts.net/" // gitleaks:allow — synthetic test endpoint'
 expect_test_bundle_ignored
+expect_default_test_sources_scanned
 
 expect_fail "home-path.txt" "/Users/private-user/.coven/workspaces/familiar" "absolute home path" # gitleaks:allow — synthetic scanner fixture
 expect_fail "runtime-path.txt" "~/.coven/credentials/mobile.json" "runtime-internal path" # gitleaks:allow — synthetic scanner fixture

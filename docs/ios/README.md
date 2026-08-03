@@ -20,7 +20,7 @@ xcodegen generate
 xcodebuild test \
   -project CovenMemory.xcodeproj \
   -scheme CovenMemory \
-  -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=26.5'
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5'
 ```
 
 The bundle identifier is `ai.opencoven.memory`. Local simulator tests do not
@@ -31,29 +31,34 @@ number; do not add those machine-specific values to `project.yml`.
 ## Pairing and runtime
 
 On the Cave host, use **Open on phone** or the native-app Tailscale command to
-produce a short-lived HTTPS invite. Scan the QR code or paste the invite into
-the app. The app extracts the Cave base URL and mobile bearer credential,
-removes the credential-bearing URL from view state, and stores only that
-connection record in the device-only Keychain.
+produce a credential-bearing HTTPS invite. It carries the current shared mobile
+access secret and remains valid until host-side global rotation; treat every
+invite as live. Scan the QR code or paste the invite into the app. The app
+extracts the Cave base URL and mobile bearer credential, removes the
+credential-bearing URL from view state, and stores only that connection record
+in the device-only Keychain.
 
-All memory reads use these Cave routes:
+The app uses these Cave routes:
 
 - `GET /api/mobile/coven-memory`
 - `GET /api/mobile/coven-memory/overview`
 - `GET /api/mobile/coven-memory/{id}`
+- `POST /api/mobile-token/refresh`
 
 Cave owns authorization and forwards validated read requests to the local
-Coven daemon. The client rejects redirects, non-HTTPS hosts, oversized
-responses, unknown response fields, and unsupported protocol responses.
+Coven daemon. Token refresh renews the active credential but does not mutate
+memory. The client rejects redirects, non-HTTPS hosts, oversized responses,
+unknown response fields, and unsupported protocol responses.
 
 ## Test data and privacy
 
 Tests use only deterministic synthetic responses under
 `Tests/Fixtures/cave-mobile-memory-v1`. Matching fixtures live in Cave under
 `tests/fixtures/mobile-canonical-memory-v1`; CI checks byte-for-byte parity and
-asserts that Cave's route output matches those files. Never use genuine memory,
-an active invite, a private endpoint, a device identifier, or an unredacted
-test attachment.
+asserts that Cave's successful route output matches those files. The synthetic
+error fixture is parity-checked across repositories and exercised by local
+client decoding/error tests. Never use genuine memory, an active invite, a
+private endpoint, a device identifier, or an unredacted test attachment.
 
 The app uses an ephemeral URL session and has no Core Data, SwiftData,
 analytics, crash-reporting SDK, background mode, or arbitrary ATS exception.
@@ -76,5 +81,7 @@ For a built product, pass the `.app` or archive path explicitly:
 scripts/check-ios-privacy.sh /path/to/CovenMemory.app
 ```
 
-The privacy scan covers source, resources, fixtures, optional test artifacts,
-and publishable strings and linked symbols in the built app.
+The privacy scan covers source, resources, all Swift unit/UI test source,
+synthetic fixtures, and publishable strings and linked symbols in the built
+app. Compiled `.xctest` bundles are excluded because they are not shipped; their
+source is scanned directly.

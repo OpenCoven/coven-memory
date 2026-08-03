@@ -383,6 +383,46 @@ struct LaunchCoordinatorTests {
         #expect(coordinator.memoryService == nil)
     }
 
+    @Test("A revocation invalidates before any detail opens")
+    @MainActor
+    func revocationBeforeDetail() async {
+        let service = LaunchStubCaveService(
+            listError: .authenticationRequired
+        )
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+
+        await #expect(throws: NetworkError.authenticationRequired) {
+            _ = try await activeService.list()
+        }
+
+        #expect(coordinator.state == .failed(.pairingInvalidated))
+        #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("An initial disconnect remains a library-level offline state")
+    @MainActor
+    func disconnectBeforeDetail() async {
+        let service = LaunchStubCaveService(listError: .connectionFailed)
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+
+        await #expect(throws: NetworkError.connectionFailed) {
+            _ = try await activeService.list()
+        }
+
+        #expect(coordinator.state == .ready("cave.example.ts.net"))
+        #expect(coordinator.memoryService != nil)
+    }
+
     @Test("A refresh disconnect invalidates a session with an open detail")
     @MainActor
     func refreshDisconnectAfterDetail() async {
