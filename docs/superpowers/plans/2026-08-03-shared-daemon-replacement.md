@@ -20,6 +20,7 @@
 Run:
 
 ```bash
+set -euo pipefail
 coven daemon status
 lsof -nU 2>/dev/null | grep "$HOME/.coven/coven.sock"
 ```
@@ -32,6 +33,7 @@ Expected: the command reports a running daemon and exactly one process owns
 Run:
 
 ```bash
+set -euo pipefail
 ps -axo pid=,ppid=,command= |
   grep '/private/var/folders/.*/coven-prepublish-.*/@opencoven/cli-macos/bin/coven daemon serve' |
   grep -v grep
@@ -45,6 +47,7 @@ Expected: one detached process whose executable path contains
 Run:
 
 ```bash
+set -euo pipefail
 curl --fail --silent --show-error --max-time 5 \
   --unix-socket "$HOME/.coven/coven.sock" \
   http://localhost/api/v1/memory/overview |
@@ -77,6 +80,8 @@ command must not print memory content.
 Run against the prefix that owns `command -v coven`:
 
 ```bash
+set -euo pipefail
+test "$(command -v coven)" = "$HOME/.local/bin/coven"
 npm install --global --prefix "$HOME/.local" @opencoven/cli@0.2.3
 ```
 
@@ -88,6 +93,7 @@ companion.
 Run:
 
 ```bash
+set -euo pipefail
 coven --version
 node -e '
   const { createRequire } = require("node:module");
@@ -108,6 +114,7 @@ entry path.
 Run:
 
 ```bash
+set -euo pipefail
 coven daemon restart
 coven daemon status
 ```
@@ -120,6 +127,7 @@ from the baseline PID.
 Run this step only if Step 3 fails:
 
 ```bash
+set -euo pipefail
 coven daemon start
 coven daemon status
 ```
@@ -137,6 +145,7 @@ Expected: the default socket is restored before any orphan cleanup occurs.
 Run:
 
 ```bash
+set -euo pipefail
 curl --fail --silent --show-error --max-time 5 \
   --unix-socket "$HOME/.coven/coven.sock" \
   http://localhost/api/v1/memory/overview |
@@ -159,6 +168,7 @@ Expected: `overview contract: ok`.
 Run:
 
 ```bash
+set -euo pipefail
 MEMORY_ID="$(
   curl --fail --silent --show-error --max-time 5 \
     --unix-socket "$HOME/.coven/coven.sock" \
@@ -188,6 +198,7 @@ Expected: `opaque memory id captured`. Do not print the ID into durable notes.
 Run in the same shell as Step 2:
 
 ```bash
+set -euo pipefail
 curl --fail --silent --show-error --max-time 5 \
   --unix-socket "$HOME/.coven/coven.sock" \
   "http://localhost/api/v1/memory/$MEMORY_ID" |
@@ -222,9 +233,18 @@ Expected: exit 0 with only the content byte count, never the content.
 Run:
 
 ```bash
+set -euo pipefail
 DASHBOARD_LOG="$(mktemp -t coven-memory-dashboard.XXXXXX)"
 COVEN_MEMORY_NO_BROWSER=1 NO_COLOR=1 coven memory open >"$DASHBOARD_LOG" 2>&1 &
 DASHBOARD_PID=$!
+cleanup_dashboard() {
+  if kill -0 "$DASHBOARD_PID" 2>/dev/null; then
+    kill "$DASHBOARD_PID"
+    wait "$DASHBOARD_PID" 2>/dev/null || true
+  fi
+  rm -f "$DASHBOARD_LOG"
+}
+trap cleanup_dashboard EXIT
 for attempt in $(seq 1 30); do
   DASHBOARD_URL="$(
     sed -n 's/^Coven Memory: \(http:\/\/[^[:space:]]*\)$/\1/p' "$DASHBOARD_LOG" |
@@ -247,9 +267,10 @@ available in the current shell.
 
 - [ ] **Step 2: Verify the dashboard page and browser-facing memory routes**
 
-Run against the printed loopback origin:
+Run in the same shell as Step 1 against the printed loopback origin:
 
 ```bash
+set -euo pipefail
 curl --fail --silent --show-error --max-time 10 "$DASHBOARD_URL/" >/dev/null
 curl --fail --silent --show-error --max-time 10 \
   -H "Origin: $DASHBOARD_ORIGIN" \
@@ -307,12 +328,14 @@ browser journey instead; do not weaken the proof requirement.
 
 - [ ] **Step 3: Stop only the disposable dashboard process**
 
-Use the PID printed or recorded by the launcher:
+Run in the same shell as Steps 1 and 2:
 
 ```bash
+set -euo pipefail
 kill "$DASHBOARD_PID"
 wait "$DASHBOARD_PID" 2>/dev/null || true
 rm -f "$DASHBOARD_LOG"
+trap - EXIT
 ```
 
 Expected: the dashboard exits while `coven daemon status` remains healthy.
@@ -327,17 +350,64 @@ Expected: the dashboard exits while `coven daemon status` remains healthy.
 Run:
 
 ```bash
+set -euo pipefail
+CANDIDATES="$(
+  ps -axo pid=,ppid=,command= |
+    grep '/private/var/folders/.*/coven-prepublish-.*/@opencoven/cli-macos/bin/coven daemon serve' |
+    grep -v grep
+)"
+test "$(printf '%s\n' "$CANDIDATES" | sed '/^$/d' | wc -l | tr -d ' ')" = "1"
+ORPHAN_PID="$(printf '%s\n' "$CANDIDATES" | awk '{print $1}')"
 ps -ww -p "$ORPHAN_PID" -o pid=,ppid=,command=
 ```
 
 Expected: PPID is 1 and the executable path still contains
-`coven-prepublish-`. If either condition differs, stop without terminating it.
+`coven-prepublish-`. This is a preview only; the termination step repeats and
+enforces every identity check immediately before sending a signal.
 
 - [ ] **Step 2: Terminate the exact orphan PID**
 
 Run:
 
 ```bash
+set -euo pipefail
+CANDIDATES="$(
+  ps -axo pid=,ppid=,command= |
+    grep '/private/var/folders/.*/coven-prepublish-.*/@opencoven/cli-macos/bin/coven daemon serve' |
+    grep -v grep
+)"
+test "$(printf '%s\n' "$CANDIDATES" | sed '/^$/d' | wc -l | tr -d ' ')" = "1"
+ORPHAN_PID="$(printf '%s\n' "$CANDIDATES" | awk '{print $1}')"
+IDENTITY="$(ps -ww -p "$ORPHAN_PID" -o pid=,ppid=,command=)"
+PID="$(printf '%s\n' "$IDENTITY" | awk '{print $1}')"
+PPID_VALUE="$(printf '%s\n' "$IDENTITY" | awk '{print $2}')"
+ORPHAN_EXE="$(
+  printf '%s\n' "$IDENTITY" |
+    sed -E 's/^ *[0-9]+ +[0-9]+ +([^ ]+) daemon serve$/\1/'
+)"
+ORPHAN_ROOT="${ORPHAN_EXE%%/node_modules/*}"
+
+test "$PID" = "$ORPHAN_PID"
+test "$PPID_VALUE" = "1"
+case "$ORPHAN_EXE" in
+  /private/var/folders/*/T/coven-prepublish-*/node_modules/@opencoven/cli-macos/bin/coven)
+    ;;
+  *)
+    echo "refusing to terminate an unexpected executable: $ORPHAN_EXE" >&2
+    exit 1
+    ;;
+esac
+test "$ORPHAN_ROOT" != "$ORPHAN_EXE"
+test ! -e "$ORPHAN_ROOT"
+if lsof -nU 2>/dev/null |
+  awk -v pid="$ORPHAN_PID" \
+    '$2 == pid && $0 ~ /\/Users\/buns\/\.coven\/coven\.sock/ { found=1 }
+     END { exit found ? 0 : 1 }'
+then
+  echo "refusing: candidate owns the default Coven socket" >&2
+  exit 1
+fi
+
 kill "$ORPHAN_PID"
 for attempt in 1 2 3 4 5; do
   kill -0 "$ORPHAN_PID" 2>/dev/null || break
@@ -346,13 +416,16 @@ done
 ! kill -0 "$ORPHAN_PID" 2>/dev/null
 ```
 
-Expected: the exact PID no longer exists. Do not use `pkill` or `killall`.
+Expected: the command aborts unless the candidate is a PPID-1 process from a
+deleted `coven-prepublish-*` root that does not own the default socket. After
+those checks, the exact PID no longer exists. Do not use `pkill` or `killall`.
 
 - [ ] **Step 3: Re-run post-cleanup health checks**
 
 Run:
 
 ```bash
+set -euo pipefail
 coven --version
 coven daemon status
 curl --fail --silent --show-error --max-time 5 \
@@ -369,6 +442,7 @@ returns HTTP 200.
 Run:
 
 ```bash
+set -euo pipefail
 bd update cmem-pem --notes "Upgraded the installed Coven CLI to 0.2.3, restarted the shared daemon through the supported lifecycle command, verified Phase 1 overview/list/detail contracts through the default socket, verified the packaged dashboard against the shared daemon, and removed the confirmed orphaned prepublish daemon without exposing memory content."
 bd close cmem-pem --reason "Shared daemon and packaged dashboard verified on the default socket; temporary orphan removed safely."
 ```
@@ -380,6 +454,7 @@ Expected: `cmem-pem` is closed.
 Run:
 
 ```bash
+set -euo pipefail
 git add docs/superpowers/specs/2026-08-03-shared-daemon-replacement-design.md \
   docs/superpowers/plans/2026-08-03-shared-daemon-replacement.md
 git commit -m "docs: plan shared daemon replacement" \

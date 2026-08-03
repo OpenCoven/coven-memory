@@ -34,8 +34,9 @@ installed shared Coven daemon without interrupting unrelated active sessions.
 - Use the daemon management command rather than killing the shared daemon.
 - If restart fails, run `coven daemon start` and preserve the orphan until the
   default socket is healthy again.
-- Match the orphan by its exact PID and executable path; do not use name-based
-  process termination.
+- Match the orphan by its exact PID, PPID, executable path, deleted temporary
+  root, and non-ownership of the default socket immediately before
+  termination; do not use name-based process termination.
 - Do not expose the daemon beyond loopback or change its Host/Origin policy.
 - Do not include memory content in logs, notes, or committed artifacts.
 
