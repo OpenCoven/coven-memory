@@ -10,7 +10,8 @@ installed shared Coven daemon without interrupting unrelated active sessions.
 - `~/.coven/coven.sock` is owned by the installed daemon and already serves the
   Phase 1 memory overview, list, and opaque-ID detail routes.
 - The running installed daemon is Coven CLI 0.2.1.
-- npm publishes Coven CLI 0.2.3.
+- npm publishes Coven CLI package 0.2.3. Its macOS native binary identifies
+  itself as the coordinated `0.2.3-recovery.2` build.
 - An orphaned daemon launched from a deleted prepublish directory is still
   running independently of the default socket.
 
@@ -42,7 +43,8 @@ installed shared Coven daemon without interrupting unrelated active sessions.
 
 Completion requires:
 
-- `coven --version` reports 0.2.3;
+- the installed `@opencoven/cli` package metadata reports 0.2.3 and
+  `coven --version` reports its coordinated recovery build;
 - `coven daemon status` reports a running daemon on `~/.coven/coven.sock`;
 - overview returns HTTP 200 and the Phase 1 capability object;
 - list rows include opaque IDs, source, privacy, and verification fields;

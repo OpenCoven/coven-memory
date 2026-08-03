@@ -74,10 +74,10 @@ command must not print memory content.
 
 - [ ] **Step 1: Upgrade the coordinated CLI package**
 
-Run:
+Run against the prefix that owns `command -v coven`:
 
 ```bash
-npm install --global @opencoven/cli@0.2.3
+npm install --global --prefix "$HOME/.local" @opencoven/cli@0.2.3
 ```
 
 Expected: npm exits 0 and installs the CLI plus its optional dashboard
@@ -89,15 +89,19 @@ Run:
 
 ```bash
 coven --version
-node -e "
-  const { createRequire } = require('node:module');
-  const requireFromCli = createRequire('$HOME/.local/lib/node_modules/@opencoven/cli/bin/coven.js');
-  console.log(requireFromCli.resolve('@opencoven/coven-memory-dashboard/bin/coven-memory-dashboard.mjs'));
-"
+node -e '
+  const { createRequire } = require("node:module");
+  const cliRoot = process.env.HOME + "/.local/lib/node_modules/@opencoven/cli";
+  const cli = require(cliRoot + "/package.json");
+  if (cli.version !== "0.2.3") process.exit(1);
+  const requireFromCli = createRequire(cliRoot + "/bin/coven.js");
+  console.log(requireFromCli.resolve("@opencoven/coven-memory-dashboard/bin/coven-memory-dashboard.mjs"));
+'
 ```
 
-Expected: Coven reports 0.2.3 and Node prints the installed dashboard entry
-path.
+Expected: the package metadata reports 0.2.3, the native command reports the
+coordinated `0.2.3-recovery.2` build, and Node prints the installed dashboard
+entry path.
 
 - [ ] **Step 3: Restart through the supported lifecycle command**
 
@@ -255,16 +259,51 @@ curl --fail --silent --show-error --max-time 10 \
     process.stdin.on("data", chunk => input += chunk);
     process.stdin.on("end", () => {
       const value = JSON.parse(input);
-      if (!value.capabilities || typeof value.totals?.entries !== "number") process.exit(1);
+      if (value.ok !== true || !value.data?.capabilities ||
+          typeof value.data?.totals?.entries !== "number") process.exit(1);
       console.log("dashboard overview: ok");
+    });
+  '
+DASHBOARD_MEMORY_ID="$(
+  curl --fail --silent --show-error --max-time 10 \
+    -H "Origin: $DASHBOARD_ORIGIN" \
+    "$DASHBOARD_URL/api/memory" |
+    node -e '
+      let input = "";
+      process.stdin.on("data", chunk => input += chunk);
+      process.stdin.on("end", () => {
+        const value = JSON.parse(input);
+        const row = value.data?.[0];
+        if (value.ok !== true || !row?.id || !row?.source ||
+            !row?.privacy || !row?.verification) process.exit(1);
+        process.stdout.write(row.id);
+      });
+    '
+)"
+test -n "$DASHBOARD_MEMORY_ID"
+curl --fail --silent --show-error --max-time 10 \
+  -H "Origin: $DASHBOARD_ORIGIN" \
+  "$DASHBOARD_URL/api/memory/$DASHBOARD_MEMORY_ID" |
+  node -e '
+    let input = "";
+    process.stdin.on("data", chunk => input += chunk);
+    process.stdin.on("end", () => {
+      const value = JSON.parse(input);
+      if (value.ok !== true || typeof value.data?.content !== "string" ||
+          !value.data?.source || !value.data?.privacy ||
+          !value.data?.verification) process.exit(1);
+      console.log(JSON.stringify({
+        dashboard_detail: "ok",
+        content_bytes: Buffer.byteLength(value.data.content)
+      }));
     });
   '
 ```
 
-Expected: root returns HTTP 200 and the route prints
-`dashboard overview: ok`. If the process-local transport proof prevents a raw
-curl route call, verify the same request through the launched browser journey
-instead; do not weaken the proof requirement.
+Expected: root returns HTTP 200, overview prints `dashboard overview: ok`, and
+detail prints only its byte count. If the process-local transport proof
+prevents a raw curl route call, verify the same requests through the launched
+browser journey instead; do not weaken the proof requirement.
 
 - [ ] **Step 3: Stop only the disposable dashboard process**
 
@@ -321,7 +360,8 @@ curl --fail --silent --show-error --max-time 5 \
   http://localhost/api/v1/memory/overview >/dev/null
 ```
 
-Expected: Coven reports 0.2.3, the shared daemon is running, and overview
+Expected: the installed CLI package reports 0.2.3, the native command reports
+its coordinated recovery build, the shared daemon is running, and overview
 returns HTTP 200.
 
 - [ ] **Step 4: Update and close the Bead**
