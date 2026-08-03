@@ -13,8 +13,6 @@ else
     "$ROOT/apps/ios/CovenMemory/Tests"
     "$ROOT/apps/ios/CovenMemory/UITests"
   )
-  [[ ! -e "$ROOT/apps/ios/CovenMemory/build" ]] ||
-    targets+=("$ROOT/apps/ios/CovenMemory/build")
 fi
 
 files=()

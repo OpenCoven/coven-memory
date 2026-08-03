@@ -56,6 +56,25 @@ expect_default_test_sources_scanned() {
   grep -F '"$ROOT/apps/ios/CovenMemory/UITests"' "$SCANNER" >/dev/null
 }
 
+expect_default_scan_excludes_derived_data() {
+  local fake_root="$FIXTURE_ROOT/default-root"
+  local app_root="$fake_root/apps/ios/CovenMemory"
+  local compiler_metadata='/Users/runner/Xcode/SDK/CoreData.framework' # gitleaks:allow — synthetic scanner boundary fixture
+  mkdir -p "$fake_root/scripts" \
+    "$app_root/Sources" \
+    "$app_root/Config" \
+    "$app_root/Resources" \
+    "$app_root/Tests" \
+    "$app_root/UITests" \
+    "$app_root/build/DerivedData/Index.noindex"
+  cp -f "$SCANNER" "$fake_root/scripts/check-ios-privacy.sh"
+  printf '%s\n' 'let fixture = "safe"' >"$app_root/Sources/Safe.swift"
+  printf '%s\n' "$compiler_metadata" > \
+    "$app_root/build/DerivedData/Index.noindex/compiler-metadata.txt"
+
+  "$fake_root/scripts/check-ios-privacy.sh" >/dev/null
+}
+
 expect_pass "safe.txt" "Synthetic fixture metadata only."
 expect_pass "Info.plist" '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">'
 expect_pass "Tests/Fixtures/detail.json" '{"content":"Synthetic protected content only."}'
@@ -63,6 +82,7 @@ expect_pass "Tests/synthetic.swift" 'let url = "https://cave.example.ts.net/" //
 expect_test_bundle_ignored
 expect_large_early_match_fail
 expect_default_test_sources_scanned
+expect_default_scan_excludes_derived_data
 
 expect_fail "home-path.txt" "/Users/private-user/.coven/workspaces/familiar" "absolute home path" # gitleaks:allow — synthetic scanner fixture
 expect_fail "runtime-path.txt" "~/.coven/credentials/mobile.json" "runtime-internal path" # gitleaks:allow — synthetic scanner fixture
