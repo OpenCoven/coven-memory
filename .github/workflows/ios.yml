@@ -1,0 +1,60 @@
+name: iOS
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contract-and-privacy:
+    name: Cave contract and privacy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Coven Memory
+        uses: actions/checkout@v4
+      - name: Check out Cave contract source
+        uses: actions/checkout@v4
+        with:
+          repository: OpenCoven/coven-cave
+          path: coven-cave
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify contract helpers
+        run: node --test scripts/check-mobile-contract.test.mjs
+      - name: Verify Cave response fixture parity
+        run: >-
+          node scripts/check-mobile-contract.mjs
+          coven-cave/tests/fixtures/mobile-canonical-memory-v1
+          apps/ios/CovenMemory/Tests/Fixtures/cave-mobile-memory-v1
+      - name: Verify iOS privacy scanner
+        run: bash scripts/check-ios-privacy.test.sh
+      - name: Scan source and fixtures
+        run: bash scripts/check-ios-privacy.sh
+
+  simulator:
+    name: iPhone simulator
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install xcodegen
+      - name: Generate project
+        working-directory: apps/ios/CovenMemory
+        run: xcodegen generate
+      - name: Run Swift and UI tests
+        working-directory: apps/ios/CovenMemory
+        run: >-
+          xcodebuild test
+          -project CovenMemory.xcodeproj
+          -scheme CovenMemory
+          -derivedDataPath build/DerivedData
+          -resultBundlePath build/CovenMemoryTests.xcresult
+          -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+      - name: Scan generated and source artifacts
+        run: |
+          bash scripts/check-ios-privacy.sh
+          bash scripts/check-ios-privacy.sh apps/ios/CovenMemory/build/DerivedData/Build/Products/Debug-iphonesimulator/CovenMemory.app

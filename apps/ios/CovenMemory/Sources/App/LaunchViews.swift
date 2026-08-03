@@ -87,7 +87,7 @@ private struct LaunchProgressView: View {
             ProgressView()
                 .controlSize(.large)
             Text(message)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(CovenTheme.secondary)
         }
         .multilineTextAlignment(.center)
         .padding(CovenTheme.regularMargin)
@@ -162,7 +162,7 @@ private struct PairingView: View {
                     + "then scan its QR code."
             )
             .font(.body)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(CovenTheme.secondary)
             .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -175,6 +175,7 @@ private struct PairingView: View {
                 scannerPresented = true
             }
             .buttonStyle(.borderedProminent)
+            .foregroundStyle(CovenTheme.prominentForeground)
             .controlSize(.large)
             .frame(
                 maxWidth: .infinity,
@@ -185,7 +186,7 @@ private struct PairingView: View {
             if let scannerStatus {
                 Text(scannerStatus)
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(CovenTheme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("scanner-status")
             } else if !QRScannerSheet.isSupported {
@@ -194,7 +195,7 @@ private struct PairingView: View {
                         + "Paste the invite link instead."
                 )
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(CovenTheme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -275,7 +276,7 @@ private struct ConnectionReadyView: View {
                 Text(host)
                     .font(.headline)
                 Text("The native library interface is the next phase.")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(CovenTheme.secondary)
                 ViewThatFits {
                     HStack {
                         actions
@@ -300,6 +301,7 @@ private struct ConnectionReadyView: View {
             .controlSize(.large)
         Button("Lock", action: lock)
             .buttonStyle(.borderedProminent)
+            .foregroundStyle(CovenTheme.prominentForeground)
             .controlSize(.large)
     }
 }
@@ -320,11 +322,12 @@ private struct LaunchFailureView: View {
                 Text(title)
                     .font(.title2.bold())
                 Text(message)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(CovenTheme.secondary)
 
                 if canRetry {
                     Button("Retry", action: retry)
                         .buttonStyle(.borderedProminent)
+                        .foregroundStyle(CovenTheme.prominentForeground)
                         .controlSize(.large)
                 }
                 if canRetry {
@@ -334,6 +337,7 @@ private struct LaunchFailureView: View {
                 } else {
                     Button("Pair again", action: pairAgain)
                         .buttonStyle(.borderedProminent)
+                        .foregroundStyle(CovenTheme.prominentForeground)
                         .controlSize(.large)
                 }
             }

@@ -89,6 +89,7 @@ struct MemorySummary: Codable, Identifiable, Hashable, Sendable {
     let source: MemorySource
     let privacy: MemoryPrivacySummary
     let verification: MemoryVerificationSummary
+    let normalizedSearchText: String
 
     init(
         id: UUID,
@@ -110,6 +111,15 @@ struct MemorySummary: Codable, Identifiable, Hashable, Sendable {
         self.source = source
         self.privacy = privacy
         self.verification = verification
+        normalizedSearchText = MemorySearchIndex.make(
+            familiarId,
+            title,
+            relativeUpdatedAt,
+            excerpt,
+            source.kind,
+            source.label,
+            verification.state.rawValue
+        )
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -129,6 +139,28 @@ struct MemorySummary: Codable, Identifiable, Hashable, Sendable {
         source = try container.decode(MemorySource.self, forKey: .source)
         privacy = try container.decode(MemoryPrivacySummary.self, forKey: .privacy)
         verification = try container.decode(MemoryVerificationSummary.self, forKey: .verification)
+        normalizedSearchText = MemorySearchIndex.make(
+            familiarId,
+            title,
+            relativeUpdatedAt,
+            excerpt,
+            source.kind,
+            source.label,
+            verification.state.rawValue
+        )
+    }
+}
+
+enum MemorySearchIndex {
+    static func normalize(_ value: String) -> String {
+        value.folding(
+            options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive],
+            locale: .current
+        )
+    }
+
+    static func make(_ fields: String...) -> String {
+        normalize(fields.joined(separator: "\u{0}"))
     }
 }
 

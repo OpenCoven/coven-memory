@@ -2,6 +2,9 @@ import SwiftUI
 
 enum CovenTheme {
     static let accent = Color("CovenAccent")
+    static let failure = Color("CovenFailure")
+    static let prominentForeground = Color("CovenProminentForeground")
+    static let secondary = Color("CovenSecondary")
     static let compactMargin: CGFloat = 16
     static let regularMargin: CGFloat = 24
     static let readerMaximumWidth: CGFloat = 720

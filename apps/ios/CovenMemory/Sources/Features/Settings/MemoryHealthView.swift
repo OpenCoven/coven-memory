@@ -11,14 +11,14 @@ struct MemoryHealthView: View {
           Label(message(for: issue), systemImage: symbol(for: issue))
             .foregroundStyle(
               issue == .malformed || issue == .degraded
-                ? .red
+                ? CovenTheme.failure
                 : .orange
             )
         }
       }
 
       if let overview {
-        Section("Availability") {
+        Section {
           LabeledContent("Memory details") {
             Text(
               overview.capabilities.detail
@@ -35,25 +35,31 @@ struct MemoryHealthView: View {
             )
             .accessibilityIdentifier("memory-verification-state")
           }
+        } header: {
+          header("Availability")
         }
 
-        Section("Last check") {
+        Section {
           Text(
             overview.generatedAt.formatted(
               date: .abbreviated,
               time: .shortened
             )
           )
+        } header: {
+          header("Last check")
         }
 
         if !overview.verification.issues.isEmpty {
-          Section("Attention") {
+          Section {
             ForEach(
               Array(overview.verification.issues.enumerated()),
               id: \.offset
             ) { _, item in
               Text(item)
             }
+          } header: {
+            header("Attention")
           }
         }
       } else if issue == nil {
@@ -64,6 +70,11 @@ struct MemoryHealthView: View {
       }
     }
     .navigationTitle("Memory Health")
+  }
+
+  private func header(_ title: LocalizedStringKey) -> some View {
+    Text(title)
+      .foregroundStyle(CovenTheme.secondary)
   }
 
   private func message(for issue: MemoryLibraryIssue) -> String {

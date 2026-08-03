@@ -1,15 +1,15 @@
 {
   "ok": true,
   "overview": {
-    "generatedAt": "2026-07-29T12:00:00.000Z",
+    "generatedAt": "2026-07-26T10:00:00Z",
     "totals": {
-      "entries": 2,
+      "entries": 1,
       "familiars": 1,
-      "verified": 1,
+      "verified": 0,
       "needsReview": 0,
       "unknown": 1
     },
-    "lastUpdatedAt": null,
+    "lastUpdatedAt": "2026-07-26T09:56:00Z",
     "capabilities": {
       "detail": true,
       "verification": false,
@@ -19,7 +19,7 @@
     },
     "verification": {
       "state": "unavailable",
-      "checkedAt": "2026-07-29T12:00:00.000Z",
+      "checkedAt": "2026-07-26T10:00:00Z",
       "manifest": null,
       "index": null,
       "issues": []

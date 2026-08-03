@@ -151,7 +151,7 @@ struct MemoryLibraryView: View {
       }
 
       ForEach(state.sections) { section in
-        Section(section.recency.title) {
+        Section {
           ForEach(section.summaries) { summary in
             NavigationLink(value: summary.id) {
               MemoryRow(
@@ -160,6 +160,9 @@ struct MemoryLibraryView: View {
               )
             }
           }
+        } header: {
+          Text(section.recency.title)
+            .foregroundStyle(CovenTheme.secondary)
         }
       }
     }
@@ -219,6 +222,7 @@ struct MemoryLibraryView: View {
             settingsPresented = false
             pairAgain()
           }
+          .foregroundStyle(CovenTheme.failure)
           Button("Lock") {
             settingsPresented = false
             lock()
@@ -291,6 +295,7 @@ struct MemoryLibraryView: View {
           Task { await state.refresh() }
         }
         .buttonStyle(.borderedProminent)
+        .foregroundStyle(CovenTheme.prominentForeground)
       }
       Button("View Memory Health", action: showMemoryHealth)
         .buttonStyle(.bordered)

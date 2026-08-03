@@ -28,37 +28,88 @@ struct MemoryFilter: Sendable, Equatable {
     }
 
     func apply(to summaries: [MemorySummary], now: Date) -> [MemorySummary] {
-        summaries.filter { matches($0, now: now) }
-    }
-
-    func matches(_ summary: MemorySummary, now: Date) -> Bool {
-        if let familiarId, summary.familiarId.caseInsensitiveCompare(familiarId) != .orderedSame { return false }
-        if let sourceKind, summary.source.kind.caseInsensitiveCompare(sourceKind) != .orderedSame { return false }
-        if let verification, summary.verification.state != verification { return false }
-        if let freshness, !matches(freshness, updatedAt: summary.updatedAt, now: now) { return false }
-        if let query, !queryFields(for: summary).contains(where: { normalize($0).contains(normalize(query)) }) { return false }
-        return true
-    }
-
-    private func queryFields(for summary: MemorySummary) -> [String] {
-        [summary.familiarId, summary.title, summary.relativeUpdatedAt, summary.excerpt, summary.source.kind, summary.source.label, summary.verification.state.rawValue]
-    }
-
-    private func matches(_ freshness: Freshness, updatedAt: Date, now: Date) -> Bool {
+        let normalizedQuery = query.map(MemorySearchIndex.normalize)
         let calendar = Calendar(identifier: .gregorian)
-        switch freshness {
-        case .today:
-            return calendar.isDate(updatedAt, inSameDayAs: now)
-        case .previousSevenDays:
-            guard let start = calendar.date(byAdding: .day, value: -7, to: now) else { return false }
-            return updatedAt >= start && !calendar.isDate(updatedAt, inSameDayAs: now)
-        case .older:
-            guard let start = calendar.date(byAdding: .day, value: -7, to: now) else { return false }
-            return updatedAt < start
+        let startOfToday = calendar.startOfDay(for: now)
+        let startOfTomorrow = calendar.date(
+            byAdding: .day,
+            value: 1,
+            to: startOfToday
+        ) ?? now
+        let sevenDaysAgo = calendar.date(
+            byAdding: .day,
+            value: -7,
+            to: now
+        ) ?? now
+
+        return summaries.filter { summary in
+            matches(
+                summary,
+                normalizedQuery: normalizedQuery,
+                startOfToday: startOfToday,
+                startOfTomorrow: startOfTomorrow,
+                sevenDaysAgo: sevenDaysAgo
+            )
         }
     }
 
-    private func normalize(_ value: String) -> String {
-        value.folding(options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current)
+    func matches(_ summary: MemorySummary, now: Date) -> Bool {
+        let calendar = Calendar(identifier: .gregorian)
+        let startOfToday = calendar.startOfDay(for: now)
+        return matches(
+            summary,
+            normalizedQuery: query.map(MemorySearchIndex.normalize),
+            startOfToday: startOfToday,
+            startOfTomorrow: calendar.date(
+                byAdding: .day,
+                value: 1,
+                to: startOfToday
+            ) ?? now,
+            sevenDaysAgo: calendar.date(
+                byAdding: .day,
+                value: -7,
+                to: now
+            ) ?? now
+        )
+    }
+
+    private func matches(
+        _ summary: MemorySummary,
+        normalizedQuery: String?,
+        startOfToday: Date,
+        startOfTomorrow: Date,
+        sevenDaysAgo: Date
+    ) -> Bool {
+        if let familiarId, summary.familiarId.caseInsensitiveCompare(familiarId) != .orderedSame { return false }
+        if let sourceKind, summary.source.kind.caseInsensitiveCompare(sourceKind) != .orderedSame { return false }
+        if let verification, summary.verification.state != verification { return false }
+        if let freshness,
+           !matches(
+              freshness,
+              updatedAt: summary.updatedAt,
+              startOfToday: startOfToday,
+              startOfTomorrow: startOfTomorrow,
+              sevenDaysAgo: sevenDaysAgo
+           ) { return false }
+        if let normalizedQuery,
+           !summary.normalizedSearchText.contains(normalizedQuery) { return false }
+        return true
+    }
+
+    private func matches(
+        _ freshness: Freshness,
+        updatedAt: Date,
+        startOfToday: Date,
+        startOfTomorrow: Date,
+        sevenDaysAgo: Date
+    ) -> Bool {
+        switch freshness {
+        case .today:
+            return updatedAt >= startOfToday && updatedAt < startOfTomorrow
+        case .previousSevenDays:
+            return updatedAt >= sevenDaysAgo && updatedAt < startOfToday
+        case .older:
+            return updatedAt < sevenDaysAgo
+        }
     }
 }

@@ -394,11 +394,13 @@ struct MemoryReaderView: View {
         Text("Reveal hides when the app locks or you navigate away.")
           .accessibilityIdentifier("memory-reveal-lifecycle-notice")
       }
+      .foregroundStyle(CovenTheme.secondary)
     } actions: {
       Button("Reveal memory") {
         Task { await state.reveal() }
       }
       .buttonStyle(.borderedProminent)
+      .foregroundStyle(CovenTheme.prominentForeground)
       .controlSize(.large)
       .frame(minHeight: CovenTheme.minimumTarget)
     }
@@ -436,7 +438,7 @@ struct MemoryReaderView: View {
           "\(detail.familiarId) · \(detail.updatedAt.formatted(date: .abbreviated, time: .shortened))"
         )
         .font(.subheadline)
-        .foregroundStyle(.secondary)
+        .foregroundStyle(CovenTheme.secondary)
 
         switch displayMode {
         case .rendered:
@@ -464,13 +466,16 @@ struct MemoryReaderView: View {
   ) -> some View {
     NavigationStack {
       List {
-        Section("Display") {
+        Section {
           Picker("Memory display", selection: $displayMode) {
             ForEach(MemoryReaderDisplayMode.allCases) { mode in
               Text(mode.title).tag(mode)
             }
           }
           .pickerStyle(.segmented)
+        } header: {
+          Text("Display")
+            .foregroundStyle(CovenTheme.secondary)
         }
 
         MemoryProvenanceView(

@@ -20,7 +20,7 @@ struct CaveMemoryTransportTests {
 
         let overview = try await transport.overview()
 
-        #expect(overview.totals.entries == 2)
+        #expect(overview.totals.entries == 1)
         let request = await client.lastRequest
         #expect(
             request?.url?.absoluteString
