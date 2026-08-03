@@ -17,6 +17,39 @@ struct MemoryMarkdownTests {
     ])
   }
 
+  @Test("CRLF line endings normalize without changing blocks")
+  func normalizesCRLFLineEndings() {
+    let document = MemoryMarkdown.parse(
+      "# Synthetic\r\n\r\nFirst\r\nSecond",
+      title: "Synthetic"
+    )
+
+    #expect(document.blocks == [
+      .paragraph([InlineRun(text: "First Second")])
+    ])
+  }
+
+  @Test("CR line endings normalize without changing blocks")
+  func normalizesCRLineEndings() {
+    let document = MemoryMarkdown.parse(
+      "# Synthetic\r\rFirst\rSecond",
+      title: "Synthetic"
+    )
+
+    #expect(document.blocks == [
+      .paragraph([InlineRun(text: "First Second")])
+    ])
+  }
+
+  @Test("Empty inline content preserves an empty run list")
+  func preservesEmptyInlineRunList() {
+    let document = MemoryMarkdown.parse("# ", title: "Different")
+
+    #expect(document.blocks == [
+      .heading(level: 1, runs: [])
+    ])
+  }
+
   @Test("Inline styling does not prevent equivalent title removal")
   func removesStyledEquivalentTitle() {
     let document = MemoryMarkdown.parse(

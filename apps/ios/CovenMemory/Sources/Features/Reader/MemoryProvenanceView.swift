@@ -7,13 +7,15 @@ struct MemoryProvenanceView: View {
 
   var body: some View {
     Group {
-      Section("Capabilities") {
+      Section {
         ForEach(Self.capabilityRows(capabilities)) { row in
           LabeledContent(row.label, value: row.status)
         }
+      } header: {
+        header("Capabilities")
       }
 
-      Section("Source") {
+      Section {
         LabeledContent("Label", value: metadata.source.label)
         LabeledContent("Kind", value: metadata.source.kind)
         LabeledContent(
@@ -23,9 +25,11 @@ struct MemoryProvenanceView: View {
             time: .shortened
           )
         )
+      } header: {
+        header("Source")
       }
 
-      Section("Verification") {
+      Section {
         switch Self.verificationAvailability(capabilities) {
         case .available:
           LabeledContent(
@@ -44,9 +48,11 @@ struct MemoryProvenanceView: View {
               "verification-capability-unavailable"
             )
         }
+      } header: {
+        header("Verification")
       }
 
-      Section("Attestation metadata") {
+      Section {
         switch Self.attestationAvailability(capabilities) {
         case .available:
           LabeledContent(
@@ -63,9 +69,11 @@ struct MemoryProvenanceView: View {
               "attestation-capability-unavailable"
             )
         }
+      } header: {
+        header("Attestation metadata")
       }
 
-      Section("Supersession history") {
+      Section {
         switch Self.supersessionAvailability(capabilities) {
         case .available:
           if let newer = metadata.supersession.supersededBy {
@@ -93,8 +101,15 @@ struct MemoryProvenanceView: View {
               "supersession-capability-unavailable"
             )
         }
+      } header: {
+        header("Supersession history")
       }
     }
+  }
+
+  private func header(_ title: LocalizedStringKey) -> some View {
+    Text(title)
+      .foregroundStyle(CovenTheme.secondary)
   }
 
   static func capabilityRows(

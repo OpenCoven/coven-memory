@@ -63,6 +63,27 @@ memory collection.
 Browser and transport fixtures must be deterministic and synthetic. Real
 memory must never be copied into tests, screenshots, traces, or issue notes.
 
+## Native iOS boundary
+
+The iOS client is a separate read-only presentation layer behind Coven Cave's
+mobile bearer gate. Pairing accepts only a normalized HTTPS Cave URL with one
+mobile access token. The connection record is stored in the device-only,
+when-unlocked Keychain; memory summaries, details, and reveal state are never
+written to a database, cache, preference, log, or analytics service.
+
+Requests use an ephemeral URL session, reject redirects, and accept only the
+versioned `/api/mobile/coven-memory` response shapes. Cave remains responsible
+for mobile authorization and local Coven access. App lock, backgrounding,
+protected-reader dismissal, pairing reset, and authentication/revocation
+failures must clear the active memory graph and cover content immediately.
+
+iOS cannot prevent a device owner from taking a screenshot or photographing a
+screen. TestFlight notes, screenshots, recordings, crash reports, and review
+packets must therefore contain synthetic status evidence only—never an invite,
+endpoint, token, device identifier, or memory body. A lost device requires
+rotation of the Cave mobile access secret and re-pairing trusted devices; local
+**Pair again** removes only that device's stored connection.
+
 ## Enforcement layers (defense in depth)
 
 1. **Pre-commit hook** — `scripts/guard-scan.sh --staged`: gitleaks (with

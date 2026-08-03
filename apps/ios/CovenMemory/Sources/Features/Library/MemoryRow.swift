@@ -14,13 +14,13 @@ struct MemoryRow: View {
 
         Text("\(summary.familiarId) · \(summary.relativeUpdatedAt)")
           .font(.subheadline)
-          .foregroundStyle(.secondary)
+          .foregroundStyle(CovenTheme.secondary)
           .lineLimit(1)
 
         if let matchingContext {
           Text(matchingContext)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(CovenTheme.secondary)
             .lineLimit(1)
             .accessibilityIdentifier("search-context")
         }

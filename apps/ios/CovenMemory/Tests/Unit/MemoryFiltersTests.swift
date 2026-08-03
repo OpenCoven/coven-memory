@@ -28,6 +28,17 @@ struct MemoryFiltersTests {
         #expect(filter.apply(to: summaries, now: now).map(\.familiarId) == ["sage"])
     }
 
+    @Test("Structured identifiers remain case insensitive")
+    func foldsStructuredIdentifierCase() throws {
+        let summaries = try Fixture.summaries()
+        let filter = MemoryFilter(
+            familiarId: "SAGE",
+            sourceKind: "COVEN-ORIGIN"
+        )
+
+        #expect(filter.apply(to: summaries, now: now).map(\.familiarId) == ["sage"])
+    }
+
     @Test("Diacritic folding keeps search user-friendly")
     func foldsDiacritics() {
         let summary = MemorySummary(

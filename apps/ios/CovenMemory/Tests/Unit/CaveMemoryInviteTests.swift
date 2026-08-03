@@ -7,16 +7,12 @@ struct CaveMemoryInviteTests {
     @Test("Uses only the mobile token from Cave's real two-token QR")
     func parsesRealCaveQRShape() throws {
         let invite = try CaveMemoryInvite(
-            rawValue: """
-            https://cave.example.ts.net/memory/open\
-            ?coven_access_token=v1.1785326700000.fake.fake\
-            &covenCaveToken=discard-me#chat
-            """
+            rawValue: "https://cave.example.ts.net/memory/open?coven_access_token=v1.1785326700000.fake.fake&covenCaveToken=discard-me#chat" // gitleaks:allow — synthetic invite
         )
 
         #expect(
             invite.connection.baseURL
-                == URL(string: "https://cave.example.ts.net")
+                == URL(string: "https://cave.example.ts.net") // gitleaks:allow — synthetic test endpoint
         )
         #expect(
             invite.connection.accessToken
@@ -29,15 +25,12 @@ struct CaveMemoryInviteTests {
     @Test("Preserves only scheme host and port in the persisted base URL")
     func normalizesBaseURL() throws {
         let invite = try CaveMemoryInvite(
-            rawValue: """
-            https://cave.example.ts.net:8443/private/path\
-            ?coven_access_token=mobile-token&other=ignored#fragment
-            """
+            rawValue: "https://cave.example.ts.net:8443/private/path?coven_access_token=mobile-token&other=ignored#fragment" // gitleaks:allow — synthetic invite
         )
 
         #expect(
             invite.connection.baseURL
-                == URL(string: "https://cave.example.ts.net:8443")
+                == URL(string: "https://cave.example.ts.net:8443") // gitleaks:allow — synthetic test endpoint
         )
         #expect(invite.connection.baseURL.path.isEmpty)
         #expect(invite.connection.baseURL.query == nil)
@@ -49,23 +42,17 @@ struct CaveMemoryInviteTests {
         let oversizedURL = Self.invite(totalByteCount: 8_193)
         let unsafeInputs = [
             "",
-            "https://cave.example.ts.net/",
+            "https://cave.example.ts.net/", // gitleaks:allow — synthetic test endpoint
             "https://cave.example.ts.net/?coven_access_token", // gitleaks:allow synthetic malformed invite
             "https://cave.example.ts.net/?coven_access_token=", // gitleaks:allow synthetic malformed invite
-            """
-            https://cave.example.ts.net/\
-            ?coven_access_token=a&coven_access_token=b
-            """,
-            """
-            https://cave.example.ts.net/\
-            ?coven_access_token&coven_access_token=b
-            """,
+            "https://cave.example.ts.net/?coven_access_token=a&coven_access_token=b", // gitleaks:allow — synthetic malformed invite
+            "https://cave.example.ts.net/?coven_access_token&coven_access_token=b", // gitleaks:allow — synthetic malformed invite
             "http://cave.example.ts.net/?coven_access_token=a", // gitleaks:allow synthetic rejected invite
-            "/?coven_access_token=a",
-            "https:///?coven_access_token=a",
+            "/?coven_access_token=a", // gitleaks:allow — synthetic malformed invite
+            "https:///?coven_access_token=a", // gitleaks:allow — synthetic malformed invite
             "https://user@cave.example.ts.net/?coven_access_token=a", // gitleaks:allow synthetic rejected invite
             "https://user:password@cave.example.ts.net/?coven_access_token=a", // gitleaks:allow synthetic rejected invite
-            "https://cave.example.ts.net/?covenCaveToken=sidecar",
+            "https://cave.example.ts.net/?covenCaveToken=sidecar", // gitleaks:allow — synthetic test endpoint
             oversizedURL,
         ]
 
@@ -101,10 +88,7 @@ struct CaveMemoryInviteTests {
     func enforcesPortBounds() throws {
         for port in [1, 65_535] {
             let invite = try CaveMemoryInvite(
-                rawValue: """
-                https://cave.example.ts.net:\(port)/\
-                ?coven_access_token=a
-                """
+                rawValue: "https://cave.example.ts.net:\(port)/?coven_access_token=a" // gitleaks:allow — synthetic invite
             )
             #expect(invite.connection.baseURL.port == port)
         }
@@ -112,10 +96,7 @@ struct CaveMemoryInviteTests {
         for port in ["0", "65536", "999999999999999999999"] {
             #expect(throws: CaveMemoryInviteError.self) {
                 _ = try CaveMemoryInvite(
-                    rawValue: """
-                    https://cave.example.ts.net:\(port)/\
-                    ?coven_access_token=a
-                    """
+                    rawValue: "https://cave.example.ts.net:\(port)/?coven_access_token=a" // gitleaks:allow — synthetic invite
                 )
             }
         }
@@ -129,18 +110,12 @@ struct CaveMemoryInviteTests {
         #expect(maximumToken.utf8.count == CaveMemoryInvite.maximumTokenBytes)
         #expect(
             try CaveMemoryInvite(
-                rawValue: """
-                https://cave.example.ts.net/\
-                ?coven_access_token=\(maximumToken)
-                """
+                rawValue: "https://cave.example.ts.net/?coven_access_token=\(maximumToken)" // gitleaks:allow — synthetic invite
             ).connection.accessToken == maximumToken
         )
         #expect(throws: CaveMemoryInviteError.self) {
             _ = try CaveMemoryInvite(
-                rawValue: """
-                https://cave.example.ts.net/\
-                ?coven_access_token=\(oversizedToken)
-                """
+                rawValue: "https://cave.example.ts.net/?coven_access_token=\(oversizedToken)" // gitleaks:allow — synthetic invite
             )
         }
     }
@@ -154,18 +129,12 @@ struct CaveMemoryInviteTests {
         #expect(maximumToken.utf8.count == 4_096)
         #expect(
             try CaveMemoryInvite(
-                rawValue: """
-                https://cave.example.ts.net/\
-                ?coven_access_token=\(maximumToken)
-                """
+                rawValue: "https://cave.example.ts.net/?coven_access_token=\(maximumToken)" // gitleaks:allow — synthetic invite
             ).connection.accessToken == maximumToken
         )
         #expect(throws: CaveMemoryInviteError.self) {
             _ = try CaveMemoryInvite(
-                rawValue: """
-                https://cave.example.ts.net/\
-                ?coven_access_token=\(oversizedToken)
-                """
+                rawValue: "https://cave.example.ts.net/?coven_access_token=\(oversizedToken)" // gitleaks:allow — synthetic invite
             )
         }
     }
@@ -196,8 +165,8 @@ struct CaveMemoryInviteTests {
     }
 
     private static func invite(totalByteCount: Int) -> String {
-        let suffix = "?coven_access_token=a"
-        let prefix = "https://cave.example.ts.net/"
+        let suffix = "?coven_access_token=a" // gitleaks:allow — synthetic invite component
+        let prefix = "https://cave.example.ts.net/" // gitleaks:allow — synthetic test endpoint
         precondition(totalByteCount >= prefix.utf8.count + suffix.utf8.count)
         let pathByteCount = totalByteCount
             - prefix.utf8.count

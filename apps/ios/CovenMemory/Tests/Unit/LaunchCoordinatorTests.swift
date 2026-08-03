@@ -28,7 +28,7 @@ struct LaunchCoordinatorTests {
         await coordinator.start()
 
         await coordinator.submitInvite(
-            "https://cave.example.ts.net/?covenCaveToken=sidecar"
+            "https://cave.example.ts.net/?covenCaveToken=sidecar" // gitleaks:allow — synthetic test endpoint
         )
 
         #expect(coordinator.state == .failed(.invalidInvitation))
@@ -238,7 +238,7 @@ struct LaunchCoordinatorTests {
         "Invalid or base-switching refresh replacements are rejected",
         arguments: [
             CaveMemoryConnection(
-                baseURL: URL(string: "https://other.example.ts.net")!,
+                baseURL: URL(string: "https://other.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
                 accessToken: refreshedToken
             ),
             CaveMemoryConnection(
@@ -247,7 +247,7 @@ struct LaunchCoordinatorTests {
             ),
             CaveMemoryConnection(
                 baseURL: URL(
-                    string: "https://cave.example.ts.net/private"
+                    string: "https://cave.example.ts.net/private" // gitleaks:allow — synthetic rejected URL
                 )!,
                 accessToken: refreshedToken
             ),
@@ -381,6 +381,46 @@ struct LaunchCoordinatorTests {
 
         #expect(coordinator.state == expected)
         #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("A revocation invalidates before any detail opens")
+    @MainActor
+    func revocationBeforeDetail() async {
+        let service = LaunchStubCaveService(
+            listError: .authenticationRequired
+        )
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+
+        await #expect(throws: NetworkError.authenticationRequired) {
+            _ = try await activeService.list()
+        }
+
+        #expect(coordinator.state == .failed(.pairingInvalidated))
+        #expect(coordinator.memoryService == nil)
+    }
+
+    @Test("An initial disconnect remains a library-level offline state")
+    @MainActor
+    func disconnectBeforeDetail() async {
+        let service = LaunchStubCaveService(listError: .connectionFailed)
+        let coordinator = Self.coordinator(
+            credentials: LaunchStubCredentialStore(pairing: Self.stored),
+            service: service
+        )
+        await coordinator.start()
+        let activeService = try! #require(coordinator.memoryService)
+
+        await #expect(throws: NetworkError.connectionFailed) {
+            _ = try await activeService.list()
+        }
+
+        #expect(coordinator.state == .ready("cave.example.ts.net"))
+        #expect(coordinator.memoryService != nil)
     }
 
     @Test("A refresh disconnect invalidates a session with an open detail")
@@ -842,7 +882,7 @@ struct LaunchCoordinatorTests {
     private static let day: TimeInterval = 24 * 60 * 60
     private static let week: TimeInterval = 7 * day
     private static let baseURL = URL(
-        string: "https://cave.example.ts.net"
+        string: "https://cave.example.ts.net" // gitleaks:allow — synthetic test endpoint
     )!
     private static let qrToken = "legacy-qr-secret"
     private static let firstToken = "legacy-first-secret"
@@ -962,7 +1002,7 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
         overviewResults: [Result<Void, NetworkError>]? = nil,
         overviewGate: LaunchGate? = nil,
         refreshed: CaveMemoryConnection = CaveMemoryConnection(
-            baseURL: URL(string: "https://cave.example.ts.net")!,
+            baseURL: URL(string: "https://cave.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
             accessToken: "v1.1787592000000.refreshed.signature"
         ),
         refreshError: NetworkError? = nil,

@@ -20,6 +20,12 @@ const fixturesRoot = fileURLToPath(
     import.meta.url
   )
 );
+const caveFixturesRoot = fileURLToPath(
+  new URL(
+    "../apps/ios/CovenMemory/Tests/Fixtures/cave-mobile-memory-v1/",
+    import.meta.url
+  )
+);
 
 async function withFixtureDirectories(t) {
   const root = await mkdtemp(join(tmpdir(), "coven-mobile-contract-"));
@@ -179,4 +185,42 @@ test("locks the complete synthetic v1 contract and signature vector", async () =
     ),
     true
   );
+});
+
+test("locks the Cave mobile canonical-memory response contract", async () => {
+  const expectedNames = [
+    "cave-detail-success.json",
+    "cave-error-cases.json",
+    "cave-list-success.json",
+    "cave-overview-success.json"
+  ];
+  assert.deepEqual((await readdir(caveFixturesRoot)).sort(), expectedNames);
+
+  const parse = async (name) =>
+    JSON.parse(await readFile(join(caveFixturesRoot, name), "utf8"));
+  const list = await parse("cave-list-success.json");
+  const overview = await parse("cave-overview-success.json");
+  const detail = await parse("cave-detail-success.json");
+  const errors = await parse("cave-error-cases.json");
+
+  assert.equal(list.ok, true);
+  assert.equal(overview.ok, true);
+  assert.equal(detail.ok, true);
+  assert.equal(list.entries.length, overview.overview.totals.entries);
+  assert.equal(detail.entry.id, list.entries[0].id);
+  assert.equal("path" in list.entries[0], false);
+  assert.equal("path" in detail.entry, false);
+  assert.deepEqual(
+    errors.map((entry) => entry.code),
+    [
+      "mobile_access_required",
+      "local_daemon_required",
+      "canonical_memory_unavailable",
+      "capability_unavailable",
+      "daemon_update_required",
+      "invalid_daemon_payload",
+      "memory_not_found"
+    ]
+  );
+  assert.ok(errors.every((entry) => entry.ok === false));
 });

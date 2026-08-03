@@ -19,7 +19,7 @@ struct ExceptionNotice: View {
         var color: Color {
             switch self {
             case .warning, .unavailable, .incompatible: .orange
-            case .failure: .red
+            case .failure: CovenTheme.failure
             }
         }
     }

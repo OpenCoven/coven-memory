@@ -4,9 +4,24 @@ import Testing
 
 @Suite("Mobile contract")
 struct MobileContractTests {
+    private struct CaveListEnvelope: Decodable {
+        let ok: Bool
+        let entries: [MemorySummary]
+    }
+
     private struct CaveOverviewEnvelope: Decodable {
         let ok: Bool
         let overview: MemoryOverview
+    }
+
+    private struct CaveDetailEnvelope: Decodable {
+        let ok: Bool
+        let entry: MemoryDetail
+    }
+
+    private struct CaveErrorEnvelope: Decodable {
+        let ok: Bool
+        let code: String
     }
 
     @Test("Decodes v1 synthetic detail")
@@ -37,13 +52,41 @@ struct MobileContractTests {
     func decodesCaveOverviewNullableFields() throws {
         let envelope = try JSONDecoder.mobile.decode(
             CaveOverviewEnvelope.self,
-            from: Fixture.data("cave-overview-success.json")
+            from: caveOverviewData(settingNullableFieldsToNull: true)
         )
 
         #expect(envelope.ok)
         #expect(envelope.overview.lastUpdatedAt == nil)
         #expect(envelope.overview.verification.manifest == nil)
         #expect(envelope.overview.verification.index == nil)
+    }
+
+    @Test("Decodes the shared Cave mobile response fixtures")
+    func decodesSharedCaveMobileFixtures() throws {
+        let list = try JSONDecoder.mobile.decode(
+            CaveListEnvelope.self,
+            from: Fixture.data("cave-list-success.json")
+        )
+        let overview = try JSONDecoder.mobile.decode(
+            CaveOverviewEnvelope.self,
+            from: Fixture.data("cave-overview-success.json")
+        )
+        let detail = try JSONDecoder.mobile.decode(
+            CaveDetailEnvelope.self,
+            from: Fixture.data("cave-detail-success.json")
+        )
+        let errors = try JSONDecoder.mobile.decode(
+            [CaveErrorEnvelope].self,
+            from: Fixture.data("cave-error-cases.json")
+        )
+
+        #expect(list.ok)
+        #expect(overview.ok)
+        #expect(detail.ok)
+        #expect(list.entries.count == overview.overview.totals.entries)
+        #expect(detail.entry.id == list.entries.first?.id)
+        #expect(errors.allSatisfy { !$0.ok })
+        #expect(Set(errors.map(\.code)).contains("mobile_access_required"))
     }
 
     @Test("Rejects missing required nullable Cave overview fields", arguments: [
@@ -193,7 +236,11 @@ struct MobileContractTests {
         return try JSONDecoder.mobile.decode(Value.self, from: payloadData)
     }
 
-    private func caveOverviewData(removing field: String? = nil, issues: [String]? = nil) throws -> Data {
+    private func caveOverviewData(
+        removing field: String? = nil,
+        issues: [String]? = nil,
+        settingNullableFieldsToNull: Bool = false
+    ) throws -> Data {
         guard var root = try JSONSerialization.jsonObject(
             with: Fixture.data("cave-overview-success.json")
         ) as? [String: Any],
@@ -219,6 +266,11 @@ struct MobileContractTests {
 
         if let issues {
             verification["issues"] = issues
+        }
+        if settingNullableFieldsToNull {
+            overview["lastUpdatedAt"] = NSNull()
+            verification["manifest"] = NSNull()
+            verification["index"] = NSNull()
         }
         overview["verification"] = verification
         root["overview"] = overview

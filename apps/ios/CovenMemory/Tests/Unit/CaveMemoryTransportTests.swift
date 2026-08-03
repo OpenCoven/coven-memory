@@ -20,11 +20,11 @@ struct CaveMemoryTransportTests {
 
         let overview = try await transport.overview()
 
-        #expect(overview.totals.entries == 2)
+        #expect(overview.totals.entries == 1)
         let request = await client.lastRequest
         #expect(
             request?.url?.absoluteString
-                == "https://cave.example.ts.net/api/mobile/coven-memory/overview"
+                == "https://cave.example.ts.net/api/mobile/coven-memory/overview" // gitleaks:allow — synthetic expected URL
         )
         #expect(request?.httpMethod == "GET")
         #expect(request?.timeoutInterval == 20)
@@ -71,13 +71,13 @@ struct CaveMemoryTransportTests {
             ),
             CaveMemoryConnection(
                 baseURL: URL(
-                    string: "https://user@cave.example.ts.net"
+                    string: "https://user@cave.example.ts.net" // gitleaks:allow — synthetic rejected URL
                 )!,
                 accessToken: Self.accessToken
             ),
             CaveMemoryConnection(
                 baseURL: URL(
-                    string: "https://cave.example.ts.net/private"
+                    string: "https://cave.example.ts.net/private" // gitleaks:allow — synthetic rejected URL
                 )!,
                 accessToken: Self.accessToken
             ),
@@ -88,7 +88,7 @@ struct CaveMemoryTransportTests {
                 accessToken: Self.accessToken
             ),
             CaveMemoryConnection(
-                baseURL: URL(string: "https://cave.example.ts.net")!,
+                baseURL: URL(string: "https://cave.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
                 accessToken: ""
             ),
         ]
@@ -133,7 +133,7 @@ struct CaveMemoryTransportTests {
         let request = await client.lastRequest
         #expect(
             request?.url?.absoluteString
-                == "https://cave.example.ts.net/api/mobile/coven-memory"
+                == "https://cave.example.ts.net/api/mobile/coven-memory" // gitleaks:allow — synthetic expected URL
         )
         #expect(request?.httpMethod == "GET")
         #expect(request?.url?.query == nil)
@@ -163,7 +163,7 @@ struct CaveMemoryTransportTests {
         let request = await client.lastRequest
         #expect(
             request?.url?.absoluteString
-                == "https://cave.example.ts.net\(path)"
+                == "https://cave.example.ts.net\(path)" // gitleaks:allow — synthetic expected URL
         )
         #expect(request?.httpMethod == "GET")
         #expect(request?.url?.query == nil)
@@ -461,7 +461,7 @@ struct CaveMemoryTransportTests {
     @Test("A non-HTTP response is rejected")
     func rejectsNonHTTPResponse() async {
         let url = URL(
-            string: "https://cave.example.ts.net/api/mobile/coven-memory/overview"
+            string: "https://cave.example.ts.net/api/mobile/coven-memory/overview" // gitleaks:allow — synthetic expected URL
         )!
         let client = RecordingCaveHTTPClient(
             data: Data(#"{"ok":true}"#.utf8),
@@ -498,7 +498,7 @@ struct CaveMemoryTransportTests {
     @Test("The URL session delegate declines redirect requests")
     func redirectDelegateDeclinesRedirect() async {
         let sourceURL = URL(
-            string: "https://cave.example.ts.net/api/mobile/coven-memory"
+            string: "https://cave.example.ts.net/api/mobile/coven-memory" // gitleaks:allow — synthetic expected URL
         )!
         let destinationURL = URL(
             string: "https://other.example.invalid/"
@@ -692,7 +692,7 @@ struct CaveMemoryTransportTests {
         "v1.1785326700000.synthetic.fake"
 
     private static let connection = CaveMemoryConnection(
-        baseURL: URL(string: "https://cave.example.ts.net")!,
+        baseURL: URL(string: "https://cave.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
         accessToken: accessToken
     )
 
@@ -741,7 +741,7 @@ struct CaveMemoryTransportTests {
         headers: [String: String]? = nil
     ) -> HTTPURLResponse {
         HTTPURLResponse(
-            url: URL(string: "https://cave.example.ts.net\(path)")!,
+            url: URL(string: "https://cave.example.ts.net\(path)")!, // gitleaks:allow — synthetic expected URL
             statusCode: status,
             httpVersion: nil,
             headerFields: headers

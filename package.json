@@ -57,6 +57,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:mobile-contract": "node --test scripts/check-mobile-contract.test.mjs",
+    "test:ios-privacy": "bash scripts/check-ios-privacy.test.sh && bash scripts/check-ios-privacy.sh",
     "test:watch": "vitest",
     "test:browser": "pnpm build && node scripts/verify-dashboard-ui.mjs",
     "test:browser:all": "pnpm build && PLAYWRIGHT_BROWSER=chromium node scripts/verify-dashboard-ui.mjs && PLAYWRIGHT_BROWSER=firefox node scripts/verify-dashboard-ui.mjs && PLAYWRIGHT_BROWSER=webkit node scripts/verify-dashboard-ui.mjs",
@@ -67,7 +68,7 @@
     "test:smoke": "node scripts/smoke-dashboard.mjs",
     "test:package": "pnpm build:package && node --test scripts/dashboard-bin.test.mjs scripts/sanitize-build-artifact.test.mjs && node scripts/package-contents-test.mjs",
     "prepack": "pnpm build:package",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:mobile-contract && pnpm test:guard && pnpm test:demo && pnpm build && pnpm test:smoke && pnpm check:instruction-sync && pnpm demo:check && ./scripts/guard-scan.sh"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:mobile-contract && pnpm test:ios-privacy && pnpm test:guard && pnpm test:demo && pnpm build && pnpm test:smoke && pnpm check:instruction-sync && pnpm demo:check && ./scripts/guard-scan.sh"
   },
   "dependencies": {
     "@opencoven/coven-design-system": "git+https://github.com/OpenCoven/coven-design-system.git#6032f9f407982379e39ed1a40eec7a2e8b24e5c6",

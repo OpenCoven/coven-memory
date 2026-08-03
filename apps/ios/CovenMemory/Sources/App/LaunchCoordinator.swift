@@ -519,7 +519,10 @@ private actor SessionInvalidatingCaveMemoryService: CaveMemoryServicing {
             try validity.check()
             return value
         } catch let error as NetworkError {
-            if hasServedDetail || detailRequestsInFlight > 0 {
+            if error == .authenticationRequired
+                || hasServedDetail
+                || detailRequestsInFlight > 0
+            {
                 await invalidateSession(for: error)
             }
             try validity.check()

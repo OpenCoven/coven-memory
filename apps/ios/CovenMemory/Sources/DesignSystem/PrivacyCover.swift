@@ -16,9 +16,10 @@ struct PrivacyCover: View {
                     .font(.headline)
                 Text("Memory is shown only while this app is unlocked.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(CovenTheme.secondary)
                 Button("Unlock", action: unlock)
                     .buttonStyle(.borderedProminent)
+                    .foregroundStyle(CovenTheme.prominentForeground)
             }
             .multilineTextAlignment(.center)
             .padding(CovenTheme.regularMargin)

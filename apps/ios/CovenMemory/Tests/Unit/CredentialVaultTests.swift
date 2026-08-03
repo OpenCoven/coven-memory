@@ -17,7 +17,7 @@ struct CredentialVaultTests {
         let keychain = TestKeychain()
         let vault = CredentialVault(keychain: keychain)
         let first = CaveMemoryConnection(
-            baseURL: URL(string: "https://cave.example.ts.net")!,
+            baseURL: URL(string: "https://cave.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
             accessToken: "v1.1785326700000.first.fake"
         )
         let refreshed = CaveMemoryConnection(
@@ -119,21 +119,21 @@ struct CredentialVaultTests {
             ("file:///tmp/cave", "token"),
             ("cave.example.ts.net", "token"),
             ("https:///", "token"),
-            ("https://cave.example.ts.net/", "token"),
-            ("https://cave.example.ts.net/memory", "token"),
-            ("https://cave.example.ts.net?query=secret", "token"),
-            ("https://cave.example.ts.net#fragment", "token"),
-            ("https://user@cave.example.ts.net", "token"),
-            ("https://user:password@cave.example.ts.net", "token"),
-            ("https://cave.example.ts.net:0", "token"),
-            ("https://cave.example.ts.net:65536", "token"),
+            ("https://cave.example.ts.net/", "token"), // gitleaks:allow — synthetic test endpoint
+            ("https://cave.example.ts.net/memory", "token"), // gitleaks:allow — synthetic test endpoint
+            ("https://cave.example.ts.net?query=secret", "token"), // gitleaks:allow — synthetic test endpoint
+            ("https://cave.example.ts.net#fragment", "token"), // gitleaks:allow — synthetic test endpoint
+            ("https://user@cave.example.ts.net", "token"), // gitleaks:allow — synthetic test endpoint
+            ("https://user:password@cave.example.ts.net", "token"), // gitleaks:allow — synthetic test endpoint
+            ("https://cave.example.ts.net:0", "token"), // gitleaks:allow — synthetic test endpoint
+            ("https://cave.example.ts.net:65536", "token"), // gitleaks:allow — synthetic test endpoint
             (
-                "https://cave.example.ts.net:999999999999999999999",
+                "https://cave.example.ts.net:999999999999999999999", // gitleaks:allow — synthetic test endpoint
                 "token"
             ),
             ("https://\(oversizedHost)", "token"),
-            ("https://cave.example.ts.net", ""),
-            ("https://cave.example.ts.net", oversizedToken),
+            ("https://cave.example.ts.net", ""), // gitleaks:allow — synthetic test endpoint
+            ("https://cave.example.ts.net", oversizedToken), // gitleaks:allow — synthetic test endpoint
         ]
 
         for (baseURL, accessToken) in invalidConnections {
@@ -245,7 +245,7 @@ private actor SuspendedReadKeychain: CredentialDataStoring {
 
 private enum TestFixtures {
     static let connection = CaveMemoryConnection(
-        baseURL: URL(string: "https://cave.example.ts.net")!,
+        baseURL: URL(string: "https://cave.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
         accessToken: "v1.1785326700000.fake.fake"
     )
 }

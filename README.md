@@ -20,6 +20,15 @@ The current dashboard provides:
 Promotion, editing, deletion, approval, and supersession mutations are
 intentionally absent until their authority contracts are available.
 
+## Native iOS client
+
+`apps/ios/CovenMemory` contains the read-only iPhone and iPad client. It pairs
+through Coven Cave's **Open on phone** flow and reads the bearer-protected
+`/api/mobile/coven-memory` contract over HTTPS; it does not connect directly to
+Coven or persist memory content on the device. See
+[`docs/ios/README.md`](docs/ios/README.md) for build, fixture, signing, pairing,
+and privacy-gate instructions.
+
 ## Requirements
 
 - Node.js 24 or newer
@@ -153,6 +162,7 @@ Coven, restarting the daemon, then retrying the dashboard.
 ```bash
 pnpm check
 pnpm audit:prod
+pnpm test:ios-privacy
 ```
 
 `pnpm check` runs lint, TypeScript, unit/component/integration tests, the
