@@ -53,7 +53,7 @@ jobs:
           -scheme CovenMemory
           -derivedDataPath build/DerivedData
           -resultBundlePath build/CovenMemoryTests.xcresult
-          -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+          -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
       - name: Scan generated and source artifacts
         run: |
           bash scripts/check-ios-privacy.sh
