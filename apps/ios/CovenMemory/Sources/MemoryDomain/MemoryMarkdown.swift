@@ -90,13 +90,16 @@ enum MemoryMarkdown {
     isCancelled: () -> Bool
   ) -> MemoryMarkdownDocument? {
     guard !isCancelled() else { return nil }
-    guard !source.unicodeScalars.contains(where: { $0.value == 0 }) else {
+    guard !source.utf8.contains(0) else {
       return fallback(source)
     }
 
-    let lines = source
-      .replacingOccurrences(of: "\r\n", with: "\n")
-      .replacingOccurrences(of: "\r", with: "\n")
+    let normalizedSource = source.utf8.contains(13)
+      ? source
+        .replacingOccurrences(of: "\r\n", with: "\n")
+        .replacingOccurrences(of: "\r", with: "\n")
+      : source
+    let lines = normalizedSource
       .split(separator: "\n", omittingEmptySubsequences: false)
       .map(String.init)
 
@@ -122,12 +125,13 @@ enum MemoryMarkdown {
 
   private static func parseBlocks(
     _ lines: [String],
+    blockquoteDepth: Int = 0,
     isCancelled: () -> Bool
   ) throws -> [MemoryMarkdownBlock] {
     var frames = [
       try blockFrame(
         lines: lines,
-        blockquoteDepth: 0,
+        blockquoteDepth: blockquoteDepth,
         isCancelled: isCancelled
       )
     ]
@@ -203,6 +207,22 @@ enum MemoryMarkdown {
       if frame.blockquoteDepth < maximumBlockquoteNestingDepth,
         blockquoteText(line) != nil
       {
+        let nextIndex = frame.index + 1
+        if nextIndex == frame.lines.count
+          || blockquoteText(frame.lines[nextIndex]) == nil
+        {
+          frame.blocks.append(
+            try collapsedSingleLineBlockquote(
+              line,
+              blockquoteDepth: frame.blockquoteDepth,
+              isCancelled: isCancelled
+            )
+          )
+          frame.index += 1
+          frames.append(frame)
+          continue
+        }
+
         var quoteLines: [String] = []
         while frame.index < frame.lines.count,
           let quoted = blockquoteText(frame.lines[frame.index])
@@ -394,6 +414,15 @@ enum MemoryMarkdown {
       default:
         break
       }
+    }
+
+    if !bytes.isEmpty,
+      asteriskPositions.isEmpty,
+      underscorePositions.isEmpty,
+      closingBracketPositions.isEmpty,
+      backtickPositions.isEmpty
+    {
+      return [InlineRun(text: value)]
     }
 
     var runs: [InlineRun] = []
@@ -656,6 +685,62 @@ enum MemoryMarkdown {
     guard trimmed.first == ">" else { return nil }
     return String(trimmed.dropFirst())
       .trimmingCharacters(in: .whitespaces)
+  }
+
+  private static func collapsedSingleLineBlockquote(
+    _ line: String,
+    blockquoteDepth: Int,
+    isCancelled: () -> Bool
+  ) throws -> MemoryMarkdownBlock {
+    var remainder = line[...]
+    var consumedDepth = 0
+
+    while blockquoteDepth + consumedDepth
+      < maximumBlockquoteNestingDepth,
+      let quoted = blockquoteSlice(remainder)
+    {
+      remainder = quoted
+      consumedDepth += 1
+    }
+
+    let nested = try parseBlocks(
+      [String(remainder)],
+      blockquoteDepth: blockquoteDepth + consumedDepth,
+      isCancelled: isCancelled
+    )
+    var block = MemoryMarkdownBlock.blockquote(nested)
+    for _ in 1..<consumedDepth {
+      block = .blockquote([block])
+    }
+    return block
+  }
+
+  private static func blockquoteSlice(
+    _ line: Substring
+  ) -> Substring? {
+    var start = line.startIndex
+    while start < line.endIndex,
+      line[start] == " " || line[start] == "\t"
+    {
+      start = line.index(after: start)
+    }
+    guard start < line.endIndex, line[start] == ">" else { return nil }
+    start = line.index(after: start)
+    while start < line.endIndex, isMarkdownWhitespace(line[start]) {
+      start = line.index(after: start)
+    }
+
+    var end = line.endIndex
+    while end > start {
+      let candidate = line.index(before: end)
+      guard isMarkdownWhitespace(line[candidate]) else { break }
+      end = candidate
+    }
+    return line[start..<end]
+  }
+
+  private static func isMarkdownWhitespace(_ character: Character) -> Bool {
+    character.unicodeScalars.allSatisfy(CharacterSet.whitespaces.contains)
   }
 
   private static func unorderedItem(_ line: String) -> String? {

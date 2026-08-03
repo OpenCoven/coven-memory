@@ -80,8 +80,12 @@ struct MemoryFilter: Sendable, Equatable {
         startOfTomorrow: Date,
         sevenDaysAgo: Date
     ) -> Bool {
-        if let familiarId, summary.familiarId.caseInsensitiveCompare(familiarId) != .orderedSame { return false }
-        if let sourceKind, summary.source.kind.caseInsensitiveCompare(sourceKind) != .orderedSame { return false }
+        if let familiarId,
+           summary.familiarId != familiarId,
+           summary.familiarId.caseInsensitiveCompare(familiarId) != .orderedSame { return false }
+        if let sourceKind,
+           summary.source.kind != sourceKind,
+           summary.source.kind.caseInsensitiveCompare(sourceKind) != .orderedSame { return false }
         if let verification, summary.verification.state != verification { return false }
         if let freshness,
            !matches(
