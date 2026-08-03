@@ -35,6 +35,7 @@ final class AccessibilityUITests: XCTestCase {
         (.staticText, "Filters"),
         (.staticText, "Familiar"),
         (.staticText, "Source"),
+        (.button, "Done"),
       ]
     )
   }
