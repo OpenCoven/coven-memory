@@ -399,9 +399,10 @@ case "$ORPHAN_EXE" in
 esac
 test "$ORPHAN_ROOT" != "$ORPHAN_EXE"
 test ! -e "$ORPHAN_ROOT"
-if lsof -nU 2>/dev/null |
-  awk -v pid="$ORPHAN_PID" \
-    '$2 == pid && $0 ~ /\/Users\/buns\/\.coven\/coven\.sock/ { found=1 }
+SOCKET_OWNERS="$(lsof -nU)"
+if printf '%s\n' "$SOCKET_OWNERS" |
+  awk -v pid="$ORPHAN_PID" -v socket="$HOME/.coven/coven.sock" \
+    '$2 == pid && index($0, socket) { found=1 }
      END { exit found ? 0 : 1 }'
 then
   echo "refusing: candidate owns the default Coven socket" >&2
