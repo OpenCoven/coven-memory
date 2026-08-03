@@ -115,8 +115,19 @@ Run:
 
 ```bash
 set -euo pipefail
+BASELINE_PID="$(
+  coven daemon status |
+    sed -n 's/.*pid \([0-9][0-9]*\).*/\1/p'
+)"
+test -n "$BASELINE_PID"
 coven daemon restart
-coven daemon status
+NEW_PID="$(
+  coven daemon status |
+    sed -n 's/.*pid \([0-9][0-9]*\).*/\1/p'
+)"
+test -n "$NEW_PID"
+test "$NEW_PID" != "$BASELINE_PID"
+printf 'daemon pid changed: %s -> %s\n' "$BASELINE_PID" "$NEW_PID"
 ```
 
 Expected: restart succeeds, status is running, and the reported PID differs
@@ -271,10 +282,28 @@ Run in the same shell as Step 1 against the printed loopback origin:
 
 ```bash
 set -euo pipefail
-curl --fail --silent --show-error --max-time 10 "$DASHBOARD_URL/" >/dev/null
-curl --fail --silent --show-error --max-time 10 \
-  -H "Origin: $DASHBOARD_ORIGIN" \
-  "$DASHBOARD_URL/api/memory/overview" |
+fetch_json_200() {
+  local url="$1"
+  local output
+  local status
+  output="$(
+    curl --silent --show-error --max-time 10 \
+      -H "Origin: $DASHBOARD_ORIGIN" \
+      --write-out $'\n%{http_code}' \
+      "$url"
+  )"
+  status="${output##*$'\n'}"
+  test "$status" = "200"
+  printf '%s' "${output%$'\n'*}"
+}
+
+test "$(
+  curl --silent --show-error --max-time 10 \
+    --output /dev/null \
+    --write-out '%{http_code}' \
+    "$DASHBOARD_ORIGIN/"
+)" = "200"
+fetch_json_200 "$DASHBOARD_ORIGIN/api/memory/overview" |
   node -e '
     let input = "";
     process.stdin.on("data", chunk => input += chunk);
@@ -286,9 +315,7 @@ curl --fail --silent --show-error --max-time 10 \
     });
   '
 DASHBOARD_MEMORY_ID="$(
-  curl --fail --silent --show-error --max-time 10 \
-    -H "Origin: $DASHBOARD_ORIGIN" \
-    "$DASHBOARD_URL/api/memory" |
+  fetch_json_200 "$DASHBOARD_ORIGIN/api/memory" |
     node -e '
       let input = "";
       process.stdin.on("data", chunk => input += chunk);
@@ -302,9 +329,7 @@ DASHBOARD_MEMORY_ID="$(
     '
 )"
 test -n "$DASHBOARD_MEMORY_ID"
-curl --fail --silent --show-error --max-time 10 \
-  -H "Origin: $DASHBOARD_ORIGIN" \
-  "$DASHBOARD_URL/api/memory/$DASHBOARD_MEMORY_ID" |
+fetch_json_200 "$DASHBOARD_ORIGIN/api/memory/$DASHBOARD_MEMORY_ID" |
   node -e '
     let input = "";
     process.stdin.on("data", chunk => input += chunk);
@@ -409,6 +434,10 @@ then
   exit 1
 fi
 
+IDENTITY_AFTER_SOCKET_CHECK="$(
+  ps -ww -p "$ORPHAN_PID" -o pid=,ppid=,command=
+)"
+test "$IDENTITY_AFTER_SOCKET_CHECK" = "$IDENTITY"
 kill "$ORPHAN_PID"
 for attempt in 1 2 3 4 5; do
   kill -0 "$ORPHAN_PID" 2>/dev/null || break
