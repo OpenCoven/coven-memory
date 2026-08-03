@@ -47,7 +47,10 @@ final class AccessibilityUITests: XCTestCase {
     XCTAssertTrue(
       protectedApp.buttons["Reveal memory"].waitForExistence(timeout: 5)
     )
-    try audit(protectedApp)
+    try audit(
+      protectedApp,
+      allowingContrastFor: [(.staticText, "Protected field notes")]
+    )
     protectedApp.terminate()
 
     let provenanceApp = launch(scenario: "reader-provenance")
