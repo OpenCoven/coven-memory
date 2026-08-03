@@ -38,6 +38,19 @@ expect_test_bundle_ignored() {
   "$SCANNER" "$app" >/dev/null
 }
 
+expect_large_early_match_fail() {
+  local file="$FIXTURE_ROOT/large-early-match.swift"
+  awk 'BEGIN {
+    print "let invite = \"https://cave.example/?coven_access_token=must-fail\""
+    for (line = 0; line < 200000; line += 1) print "safe synthetic padding"
+  }' >"$file"
+
+  if "$SCANNER" "$file" >/dev/null 2>&1; then
+    echo "expected large file with an early credential URL to fail" >&2
+    exit 1
+  fi
+}
+
 expect_default_test_sources_scanned() {
   grep -F '"$ROOT/apps/ios/CovenMemory/Tests"' "$SCANNER" >/dev/null
   grep -F '"$ROOT/apps/ios/CovenMemory/UITests"' "$SCANNER" >/dev/null
@@ -48,6 +61,7 @@ expect_pass "Info.plist" '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "
 expect_pass "Tests/Fixtures/detail.json" '{"content":"Synthetic protected content only."}'
 expect_pass "Tests/synthetic.swift" 'let url = "https://cave.example.ts.net/" // gitleaks:allow — synthetic test endpoint'
 expect_test_bundle_ignored
+expect_large_early_match_fail
 expect_default_test_sources_scanned
 
 expect_fail "home-path.txt" "/Users/private-user/.coven/workspaces/familiar" "absolute home path" # gitleaks:allow — synthetic scanner fixture

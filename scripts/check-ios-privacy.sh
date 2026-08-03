@@ -43,11 +43,11 @@ check_text() {
   local label="$2"
   local pattern="$3"
   if file "$file" | grep -q 'Mach-O'; then
-    if ! strings -a "$file" | LC_ALL=C grep -Eq "$pattern"; then
+    if ! strings -a "$file" | LC_ALL=C grep -E "$pattern" >/dev/null; then
       return
     fi
   elif ! LC_ALL=C grep -aEv 'gitleaks:allow|guard-scan-allow' "$file" |
-    LC_ALL=C grep -Eq "$pattern"; then
+    LC_ALL=C grep -E "$pattern" >/dev/null; then
     return
   fi
   printf '%s: %s\n' "$file" "$label" >&2
@@ -60,11 +60,11 @@ check_linked() {
   local pattern="$3"
   if file "$file" | grep -q 'Mach-O'; then
     if ! { nm -u "$file" 2>/dev/null; otool -L "$file" 2>/dev/null; } |
-      LC_ALL=C grep -Eq "$pattern"; then
+      LC_ALL=C grep -E "$pattern" >/dev/null; then
       return
     fi
   elif ! LC_ALL=C grep -aEv 'gitleaks:allow|guard-scan-allow' "$file" |
-    LC_ALL=C grep -Eq "$pattern"; then
+    LC_ALL=C grep -E "$pattern" >/dev/null; then
     return
   fi
   printf '%s: %s\n' "$file" "$label" >&2

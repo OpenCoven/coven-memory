@@ -28,7 +28,7 @@ struct LaunchCoordinatorTests {
         await coordinator.start()
 
         await coordinator.submitInvite(
-            "https://cave.example.ts.net/?covenCaveToken=sidecar"
+            "https://cave.example.ts.net/?covenCaveToken=sidecar" // gitleaks:allow — synthetic test endpoint
         )
 
         #expect(coordinator.state == .failed(.invalidInvitation))
@@ -238,7 +238,7 @@ struct LaunchCoordinatorTests {
         "Invalid or base-switching refresh replacements are rejected",
         arguments: [
             CaveMemoryConnection(
-                baseURL: URL(string: "https://other.example.ts.net")!,
+                baseURL: URL(string: "https://other.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
                 accessToken: refreshedToken
             ),
             CaveMemoryConnection(
@@ -247,7 +247,7 @@ struct LaunchCoordinatorTests {
             ),
             CaveMemoryConnection(
                 baseURL: URL(
-                    string: "https://cave.example.ts.net/private"
+                    string: "https://cave.example.ts.net/private" // gitleaks:allow — synthetic rejected URL
                 )!,
                 accessToken: refreshedToken
             ),
@@ -882,7 +882,7 @@ struct LaunchCoordinatorTests {
     private static let day: TimeInterval = 24 * 60 * 60
     private static let week: TimeInterval = 7 * day
     private static let baseURL = URL(
-        string: "https://cave.example.ts.net"
+        string: "https://cave.example.ts.net" // gitleaks:allow — synthetic test endpoint
     )!
     private static let qrToken = "legacy-qr-secret"
     private static let firstToken = "legacy-first-secret"
@@ -1002,7 +1002,7 @@ private actor LaunchStubCaveService: CaveMemoryServicing {
         overviewResults: [Result<Void, NetworkError>]? = nil,
         overviewGate: LaunchGate? = nil,
         refreshed: CaveMemoryConnection = CaveMemoryConnection(
-            baseURL: URL(string: "https://cave.example.ts.net")!,
+            baseURL: URL(string: "https://cave.example.ts.net")!, // gitleaks:allow — synthetic test endpoint
             accessToken: "v1.1787592000000.refreshed.signature"
         ),
         refreshError: NetworkError? = nil,
